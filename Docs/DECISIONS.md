@@ -282,3 +282,35 @@ Do not treat live LUT import as an MVP requirement for the current release targe
 - The current implementation path can focus on hardware-backed grade controls that already map cleanly to `/v2/pipelineStages`.
 - The unresolved `/v2/upload` behavior remains documented, but it no longer blocks MVP progress.
 - Future versions can revisit library import once hardware behavior is verified or vendor guidance is available.
+
+## 2026-04-21 — Drive The Current MVP Grade Controls Directly Through `/v2/pipelineStages`
+
+### Context
+
+The reference ColorBox firmware cleanly exposes `lut3d_1.colorCorrector` and `lut3d_1.procAmp.sat` through `GET/PUT /v2/pipelineStages`, and the user elevated direct dynamic 3D LUT control plus saturation to the top MVP priority.
+
+### Decision
+
+Implement the current MVP grade path by reading and writing the dynamic stage fields directly on `/v2/pipelineStages`, rather than waiting for LUT bake/upload work.
+
+### Consequences
+
+- TrackGrade can already deliver live Lift / Gamma / Gain and saturation control on the reference hardware.
+- The grade UI and device state model should treat `pipelineStages` as the source of truth for the current MVP look state.
+- Preset behavior now has to be evaluated against this direct stage-control path, not against a future uploaded-LUT workflow.
+
+## 2026-04-21 — Treat Device-Native Preset Save For Dynamic Grade State As Unresolved On Firmware 3.0.0.24
+
+### Context
+
+Live verification showed that after modifying `lut3d_1.colorCorrector` and `procAmp.sat`, then saving a system preset with `StoreEntry` and `SetUserName`, `RecallEntry` returned the stage to identity/default values rather than to the saved dynamic grade. The calls succeeded without device-side errors.
+
+### Decision
+
+Do not assume that ColorBox `systemPreset` entries preserve the runtime dynamic grade values driven through `/v2/pipelineStages` on firmware `3.0.0.24`.
+
+### Consequences
+
+- The MVP preset requirement now needs an explicit product decision: rely on TrackGrade-local presets/snapshots, keep investigating a device-native workaround, or accept a narrower preset definition.
+- Existing preset CRUD wiring remains valid for device-native library actions, but it does not yet satisfy the new MVP expectation for dynamic grade recall.
+- `Docs/OPEN-QUESTIONS.md` must carry this until the product direction is confirmed.

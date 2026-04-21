@@ -27,12 +27,12 @@ The following endpoints are the real hardware routes currently relevant to Track
 | System status | `GET` | `/v2/system/status` | Returns running / boot versions and transform-mode state |
 | Global device status | `GET` | `/v2/status` | Larger system-wide status object |
 | Routing / bypass state | `GET` / `PUT` | `/v2/routing` | Contains `pipelineBypassButton` and `pipelineBypassUser` |
-| Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, and library entry selections |
+| Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, library entry, `colorCorrector`, and `procAmp` |
 | Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
 | Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
 | LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d`; route verified live, persistence semantics still unresolved |
-| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Declared in the committed spec, but currently returns `404` on the reference hardware |
+| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Live route verified; returns `200` on the reference hardware |
 
 ## Divergences From The Provisional Wrapper
 
@@ -55,6 +55,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Preset list read | `GET /v2/systemPresetLibrary` |
 | Preview fetch | `GET /v2/preview` |
 | Configure node 4 dynamic | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` |
+| Update Lift / Gamma / Gain / Saturation | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` with `lut3d_1.colorCorrector` and `procAmp.sat` |
 | Bypass toggle | `GET /v2/routing` then `PUT /v2/routing` |
 | Preset save | `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
@@ -82,8 +83,20 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - The shipped device web UI posts library imports to `POST /v2/upload` with multipart fields `file`, `kind`, and `entry`.
 - Direct TrackGrade probes with valid `.cube` files against slots 1, 2, and 3 all returned `200`, matching the UI route.
 - Those successful responses did not produce visible entries in `GET /v2/3dLutLibrary` on the reference hardware, so upload persistence semantics remain unresolved.
-- `POST /v2/saveDynamicLutRequest` is listed in the committed spec but currently returns `404` on firmware `3.0.0.24`.
+- `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24` and returns `200`, but it has not yet been tied into a reliable MVP preset-save workflow.
 - TrackGrade should not claim live LUT import parity until this mismatch is understood.
+
+## Dynamic Grade Control Status
+
+- Direct writes to `lut3d_1.colorCorrector` and `lut3d_1.procAmp.sat` through `PUT /v2/pipelineStages` are live-verified on the reference hardware.
+- A sanity check changed Lift and saturation on the real ColorBox, read the new values back successfully, and restored the original stage values cleanly.
+- This is now the primary MVP grading path for TrackGrade.
+
+## Preset Save Limitation
+
+- On firmware `3.0.0.24`, saving a system preset after changing the dynamic grade fields did not recall those saved runtime values later, even though `StoreEntry`, `SetUserName`, and `RecallEntry` all succeeded without errors.
+- The recalled stage returned to identity/default Lift / Gamma / Gain / Saturation rather than to the saved dynamic grade.
+- TrackGrade should therefore treat device-native preset save for the direct dynamic-grade path as unresolved until the product direction or hardware workaround is confirmed.
 
 ## Authentication Status
 
