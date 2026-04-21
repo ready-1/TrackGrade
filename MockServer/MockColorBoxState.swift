@@ -7,6 +7,8 @@ actor MockColorBoxState {
     private var firmwareInfoValue: ColorBoxFirmwareInfo
     private var pipelineStateValue: ColorBoxPipelineState
     private var presetStore: [Int: ColorBoxPresetSummary]
+    private var presetPipelineStore: [Int: ColorBoxPipelineState]
+    private var libraryControlValue: MockLibraryControlState
     private var previewPNGDataValue: Data
     private var lastUploadedLUT: Data
 
@@ -33,6 +35,17 @@ actor MockColorBoxState {
             1: ColorBoxPresetSummary(slot: 1, name: "Factory Neutral"),
             2: ColorBoxPresetSummary(slot: 2, name: "Corporate LED"),
         ]
+        self.presetPipelineStore = [
+            1: self.pipelineStateValue,
+            2: self.pipelineStateValue,
+        ]
+        self.libraryControlValue = MockLibraryControlState(
+            library: "systemPreset",
+            entry: 0,
+            action: "Idle",
+            data: "",
+            errorMessage: ""
+        )
         self.previewPNGDataValue = Self.previewPNGData()
         self.lastUploadedLUT = Data()
     }
@@ -106,6 +119,7 @@ actor MockColorBoxState {
     func savePreset(slot: Int, name: String) async throws -> [ColorBoxPresetSummary] {
         try await applyLatency()
         presetStore[slot] = ColorBoxPresetSummary(slot: slot, name: name)
+        presetPipelineStore[slot] = pipelineStateValue
         return presetStore.values.sorted { $0.slot < $1.slot }
     }
 
@@ -123,7 +137,75 @@ actor MockColorBoxState {
     func deletePreset(slot: Int) async throws -> [ColorBoxPresetSummary] {
         try await applyLatency()
         presetStore.removeValue(forKey: slot)
+        presetPipelineStore.removeValue(forKey: slot)
         return presetStore.values.sorted { $0.slot < $1.slot }
+    }
+
+    func systemPresetLibraryEntries(slotCount: Int = 10) async throws -> [MockLibraryEntryState] {
+        try await applyLatency()
+        return (1 ... slotCount).map { slot in
+            guard let preset = presetStore[slot] else {
+                return MockLibraryEntryState(userName: nil, fileName: nil)
+            }
+
+            return MockLibraryEntryState(
+                userName: preset.name,
+                fileName: "\(preset.name).preset"
+            )
+        }
+    }
+
+    func libraryControl() async throws -> MockLibraryControlState {
+        try await applyLatency()
+        return libraryControlValue
+    }
+
+    func applyLibraryControl(
+        library: String,
+        entry: Int,
+        action: String,
+        data: String
+    ) async throws {
+        try await applyLatency()
+        libraryControlValue = MockLibraryControlState(
+            library: library,
+            entry: entry,
+            action: action,
+            data: data,
+            errorMessage: ""
+        )
+
+        guard library == "systemPreset" else {
+            libraryControlValue = libraryControlValue.withError("Unsupported library in mock server.")
+            return
+        }
+
+        switch action {
+        case "StoreEntry":
+            let existingName = presetStore[entry]?.name ?? "Preset \(entry)"
+            presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: existingName)
+            presetPipelineStore[entry] = pipelineStateValue
+        case "SetUserName":
+            let normalizedName = data.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedName = normalizedName.isEmpty ? "Preset \(entry)" : normalizedName
+            presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: resolvedName)
+        case "RecallEntry":
+            guard let storedState = presetPipelineStore[entry] else {
+                libraryControlValue = libraryControlValue.withError("Preset \(entry) does not exist in the mock server.")
+                return
+            }
+            pipelineStateValue = ColorBoxPipelineState(
+                bypassEnabled: storedState.bypassEnabled,
+                falseColorEnabled: storedState.falseColorEnabled,
+                dynamicLUTMode: storedState.dynamicLUTMode,
+                lastRecalledPresetSlot: entry
+            )
+        case "DeleteEntry":
+            presetStore.removeValue(forKey: entry)
+            presetPipelineStore.removeValue(forKey: entry)
+        default:
+            libraryControlValue = libraryControlValue.withError("Unsupported library control action in mock server.")
+        }
     }
 
     func previewImageData() async throws -> Data {
@@ -141,5 +223,28 @@ actor MockColorBoxState {
 
     private static func previewPNGData() -> Data {
         Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sW8h6sAAAAASUVORK5CYII=") ?? Data()
+    }
+}
+
+struct MockLibraryEntryState: Sendable, Equatable {
+    let userName: String?
+    let fileName: String?
+}
+
+struct MockLibraryControlState: Sendable, Equatable {
+    let library: String
+    let entry: Int
+    let action: String
+    let data: String
+    let errorMessage: String
+
+    func withError(_ message: String) -> MockLibraryControlState {
+        MockLibraryControlState(
+            library: library,
+            entry: entry,
+            action: action,
+            data: data,
+            errorMessage: message
+        )
     }
 }

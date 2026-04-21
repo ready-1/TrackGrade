@@ -23,7 +23,8 @@ Optional environment variables:
 
 - Serves the generated-client `/v2` read routes for build info, system config, system status, routing, pipeline stages, preset library, library control, and preview
 - Serves `/v2/routing` and `/v2/pipelineStages` writes so bypass and dynamic-node configuration exercise the same contract shape as hardware
-- Keeps the provisional TrackGrade routes for false color and preset mutations while the live `/v2` write mapping is still being verified
+- Serves `PUT /v2/libraryControl` with `StoreEntry`, `SetUserName`, `RecallEntry`, and `DeleteEntry` so preset CRUD follows the live hardware contract
+- Keeps the provisional TrackGrade false-color route while the live `/v2` control path is still being verified
 - Stores dynamic LUT uploads in memory
 - Serves a static PNG preview frame, both as raw `/preview/frame` bytes and as base64 image JSON on `/v2/preview`
 - Supports optional HTTP Basic auth
@@ -38,5 +39,5 @@ Optional environment variables:
 ## Notes
 
 - The mock now tracks the committed live `/v2` read contract closely enough for the generated client path used during device connection and refresh.
-- False color and preset mutation behavior remain provisional until the real `/v2` operation mapping is verified against hardware.
+- False color remains provisional until the real `/v2` operation mapping is verified against hardware.
 - The Bonjour TXT record is intentionally lightweight for now and may be updated once the real device advertises its exact keys.

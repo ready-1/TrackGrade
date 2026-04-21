@@ -11,7 +11,6 @@
 
 ## TODO
 
-- Finish mapping live preset save / recall / delete onto the real `/v2` contract.
 - Identify the real false-color control path, or explicitly downgrade false color on ColorBox firmware `3.0.0.24`.
 - Replace the remaining provisional mutation routes after the live write semantics are verified.
 
@@ -31,7 +30,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, and library entry selections |
 | Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
-| Library control | `GET` / `PUT` | `/v2/libraryControl` | Likely used for some library operations; needs mapping confirmation |
+| Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
 | LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d` |
 | Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Explicitly writes flash; spec warns to use sparingly |
 
@@ -40,7 +39,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 - `ColorBoxAPIClient.fetchSystemInfo()` and `fetchFirmwareInfo()` were built around guessed `/system/info` and `/system/firmware` routes, but the real spec exposes `GET /v2/buildInfo` and `GET /v2/system/status`.
 - The real pipeline model is represented as `PipelineStages` and `Routing`, not `pipeline/state` plus dedicated bypass / false-color endpoints.
 - Preview fetches are JSON objects with base64 image payloads, not raw image bytes from `/preview/frame`.
-- Presets are exposed as a library array and likely controlled through library operations, not `GET/POST/DELETE /presets/*`.
+- Presets are exposed as a library array and are controlled through `GET/PUT /v2/libraryControl`, not `GET/POST/DELETE /presets/*`.
 - Dynamic LUT replacement appears to involve `POST /v2/upload` and related library / stage selection state, not a direct `PUT /pipeline/aja/nodes/3dlut/dynamic`.
 
 ## TrackGrade Mappings In Code
@@ -57,11 +56,22 @@ These are the concrete mappings currently implemented in the codebase:
 | Preview fetch | `GET /v2/preview` |
 | Configure node 4 dynamic | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` |
 | Bypass toggle | `GET /v2/routing` then `PUT /v2/routing` |
-| False color toggle | Falls back to provisional mock route only for now |
-| Preset save / recall / delete | Falls back to provisional mock routes only for now |
+| Preset save | `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
+| Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
+| Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
+| False color toggle | Falls back to provisional mock route only for now; live `/v2` mapping still not found |
+
+## Verified Live Preset Semantics
+
+TrackGrade now has live-verified behavior for device-native presets on firmware `3.0.0.24`:
+
+- `StoreEntry` alone writes the slot contents but does not make a friendly preset name visible in `GET /v2/systemPresetLibrary`.
+- `SetUserName` on the same slot is required to surface the saved preset name in the library listing.
+- `RecallEntry` successfully restores saved pipeline state when the slot contains a valid stored preset.
+- `DeleteEntry` removes the preset from the library listing cleanly.
+- `RecallEntry` against the pre-existing slot 1 (`current-show`) returned a device-side error on this box: `"Internal problems recalling preset"`, which suggests that not every listed preset is necessarily recallable.
 
 ## Open Questions From The Live Spec
 
 - No dedicated false-color endpoint has been identified in the live contract yet.
-- The live `/v2` contract does not yet provide a verified TrackGrade mapping for preset save / recall / delete.
 - The spec documents `X-API-KEY` auth, and TrackGrade now has transport support for it, but the app UI still needs an API-key entry path if auth is enabled on future hardware.

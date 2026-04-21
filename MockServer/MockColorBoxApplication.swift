@@ -144,23 +144,39 @@ enum MockColorBoxApplication {
         }
 
         app.get("v2", "systemPresetLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
-            let presets = try await state.presets()
-            return presets.map { preset in
+            let entries = try await state.systemPresetLibraryEntries()
+            return entries.map { entry in
                 MockColorBoxLibraryEntry(
-                    userName: preset.name,
-                    fileName: "\(preset.name).preset"
+                    userName: entry.userName,
+                    fileName: entry.fileName
                 )
             }
         }
 
         app.get("v2", "libraryControl") { request async throws -> MockColorBoxLibraryControl in
-            MockColorBoxLibraryControl(
-                library: "systemPreset",
-                entry: 0,
-                action: "Idle",
-                data: "",
-                errorMsg: ""
+            let control = try await state.libraryControl()
+            return MockColorBoxLibraryControl(
+                library: control.library,
+                entry: control.entry,
+                action: control.action,
+                data: control.data,
+                errorMsg: control.errorMessage
             )
+        }
+
+        app.put("v2", "libraryControl") { request async throws -> HTTPStatus in
+            let control = try request.content.decode(MockColorBoxLibraryControl.self)
+            try await state.applyLibraryControl(
+                library: control.library,
+                entry: control.entry,
+                action: control.action,
+                data: control.data
+            )
+            let latestControl = try await state.libraryControl()
+            if latestControl.errorMessage.isEmpty == false {
+                throw Abort(.conflict, reason: latestControl.errorMessage)
+            }
+            return .ok
         }
 
         app.get("v2", "preview") { request async throws -> MockColorBoxPreview in
@@ -345,8 +361,8 @@ private struct MockColorBoxStage: Content {
 }
 
 private struct MockColorBoxLibraryEntry: Content {
-    let userName: String
-    let fileName: String
+    let userName: String?
+    let fileName: String?
 }
 
 private struct MockColorBoxLibraryControl: Content {

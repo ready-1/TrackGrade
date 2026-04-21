@@ -96,11 +96,21 @@ public struct ColorBoxAPIClient: Sendable {
 
     public func setFalseColor(_ enabled: Bool) async throws -> ColorBoxPipelineState {
         let body = try JSONEncoder().encode(ColorBoxBooleanToggle(enabled: enabled))
-        return try await performJSONRequest(
-            path: "pipeline/false-color",
-            method: "PATCH",
-            body: body
-        )
+        do {
+            return try await performJSONRequest(
+                path: "pipeline/false-color",
+                method: "PATCH",
+                body: body
+            )
+        } catch let error as ColorBoxAPIError {
+            if case .unexpectedStatus(code: 404, _) = error {
+                throw ColorBoxAPIError.unsupportedFeature(
+                    "False color is not exposed by the ColorBox `/v2` API on firmware 3.0.0.24."
+                )
+            }
+
+            throw error
+        }
     }
 
     public func listPresets() async throws -> [ColorBoxPresetSummary] {
@@ -112,28 +122,68 @@ public struct ColorBoxAPIClient: Sendable {
     }
 
     public func savePreset(slot: Int, name: String) async throws -> [ColorBoxPresetSummary] {
-        let body = try JSONEncoder().encode(ColorBoxPresetMutation(slot: slot, name: name))
-        return try await performJSONRequest(
-            path: "presets/save",
-            method: "POST",
-            body: body
-        )
+        do {
+            try await performLibraryActionV2(
+                library: "systemPreset",
+                entry: slot,
+                action: "StoreEntry"
+            )
+            try await performLibraryActionV2(
+                library: "systemPreset",
+                entry: slot,
+                action: "SetUserName",
+                data: name
+            )
+            return try await listPresetsV2()
+        } catch {
+            let body = try JSONEncoder().encode(ColorBoxPresetMutation(slot: slot, name: name))
+            return try await performJSONRequest(
+                path: "presets/save",
+                method: "POST",
+                body: body
+            )
+        }
     }
 
     public func recallPreset(slot: Int) async throws -> ColorBoxPipelineState {
-        let body = try JSONEncoder().encode(ColorBoxPresetRecall(slot: slot))
-        return try await performJSONRequest(
-            path: "presets/recall",
-            method: "POST",
-            body: body
-        )
+        do {
+            try await performLibraryActionV2(
+                library: "systemPreset",
+                entry: slot,
+                action: "RecallEntry"
+            )
+            var pipelineState = try await fetchPipelineStateV2()
+            pipelineState = ColorBoxPipelineState(
+                bypassEnabled: pipelineState.bypassEnabled,
+                falseColorEnabled: pipelineState.falseColorEnabled,
+                dynamicLUTMode: pipelineState.dynamicLUTMode,
+                lastRecalledPresetSlot: slot
+            )
+            return pipelineState
+        } catch {
+            let body = try JSONEncoder().encode(ColorBoxPresetRecall(slot: slot))
+            return try await performJSONRequest(
+                path: "presets/recall",
+                method: "POST",
+                body: body
+            )
+        }
     }
 
     public func deletePreset(slot: Int) async throws -> [ColorBoxPresetSummary] {
-        try await performJSONRequest(
-            path: "presets/\(slot)",
-            method: "DELETE"
-        )
+        do {
+            try await performLibraryActionV2(
+                library: "systemPreset",
+                entry: slot,
+                action: "DeleteEntry"
+            )
+            return try await listPresetsV2()
+        } catch {
+            return try await performJSONRequest(
+                path: "presets/\(slot)",
+                method: "DELETE"
+            )
+        }
     }
 
     public func fetchPreviewFrame() async throws -> Data {
@@ -327,7 +377,13 @@ public struct ColorBoxAPIClient: Sendable {
         entries = try await performJSONRequest(path: "v2/systemPresetLibrary")
         #endif
 
-        return entries.enumerated().map { index, entry in
+        return entries.enumerated().compactMap { index, entry in
+            let trimmedUserName = entry.userName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedFileName = entry.fileName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard (trimmedUserName?.isEmpty == false) || (trimmedFileName?.isEmpty == false) else {
+                return nil
+            }
+
             let fallbackName = entry.fileName?
                 .replacingOccurrences(of: ".preset", with: "")
                 ?? "Preset \(index + 1)"
@@ -336,6 +392,54 @@ public struct ColorBoxAPIClient: Sendable {
                 name: firstNonEmpty([entry.userName, fallbackName]) ?? "Preset \(index + 1)"
             )
         }
+    }
+
+    private func performLibraryActionV2(
+        library: String,
+        entry: Int,
+        action: String,
+        data: String = ""
+    ) async throws {
+        #if canImport(ColorBoxOpenAPI)
+        let client = makeGeneratedClient()
+        let payload = Components.Schemas.LibraryControl(
+            library: Components.Schemas.Library(rawValue: library),
+            entry: entry,
+            action: Components.Schemas.LibraryAction(rawValue: action),
+            data: data,
+            errorMsg: ""
+        )
+
+        _ = try (try await client.setLibraryControl(
+            body: .json(payload)
+        )).ok
+
+        let state = try (try await client.getLibraryControl()).ok.body.json
+        if let errorMessage = state.errorMsg?.trimmingCharacters(in: .whitespacesAndNewlines),
+           errorMessage.isEmpty == false {
+            throw ColorBoxAPIError.unexpectedStatus(code: 409, body: errorMessage)
+        }
+        #else
+        let payload = V2LibraryControl(
+            library: library,
+            entry: entry,
+            action: action,
+            data: data,
+            errorMsg: ""
+        )
+        let body = try JSONEncoder().encode(payload)
+        try await performNoContentRequest(
+            path: "v2/libraryControl",
+            method: "PUT",
+            body: body
+        )
+
+        let state: V2LibraryControl = try await performJSONRequest(path: "v2/libraryControl")
+        if let errorMessage = state.errorMsg?.trimmingCharacters(in: .whitespacesAndNewlines),
+           errorMessage.isEmpty == false {
+            throw ColorBoxAPIError.unexpectedStatus(code: 409, body: errorMessage)
+        }
+        #endif
     }
 
     private func fetchPreviewFrameV2() async throws -> Data {
@@ -619,6 +723,14 @@ private struct V2Stage: Codable {
 private struct V2LibraryEntry: Decodable {
     let userName: String?
     let fileName: String?
+}
+
+private struct V2LibraryControl: Codable {
+    let library: String?
+    let entry: Int?
+    let action: String?
+    let data: String?
+    let errorMsg: String?
 }
 
 private struct V2Preview: Decodable {

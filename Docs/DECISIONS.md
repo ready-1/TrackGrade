@@ -182,3 +182,23 @@ Treat credentials as optional for the current reference device, but preserve tra
 - Phase 1 hardware validation is no longer blocked on obtaining an API key from the current ColorBox.
 - The app UI can defer API-key entry for a short time, but it remains required before TrackGrade can claim parity with authenticated devices.
 - Open questions now focus more on preset and false-color mapping than on immediate credential acquisition.
+
+## 2026-04-21 — Model Device-Native Presets Through `/v2/libraryControl`
+
+### Context
+
+Direct probing on the live ColorBox at `172.29.14.51` confirmed that preset mutations are not separate `/presets/*` routes on firmware `3.0.0.24`. Instead, the box uses `PUT /v2/libraryControl` actions against `library: "systemPreset"`.
+
+### Decision
+
+Implement device-native preset save / rename / recall / delete using:
+
+- `StoreEntry` followed by `SetUserName` for save / overwrite.
+- `RecallEntry` for preset recall.
+- `DeleteEntry` for deletion.
+
+### Consequences
+
+- TrackGrade’s preset CRUD behavior now matches live hardware semantics instead of the earlier guessed provisional routes.
+- `MockColorBox` must preserve the same `libraryControl` action flow so integration tests cover the real contract shape.
+- False color is now the only unresolved Phase 1 control-path mismatch from the original guessed routes.
