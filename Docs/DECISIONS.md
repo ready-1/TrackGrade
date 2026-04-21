@@ -266,3 +266,19 @@ Do not implement TrackGrade’s live LUT import/write path on assumptions alone.
 - LUT import is now the main remaining hardware integration uncertainty for the current phase.
 - Further work should favor explicit probing and documentation over speculative implementation.
 - The mock may continue to support provisional upload storage for testing, but the app should not claim live parity yet.
+
+## 2026-04-21 — Defer Live LUT Import From The Current MVP
+
+### Context
+
+The reference firmware still has unresolved `/v2/upload` library materialization behavior, and the user explicitly said LUT import is not a deal breaker for this version.
+
+### Decision
+
+Do not treat live LUT import as an MVP requirement for the current release target. Prioritize direct control of the dynamic 3D LUT stage and saturation first, then preset save, then bypass, and leave LUT import for a later version.
+
+### Consequences
+
+- The current implementation path can focus on hardware-backed grade controls that already map cleanly to `/v2/pipelineStages`.
+- The unresolved `/v2/upload` behavior remains documented, but it no longer blocks MVP progress.
+- Future versions can revisit library import once hardware behavior is verified or vendor guidance is available.

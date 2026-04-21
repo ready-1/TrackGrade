@@ -26,19 +26,21 @@
 - The user confirmed that authentication will remain disabled on the reference ColorBox, so auth UI work is no longer on the critical path for Phase 1.
 - TrackGrade now infers false-color support during device refresh and disables the UI control on known-unsupported firmware instead of presenting it as an always-available toggle.
 - Integration coverage now includes a mock-backed unsupported-false-color case so the app keeps the device connected while surfacing capability loss cleanly.
+- The user explicitly deferred live LUT import from this version, so it is no longer an MVP blocker for the current release target.
+- MVP priorities are now ordered as: dynamic 3D LUT control plus saturation, preset save, bypass toggle, then everything else.
 
 ## In-Flight Work
 
-- Validating the new app shell against live hardware parity while investigating the remaining live LUT upload contract mismatch on firmware `3.0.0.24`.
+- Implementing real dynamic-stage grade controls on top of `/v2/pipelineStages`, with saturation and device-native state sync taking priority over lower-value library work.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
-- Live LUT import semantics are still unresolved: `POST /v2/upload` matches the shipped web UI and returns `200`, but test uploads do not populate `GET /v2/3dLutLibrary` on the reference ColorBox.
 
 ## Next Steps
 
 - Exercise the current app shell against the real ColorBox using the new generated `/v2` read path and selected write path.
-- Resolve or explicitly defer the `/v2/upload` contract mismatch after more live investigation or vendor guidance.
+- Add app-facing controls for Lift / Gamma / Gain and saturation using the live `lut3d_1.colorCorrector` and `procAmp.sat` fields.
+- Keep preset save and bypass polished as the next highest MVP behaviors after direct dynamic-stage control.
 - Verify the iPad app discovery flow end-to-end against the Bonjour-advertised `MockColorBox`.
 - Prepare a Phase 1 checkpoint once the remaining upload uncertainty is either resolved or carved out of the current phase scope.
