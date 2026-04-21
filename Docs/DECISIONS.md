@@ -330,3 +330,19 @@ Do not introduce TrackGrade-local preset storage as an MVP fallback. Device-nati
 - Any preset workflow that does not round-trip through the ColorBox is out of scope for the MVP.
 - Device-side preset save and recall correctness remain more important than iPad-side snapshot convenience.
 - Open questions should not present local-only presets as an acceptable substitute.
+
+## 2026-04-21 — Map Phase 2 Trackball Controls Directly Onto The Current `pipelineStages` Grade Values
+
+### Context
+
+Phase 2 needs the touch-native trackball, ring, and saturation controls now, but Phase 3 LUT baking and upload are still future work. The current MVP grading path already writes live Lift / Gamma / Gain / Saturation values directly through `PUT /v2/pipelineStages`.
+
+### Decision
+
+Represent each Phase 2 trackball as a `ball + ring` control state, and map that state directly to the existing ColorBox grade vectors used by `lut3d_1.colorCorrector` and `procAmp.sat`.
+
+### Consequences
+
+- The custom controls can ship on top of the already-verified hardware grading path instead of waiting for Phase 3 LUT baking.
+- TrackGrade now needs deterministic round-trip helpers between touch-state and device-state so preset recall and refresh keep the control surface visually aligned.
+- A later Phase 3 LUT-bake path may replace the transport, but it should preserve the same higher-level touch control model if possible.

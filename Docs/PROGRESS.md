@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-- Phase 1 — Connectivity and state plumbing complete; awaiting phase-boundary confirmation before Phase 2
+- Phase 2 — Custom controls started
 
 ## Completed Items
 
@@ -33,10 +33,11 @@
 - Device-native preset save for the dynamic grade path is now live-verified on firmware `3.0.0.24`: TrackGrade first calls `POST /v2/saveDynamicLutRequest`, then stores the `systemPreset`, then sets the user-visible preset name.
 - The user confirmed that presets must live on the ColorBox and that the iPad should be treated as ephemeral, so TrackGrade will not rely on local-only preset persistence for the MVP.
 - Phase 1 acceptance checks are green locally: `swift test` and `xcodebuild test` both passed after the device-native preset-save persistence fix.
+- Phase 2 started with shared trackball mapping helpers that round-trip between touch control state and the current direct `pipelineStages` grade representation; package tests cover identity, clamping, and representative control-state round trips.
 
 ## In-Flight Work
 
-- No in-flight implementation work. The repo is at the Phase 1 checkpoint and waiting for user confirmation before Phase 2 custom-control work begins.
+- Building the UIKit multi-touch bridge, settings-backed sensitivity controls, and the new grade surface that will replace the temporary slider UI.
 
 ## Blockers
 
@@ -44,6 +45,7 @@
 
 ## Next Steps
 
-- Present the Phase 1 checkpoint summary and wait for user confirmation before starting Phase 2.
-- Begin the Phase 2 custom-control implementation with the multi-touch gesture bridge, trackball/ring widgets, saturation roller, and reset interactions once approved.
+- Finish the UIKit gesture bridge and haptics plumbing for simultaneous ball/ring/roller control.
+- Replace the temporary slider-based grade UI with the Phase 2 trackball, ring, saturation roller, and numeric edit surface.
+- Add the necessary verification coverage for the new control-surface behavior and rendering checkpoint.
 - Keep bypass and preset UX aligned with the MVP ordering as the touch-native control surface work starts in the next phase.
