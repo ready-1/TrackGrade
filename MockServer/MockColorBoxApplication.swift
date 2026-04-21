@@ -127,7 +127,31 @@ enum MockColorBoxApplication {
                 lut3d1: MockColorBoxStage(
                     enabled: true,
                     dynamic: pipelineState.dynamicLUTMode == "dynamic",
-                    libraryEntry: 0
+                    libraryEntry: 0,
+                    colorCorrector: MockColorBoxColorCorrector(
+                        blackRed: Double(pipelineState.gradeControl.lift.red),
+                        blackGreen: Double(pipelineState.gradeControl.lift.green),
+                        blackBlue: Double(pipelineState.gradeControl.lift.blue),
+                        gainRed: Double(pipelineState.gradeControl.gain.red),
+                        gainGreen: Double(pipelineState.gradeControl.gain.green),
+                        gainBlue: Double(pipelineState.gradeControl.gain.blue),
+                        gammaRed: Double(pipelineState.gradeControl.gamma.red),
+                        gammaGreen: Double(pipelineState.gradeControl.gamma.green),
+                        gammaBlue: Double(pipelineState.gradeControl.gamma.blue),
+                        unitsBlack: "IRE",
+                        unitsGain: "",
+                        unitsGamma: ""
+                    ),
+                    procAmp: MockColorBoxProcAmp(
+                        black: 0,
+                        gain: 1,
+                        hue: 0,
+                        sat: Double(pipelineState.gradeControl.saturation),
+                        unitsBlack: "IRE",
+                        unitsGain: "",
+                        unitsHue: "degrees",
+                        unitsSat: ""
+                    )
                 ),
                 inColorimetry: "BT.709",
                 inRange: "SMPTEFull",
@@ -142,6 +166,26 @@ enum MockColorBoxApplication {
             let stages = try request.content.decode(MockColorBoxPipelineStages.self)
             let mode = stages.lut3d1.dynamic ? "dynamic" : "static"
             _ = try await state.configureDynamicLUTNode(mode: mode)
+            _ = try await state.updateGradeControl(
+                ColorBoxGradeControlState(
+                    lift: ColorBoxRGBVector(
+                        red: Float(stages.lut3d1.colorCorrector?.blackRed ?? 0),
+                        green: Float(stages.lut3d1.colorCorrector?.blackGreen ?? 0),
+                        blue: Float(stages.lut3d1.colorCorrector?.blackBlue ?? 0)
+                    ),
+                    gamma: ColorBoxRGBVector(
+                        red: Float(stages.lut3d1.colorCorrector?.gammaRed ?? 0),
+                        green: Float(stages.lut3d1.colorCorrector?.gammaGreen ?? 0),
+                        blue: Float(stages.lut3d1.colorCorrector?.gammaBlue ?? 0)
+                    ),
+                    gain: ColorBoxRGBVector(
+                        red: Float(stages.lut3d1.colorCorrector?.gainRed ?? 1),
+                        green: Float(stages.lut3d1.colorCorrector?.gainGreen ?? 1),
+                        blue: Float(stages.lut3d1.colorCorrector?.gainBlue ?? 1)
+                    ),
+                    saturation: Float(stages.lut3d1.procAmp?.sat ?? 1)
+                )
+            )
             return .ok
         }
 
@@ -363,6 +407,34 @@ private struct MockColorBoxStage: Content {
     let enabled: Bool
     let dynamic: Bool
     let libraryEntry: Int
+    let colorCorrector: MockColorBoxColorCorrector?
+    let procAmp: MockColorBoxProcAmp?
+}
+
+private struct MockColorBoxColorCorrector: Content {
+    let blackRed: Double
+    let blackGreen: Double
+    let blackBlue: Double
+    let gainRed: Double
+    let gainGreen: Double
+    let gainBlue: Double
+    let gammaRed: Double
+    let gammaGreen: Double
+    let gammaBlue: Double
+    let unitsBlack: String
+    let unitsGain: String
+    let unitsGamma: String
+}
+
+private struct MockColorBoxProcAmp: Content {
+    let black: Double
+    let gain: Double
+    let hue: Double
+    let sat: Double
+    let unitsBlack: String
+    let unitsGain: String
+    let unitsHue: String
+    let unitsSat: String
 }
 
 private struct MockColorBoxLibraryEntry: Content {

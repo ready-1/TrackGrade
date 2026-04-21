@@ -9,6 +9,7 @@ struct GradeFeatureView: View {
             VStack(alignment: .leading, spacing: 24) {
                 deviceSummaryCard
                 actionCard
+                gradeCard
                 toggleCard
                 previewCard
                 PresetsFeatureView(
@@ -41,6 +42,12 @@ struct GradeFeatureView: View {
             }
             if let dynamicLUTMode = device.pipelineState?.dynamicLUTMode {
                 LabeledContent("3D LUT Node", value: dynamicLUTMode.capitalized)
+            }
+            if let gradeControl = device.pipelineState?.gradeControl {
+                LabeledContent("Lift", value: formatted(gradeControl.lift))
+                LabeledContent("Gamma", value: formatted(gradeControl.gamma))
+                LabeledContent("Gain", value: formatted(gradeControl.gain))
+                LabeledContent("Saturation", value: formatted(gradeControl.saturation))
             }
             LabeledContent("Preview", value: "\(device.previewByteCount) bytes")
         }
@@ -88,6 +95,13 @@ struct GradeFeatureView: View {
             .buttonStyle(.borderedProminent)
         }
         .cardStyle()
+    }
+
+    private var gradeCard: some View {
+        DynamicGradeControlsCard(
+            model: model,
+            device: device
+        )
     }
 
     private var toggleCard: some View {
@@ -155,6 +169,287 @@ struct GradeFeatureView: View {
         }
 
         return "False color is not exposed by this ColorBox firmware."
+    }
+
+    private func formatted(_ value: Float) -> String {
+        String(format: "%.2f", Double(value))
+    }
+
+    private func formatted(_ vector: ColorBoxRGBVector) -> String {
+        "R \(formatted(vector.red))  G \(formatted(vector.green))  B \(formatted(vector.blue))"
+    }
+}
+
+private struct DynamicGradeControlsCard: View {
+    @Bindable var model: TrackGradeAppModel
+    let device: ManagedColorBoxDevice
+
+    @State private var draftGrade: ColorBoxGradeControlState
+    @State private var pendingUpdateTask: Task<Void, Never>?
+
+    init(
+        model: TrackGradeAppModel,
+        device: ManagedColorBoxDevice
+    ) {
+        self.model = model
+        self.device = device
+        _draftGrade = State(initialValue: device.pipelineState?.gradeControl ?? .identity)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Dynamic Grade")
+                        .font(.title3.weight(.bold))
+                    Text("Direct control of `lut3d_1.colorCorrector` and `procAmp.sat` on the ColorBox.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button("Reset Grade") {
+                    draftGrade = .identity
+                    pushGradeControlImmediately()
+                }
+                .buttonStyle(.bordered)
+            }
+
+            ScalarControlRow(
+                title: "Saturation",
+                value: saturationBinding,
+                range: 0 ... 1.5,
+                onCommit: pushGradeControlImmediately
+            )
+
+            RGBControlSection(
+                title: "Lift",
+                value: liftBinding,
+                range: -20 ... 20,
+                onCommit: pushGradeControlImmediately
+            )
+
+            RGBControlSection(
+                title: "Gamma",
+                value: gammaBinding,
+                range: -1 ... 1,
+                onCommit: pushGradeControlImmediately
+            )
+
+            RGBControlSection(
+                title: "Gain",
+                value: gainBinding,
+                range: 0 ... 1.5,
+                onCommit: pushGradeControlImmediately
+            )
+        }
+        .cardStyle()
+        .onChange(of: device.pipelineState?.gradeControl) { _, newValue in
+            guard let newValue else {
+                return
+            }
+
+            if newValue != draftGrade {
+                draftGrade = newValue
+            }
+        }
+        .onDisappear {
+            pendingUpdateTask?.cancel()
+        }
+    }
+
+    private var saturationBinding: Binding<Double> {
+        Binding(
+            get: { Double(draftGrade.saturation) },
+            set: { newValue in
+                draftGrade.saturation = Float(newValue)
+                scheduleGradeControlUpdate()
+            }
+        )
+    }
+
+    private var liftBinding: Binding<ColorBoxRGBVector> {
+        Binding(
+            get: { draftGrade.lift },
+            set: { newValue in
+                draftGrade.lift = newValue
+                scheduleGradeControlUpdate()
+            }
+        )
+    }
+
+    private var gammaBinding: Binding<ColorBoxRGBVector> {
+        Binding(
+            get: { draftGrade.gamma },
+            set: { newValue in
+                draftGrade.gamma = newValue
+                scheduleGradeControlUpdate()
+            }
+        )
+    }
+
+    private var gainBinding: Binding<ColorBoxRGBVector> {
+        Binding(
+            get: { draftGrade.gain },
+            set: { newValue in
+                draftGrade.gain = newValue
+                scheduleGradeControlUpdate()
+            }
+        )
+    }
+
+    private func scheduleGradeControlUpdate() {
+        let gradeControl = draftGrade
+        pendingUpdateTask?.cancel()
+        pendingUpdateTask = Task {
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            if Task.isCancelled {
+                return
+            }
+
+            await model.updateGradeControl(
+                id: device.id,
+                gradeControl: gradeControl
+            )
+        }
+    }
+
+    private func pushGradeControlImmediately() {
+        pendingUpdateTask?.cancel()
+        let gradeControl = draftGrade
+        Task {
+            await model.updateGradeControl(
+                id: device.id,
+                gradeControl: gradeControl
+            )
+        }
+    }
+}
+
+private struct ScalarControlRow: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let onCommit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                Text(String(format: "%.2f", value))
+                    .font(.body.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            Slider(
+                value: $value,
+                in: range,
+                onEditingChanged: { isEditing in
+                    if isEditing == false {
+                        onCommit()
+                    }
+                }
+            )
+        }
+    }
+}
+
+private struct RGBControlSection: View {
+    let title: String
+    @Binding var value: ColorBoxRGBVector
+    let range: ClosedRange<Double>
+    let onCommit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(title)
+                    .font(.headline)
+                Spacer()
+                Button("Reset") {
+                    value = resetVector
+                    onCommit()
+                }
+                .buttonStyle(.bordered)
+            }
+
+            RGBSliderRow(
+                title: "Red",
+                tint: .red,
+                value: channelBinding(\.red),
+                range: range,
+                onCommit: onCommit
+            )
+            RGBSliderRow(
+                title: "Green",
+                tint: .green,
+                value: channelBinding(\.green),
+                range: range,
+                onCommit: onCommit
+            )
+            RGBSliderRow(
+                title: "Blue",
+                tint: .blue,
+                value: channelBinding(\.blue),
+                range: range,
+                onCommit: onCommit
+            )
+        }
+    }
+
+    private var resetVector: ColorBoxRGBVector {
+        if range.lowerBound < 0 {
+            return ColorBoxRGBVector(red: 0, green: 0, blue: 0)
+        }
+
+        return ColorBoxRGBVector(red: 1, green: 1, blue: 1)
+    }
+
+    private func channelBinding(
+        _ keyPath: WritableKeyPath<ColorBoxRGBVector, Float>
+    ) -> Binding<Double> {
+        Binding(
+            get: { Double(value[keyPath: keyPath]) },
+            set: { newValue in
+                value[keyPath: keyPath] = Float(newValue)
+            }
+        )
+    }
+}
+
+private struct RGBSliderRow: View {
+    let title: String
+    let tint: Color
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let onCommit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(tint)
+                Spacer()
+                Text(String(format: "%.2f", value))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            Slider(
+                value: $value,
+                in: range,
+                onEditingChanged: { isEditing in
+                    if isEditing == false {
+                        onCommit()
+                    }
+                }
+            )
+            .tint(tint)
+        }
     }
 }
 

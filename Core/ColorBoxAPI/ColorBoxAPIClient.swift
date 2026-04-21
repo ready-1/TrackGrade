@@ -81,6 +81,43 @@ public struct ColorBoxAPIClient: Sendable {
         return try await perform(request: request)
     }
 
+    public func updateGradeControl(
+        _ gradeControl: ColorBoxGradeControlState
+    ) async throws -> ColorBoxPipelineState {
+        var currentStages: V2PipelineStages = try await performJSONRequest(path: "v2/pipelineStages")
+        var updatedStage = currentStages.lut3d1 ?? V2Stage()
+        updatedStage.enabled = true
+        updatedStage.dynamic = true
+        updatedStage.libraryEntry = 0
+
+        var colorCorrector = updatedStage.colorCorrector ?? V2ColorCorrector()
+        colorCorrector.blackRed = Double(gradeControl.lift.red)
+        colorCorrector.blackGreen = Double(gradeControl.lift.green)
+        colorCorrector.blackBlue = Double(gradeControl.lift.blue)
+        colorCorrector.gammaRed = Double(gradeControl.gamma.red)
+        colorCorrector.gammaGreen = Double(gradeControl.gamma.green)
+        colorCorrector.gammaBlue = Double(gradeControl.gamma.blue)
+        colorCorrector.gainRed = Double(gradeControl.gain.red)
+        colorCorrector.gainGreen = Double(gradeControl.gain.green)
+        colorCorrector.gainBlue = Double(gradeControl.gain.blue)
+        updatedStage.colorCorrector = colorCorrector
+
+        var procAmp = updatedStage.procAmp ?? V2ProcAmp()
+        procAmp.sat = Double(gradeControl.saturation)
+        updatedStage.procAmp = procAmp
+
+        currentStages.lut3d1 = updatedStage
+
+        let body = try JSONEncoder().encode(currentStages)
+        try await performNoContentRequest(
+            path: "v2/pipelineStages",
+            method: "PUT",
+            body: body
+        )
+
+        return try await fetchPipelineStateV2()
+    }
+
     public func setBypass(_ enabled: Bool) async throws -> ColorBoxPipelineState {
         do {
             return try await setBypassV2(enabled)
@@ -157,6 +194,7 @@ public struct ColorBoxAPIClient: Sendable {
                 bypassEnabled: pipelineState.bypassEnabled,
                 falseColorEnabled: pipelineState.falseColorEnabled,
                 dynamicLUTMode: pipelineState.dynamicLUTMode,
+                gradeControl: pipelineState.gradeControl,
                 lastRecalledPresetSlot: slot
             )
             return pipelineState
@@ -275,6 +313,7 @@ public struct ColorBoxAPIClient: Sendable {
     private func fetchPipelineStateV2() async throws -> ColorBoxPipelineState {
         let bypassEnabled: Bool
         let dynamicMode: String
+        let resolvedGradeControl: ColorBoxGradeControlState
 
         #if canImport(ColorBoxOpenAPI)
         let client = makeGeneratedClient()
@@ -286,6 +325,7 @@ public struct ColorBoxAPIClient: Sendable {
         let stages = try (try await stagesOutput).ok.body.json
         bypassEnabled = routing.pipelineBypassUser ?? routing.pipelineBypassButton ?? false
         dynamicMode = dynamicLUTMode(from: stages.lut3d1)
+        resolvedGradeControl = gradeControl(from: stages.lut3d1)
         #else
         async let routing: V2Routing = performJSONRequest(path: "v2/routing")
         async let stages: V2PipelineStages = performJSONRequest(path: "v2/pipelineStages")
@@ -294,12 +334,14 @@ public struct ColorBoxAPIClient: Sendable {
         let resolvedStages = try await stages
         bypassEnabled = resolvedRouting.pipelineBypassUser ?? resolvedRouting.pipelineBypassButton ?? false
         dynamicMode = dynamicLUTMode(from: resolvedStages.lut3d1)
+        resolvedGradeControl = gradeControl(from: resolvedStages.lut3d1)
         #endif
 
         return ColorBoxPipelineState(
             bypassEnabled: bypassEnabled,
             falseColorEnabled: false,
-            dynamicLUTMode: dynamicMode
+            dynamicLUTMode: dynamicMode,
+            gradeControl: resolvedGradeControl
         )
     }
 
@@ -510,6 +552,27 @@ public struct ColorBoxAPIClient: Sendable {
         return "disabled"
     }
 
+    private func gradeControl(from stage: V2Stage?) -> ColorBoxGradeControlState {
+        ColorBoxGradeControlState(
+            lift: ColorBoxRGBVector(
+                red: Float(stage?.colorCorrector?.blackRed ?? 0),
+                green: Float(stage?.colorCorrector?.blackGreen ?? 0),
+                blue: Float(stage?.colorCorrector?.blackBlue ?? 0)
+            ),
+            gamma: ColorBoxRGBVector(
+                red: Float(stage?.colorCorrector?.gammaRed ?? 0),
+                green: Float(stage?.colorCorrector?.gammaGreen ?? 0),
+                blue: Float(stage?.colorCorrector?.gammaBlue ?? 0)
+            ),
+            gain: ColorBoxRGBVector(
+                red: Float(stage?.colorCorrector?.gainRed ?? 1),
+                green: Float(stage?.colorCorrector?.gainGreen ?? 1),
+                blue: Float(stage?.colorCorrector?.gainBlue ?? 1)
+            ),
+            saturation: Float(stage?.procAmp?.sat ?? 1)
+        )
+    }
+
     private func firstNonEmpty(_ values: [String?]) -> String? {
         values.first { value in
             guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines) else {
@@ -651,6 +714,27 @@ private extension ColorBoxAPIClient {
 
         return "disabled"
     }
+
+    func gradeControl(from stage: Components.Schemas.Stage?) -> ColorBoxGradeControlState {
+        ColorBoxGradeControlState(
+            lift: ColorBoxRGBVector(
+                red: Float(stage?.colorCorrector?.blackRed ?? 0),
+                green: Float(stage?.colorCorrector?.blackGreen ?? 0),
+                blue: Float(stage?.colorCorrector?.blackBlue ?? 0)
+            ),
+            gamma: ColorBoxRGBVector(
+                red: Float(stage?.colorCorrector?.gammaRed ?? 0),
+                green: Float(stage?.colorCorrector?.gammaGreen ?? 0),
+                blue: Float(stage?.colorCorrector?.gammaBlue ?? 0)
+            ),
+            gain: ColorBoxRGBVector(
+                red: Float(stage?.colorCorrector?.gainRed ?? 1),
+                green: Float(stage?.colorCorrector?.gainGreen ?? 1),
+                blue: Float(stage?.colorCorrector?.gainBlue ?? 1)
+            ),
+            saturation: Float(stage?.procAmp?.sat ?? 1)
+        )
+    }
 }
 
 private struct ColorBoxAuthenticationMiddleware: ClientMiddleware {
@@ -707,10 +791,34 @@ private struct V2Routing: Codable {
 }
 
 private struct V2PipelineStages: Codable {
+    var lut1d1: V2Stage?
+    var m3x3_2: V2Stage?
+    var lut1d2: V2Stage?
     var lut3d1: V2Stage?
+    var lut1d3: V2Stage?
+    var m3x3_3: V2Stage?
+    var lut1d4: V2Stage?
+    var inColorimetry: String?
+    var inRange: String?
+    var outColorimetry: String?
+    var outRange: String?
+    var transferCharacteristic: String?
+    var cscFilter: String?
 
     enum CodingKeys: String, CodingKey {
+        case lut1d1 = "lut1d_1"
+        case m3x3_2
+        case lut1d2 = "lut1d_2"
         case lut3d1 = "lut3d_1"
+        case lut1d3 = "lut1d_3"
+        case m3x3_3
+        case lut1d4 = "lut1d_4"
+        case inColorimetry
+        case inRange
+        case outColorimetry
+        case outRange
+        case transferCharacteristic
+        case cscFilter
     }
 }
 
@@ -718,6 +826,34 @@ private struct V2Stage: Codable {
     var enabled: Bool?
     var dynamic: Bool?
     var libraryEntry: Int?
+    var colorCorrector: V2ColorCorrector?
+    var procAmp: V2ProcAmp?
+}
+
+private struct V2ColorCorrector: Codable {
+    var blackRed: Double?
+    var blackGreen: Double?
+    var blackBlue: Double?
+    var gainRed: Double?
+    var gainGreen: Double?
+    var gainBlue: Double?
+    var gammaRed: Double?
+    var gammaGreen: Double?
+    var gammaBlue: Double?
+    var unitsBlack: String?
+    var unitsGain: String?
+    var unitsGamma: String?
+}
+
+private struct V2ProcAmp: Codable {
+    var black: Double?
+    var gain: Double?
+    var hue: Double?
+    var sat: Double?
+    var unitsBlack: String?
+    var unitsGain: String?
+    var unitsHue: String?
+    var unitsSat: String?
 }
 
 private struct V2LibraryEntry: Decodable {

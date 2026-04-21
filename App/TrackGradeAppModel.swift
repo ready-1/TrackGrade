@@ -306,6 +306,21 @@ final class TrackGradeAppModel {
         }
     }
 
+    func updateGradeControl(
+        id: UUID,
+        gradeControl: ColorBoxGradeControlState
+    ) async {
+        do {
+            let snapshot = try await deviceManager.updateGradeControl(
+                id: id,
+                gradeControl: gradeControl
+            )
+            handleAuthenticationPromptIfNeeded(for: snapshot)
+        } catch {
+            errorMessage = "Failed to update the dynamic 3D LUT controls: \(error.localizedDescription)"
+        }
+    }
+
     func refreshPreview(id: UUID) async {
         do {
             let snapshot = try await deviceManager.refreshPreview(id: id)

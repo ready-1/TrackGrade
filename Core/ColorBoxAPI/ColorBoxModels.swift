@@ -80,21 +80,66 @@ public struct ColorBoxFirmwareInfo: Codable, Sendable, Equatable {
     }
 }
 
+public struct ColorBoxRGBVector: Codable, Sendable, Equatable {
+    public var red: Float
+    public var green: Float
+    public var blue: Float
+
+    public init(
+        red: Float,
+        green: Float,
+        blue: Float
+    ) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+}
+
+public struct ColorBoxGradeControlState: Codable, Sendable, Equatable {
+    public var lift: ColorBoxRGBVector
+    public var gamma: ColorBoxRGBVector
+    public var gain: ColorBoxRGBVector
+    public var saturation: Float
+
+    public static let identity = ColorBoxGradeControlState(
+        lift: ColorBoxRGBVector(red: 0, green: 0, blue: 0),
+        gamma: ColorBoxRGBVector(red: 0, green: 0, blue: 0),
+        gain: ColorBoxRGBVector(red: 1, green: 1, blue: 1),
+        saturation: 1
+    )
+
+    public init(
+        lift: ColorBoxRGBVector = ColorBoxRGBVector(red: 0, green: 0, blue: 0),
+        gamma: ColorBoxRGBVector = ColorBoxRGBVector(red: 0, green: 0, blue: 0),
+        gain: ColorBoxRGBVector = ColorBoxRGBVector(red: 1, green: 1, blue: 1),
+        saturation: Float = 1
+    ) {
+        self.lift = lift
+        self.gamma = gamma
+        self.gain = gain
+        self.saturation = saturation
+    }
+}
+
 public struct ColorBoxPipelineState: Codable, Sendable, Equatable {
     public let bypassEnabled: Bool
     public let falseColorEnabled: Bool
     public let dynamicLUTMode: String
+    public let gradeControl: ColorBoxGradeControlState
     public let lastRecalledPresetSlot: Int?
 
     public init(
         bypassEnabled: Bool,
         falseColorEnabled: Bool,
         dynamicLUTMode: String,
+        gradeControl: ColorBoxGradeControlState = .identity,
         lastRecalledPresetSlot: Int? = nil
     ) {
         self.bypassEnabled = bypassEnabled
         self.falseColorEnabled = falseColorEnabled
         self.dynamicLUTMode = dynamicLUTMode
+        self.gradeControl = gradeControl
         self.lastRecalledPresetSlot = lastRecalledPresetSlot
     }
 }

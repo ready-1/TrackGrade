@@ -32,6 +32,19 @@ final class TrackGradeIntegrationTests: XCTestCase {
         let falseColorDevice = try await manager.setFalseColor(id: deviceID, enabled: true)
         XCTAssertEqual(falseColorDevice.pipelineState?.falseColorEnabled, true)
 
+        let gradeDevice = try await manager.updateGradeControl(
+            id: deviceID,
+            gradeControl: ColorBoxGradeControlState(
+                lift: ColorBoxRGBVector(red: 0.5, green: -0.25, blue: 0.75),
+                gamma: ColorBoxRGBVector(red: 0.1, green: 0.0, blue: -0.1),
+                gain: ColorBoxRGBVector(red: 1.2, green: 0.95, blue: 1.05),
+                saturation: 1.25
+            )
+        )
+        XCTAssertEqual(gradeDevice.pipelineState?.dynamicLUTMode, "dynamic")
+        XCTAssertEqual(gradeDevice.pipelineState?.gradeControl.saturation ?? 0, 1.25, accuracy: 0.0001)
+        XCTAssertEqual(gradeDevice.pipelineState?.gradeControl.lift.red ?? 0, 0.5, accuracy: 0.0001)
+
         let savedPresetDevice = try await manager.savePreset(
             id: deviceID,
             slot: 3,
@@ -41,6 +54,8 @@ final class TrackGradeIntegrationTests: XCTestCase {
 
         let recalledPresetDevice = try await manager.recallPreset(id: deviceID, slot: 3)
         XCTAssertEqual(recalledPresetDevice.pipelineState?.lastRecalledPresetSlot, 3)
+        XCTAssertEqual(recalledPresetDevice.pipelineState?.gradeControl.saturation ?? 0, 1.25, accuracy: 0.0001)
+        XCTAssertEqual(recalledPresetDevice.pipelineState?.gradeControl.gain.red ?? 0, 1.2, accuracy: 0.0001)
 
         let previewDevice = try await manager.refreshPreview(id: deviceID)
         XCTAssertGreaterThan(previewDevice.previewByteCount, 0)

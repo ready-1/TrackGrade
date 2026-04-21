@@ -174,6 +174,20 @@ public actor DeviceManager {
     }
 
     @discardableResult
+    public func updateGradeControl(
+        id: UUID,
+        gradeControl: ColorBoxGradeControlState
+    ) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let pipelineState = try await makeClient(for: storedDevice).updateGradeControl(gradeControl)
+            return try await updatePipelineState(id: id, pipelineState: pipelineState)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
     public func savePreset(
         id: UUID,
         slot: Int,
@@ -284,6 +298,7 @@ public actor DeviceManager {
                 bypassEnabled: pipelineState.bypassEnabled,
                 falseColorEnabled: false,
                 dynamicLUTMode: pipelineState.dynamicLUTMode,
+                gradeControl: pipelineState.gradeControl,
                 lastRecalledPresetSlot: pipelineState.lastRecalledPresetSlot
             )
         }

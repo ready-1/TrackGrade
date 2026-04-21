@@ -29,6 +29,7 @@ actor MockColorBoxState {
             bypassEnabled: false,
             falseColorEnabled: false,
             dynamicLUTMode: "static",
+            gradeControl: .identity,
             lastRecalledPresetSlot: nil
         )
         self.presetStore = [
@@ -71,6 +72,7 @@ actor MockColorBoxState {
             bypassEnabled: pipelineStateValue.bypassEnabled,
             falseColorEnabled: pipelineStateValue.falseColorEnabled,
             dynamicLUTMode: mode,
+            gradeControl: pipelineStateValue.gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
         )
         return pipelineStateValue
@@ -95,6 +97,7 @@ actor MockColorBoxState {
             bypassEnabled: enabled,
             falseColorEnabled: pipelineStateValue.falseColorEnabled,
             dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
+            gradeControl: pipelineStateValue.gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
         )
         return pipelineStateValue
@@ -106,6 +109,21 @@ actor MockColorBoxState {
             bypassEnabled: pipelineStateValue.bypassEnabled,
             falseColorEnabled: enabled,
             dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
+            gradeControl: pipelineStateValue.gradeControl,
+            lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
+        )
+        return pipelineStateValue
+    }
+
+    func updateGradeControl(
+        _ gradeControl: ColorBoxGradeControlState
+    ) async throws -> ColorBoxPipelineState {
+        try await applyLatency()
+        pipelineStateValue = ColorBoxPipelineState(
+            bypassEnabled: pipelineStateValue.bypassEnabled,
+            falseColorEnabled: pipelineStateValue.falseColorEnabled,
+            dynamicLUTMode: "dynamic",
+            gradeControl: gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
         )
         return pipelineStateValue
@@ -129,6 +147,7 @@ actor MockColorBoxState {
             bypassEnabled: pipelineStateValue.bypassEnabled,
             falseColorEnabled: pipelineStateValue.falseColorEnabled,
             dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
+            gradeControl: pipelineStateValue.gradeControl,
             lastRecalledPresetSlot: slot
         )
         return pipelineStateValue
@@ -198,6 +217,7 @@ actor MockColorBoxState {
                 bypassEnabled: storedState.bypassEnabled,
                 falseColorEnabled: storedState.falseColorEnabled,
                 dynamicLUTMode: storedState.dynamicLUTMode,
+                gradeControl: storedState.gradeControl,
                 lastRecalledPresetSlot: entry
             )
         case "DeleteEntry":
