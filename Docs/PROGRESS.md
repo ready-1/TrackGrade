@@ -39,6 +39,7 @@
 - TrackGrade now includes an offline `-ui-test-fixture` launch mode that seeds an in-memory ColorBox device, enabling app-level verification without direct hardware access.
 - `TrackGrade.xcodeproj` now contains a real `TrackGradeUITests` target, and `xcodebuild test` covers fixture-backed launch, bypass toggle, settings-sheet launch, and preset-save flows on the iPad simulator.
 - `Docs/PHASE-2-TESTING.md` now records the offline fixture path, simulator command, and the remaining manual checklist for simultaneous multi-touch and hardware feel validation.
+- `App/Info.plist` now includes placeholder `UILaunchScreen` metadata so the iPad app shell stays ahead of the simulator launch-screen requirement.
 
 ## In-Flight Work
 
