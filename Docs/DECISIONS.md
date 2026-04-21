@@ -54,3 +54,51 @@ Phase 1 depends on concrete product and repository decisions that were still ope
 - Repository-facing materials must reflect Apache-2.0 instead of MIT.
 - Bundle identifiers and signing settings may remain placeholder values until account access is restored.
 - Phase 1 can proceed with live device inspection and OpenAPI capture using the supplied ColorBox endpoint.
+
+## 2026-04-21 — Keep a Handwritten ColorBox Wrapper Until the Live OpenAPI Spec Can Be Fetched
+
+### Context
+
+The brief requires a generated OpenAPI client, but the reference ColorBox is currently visible only through Bonjour and ARP while direct HTTP access from this Mac still fails. Phase 1 connectivity work still needs to continue against the mock server and the iPad app shell.
+
+### Decision
+
+Implement a thin handwritten `ColorBoxAPIClient` and matching mock-server routes now, with the explicit intent to replace the transport layer with `swift-openapi-generator` output once `Docs/openapi-colorbox.json` can be fetched from the live device.
+
+### Consequences
+
+- Phase 1 can keep moving despite the live OpenAPI fetch blocker.
+- `Docs/API-MAPPING.md` must stay explicit about which provisional routes are in use so the eventual generator swap is mechanical.
+- A later phase must reconcile any route or schema differences discovered from the real device specification.
+
+## 2026-04-21 — Compile the Shared Core Sources Into the App Target Until Local Package Wiring Is Automated
+
+### Context
+
+`TrackGradeCore` exists as the source-of-truth Swift package, but the hand-maintained Xcode project started without local package-product integration. Phase 1 required the app target to use the shared `DeviceManager` and API models immediately.
+
+### Decision
+
+Add the necessary `Core/ColorBoxAPI` and `Core/DeviceManager` source files directly to the `TrackGrade` app target while keeping the repo-root Swift package as the canonical package build surface.
+
+### Consequences
+
+- The app target and the Swift package currently compile the same shared core sources from disk.
+- Package tests remain the fastest way to validate the transport and mock-server layer, while `xcodebuild test` validates the iPad app shell separately.
+- The project should later be upgraded to consume the local package product directly to reduce duplicate target wiring.
+
+## 2026-04-21 — Use SwiftData for Saved Devices and Keychain References in the Phase 1 App Shell
+
+### Context
+
+The brief calls for known-device persistence in SwiftData and credential storage in Keychain, with device records referring to secrets indirectly rather than storing them in plain text.
+
+### Decision
+
+Implement the first app shell around a SwiftData `StoredColorBoxDevice` model and a Keychain credential store keyed by an opaque reference string.
+
+### Consequences
+
+- Saved ColorBox devices survive relaunches without storing passwords in the SwiftData store.
+- The app can re-register devices into `DeviceManager` on launch using the same stable device UUIDs.
+- Later persistence work can extend the same durability pattern to presets, snapshots, and other Phase 4 state.

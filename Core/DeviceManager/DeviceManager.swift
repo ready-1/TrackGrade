@@ -1,6 +1,11 @@
 import Foundation
 
 public actor DeviceManager {
+    private struct SnapshotSubscriber: Sendable {
+        let id: UUID
+        let continuation: AsyncStream<[ManagedColorBoxDevice]>.Continuation
+    }
+
     private struct StoredDevice: Sendable {
         var snapshot: ManagedColorBoxDevice
         let endpoint: ColorBoxEndpoint
@@ -10,6 +15,7 @@ public actor DeviceManager {
 
     private var devices: [UUID: StoredDevice] = [:]
     private var reconnectTasks: [UUID: Task<Void, Never>] = [:]
+    private var snapshotSubscribers: [UUID: SnapshotSubscriber] = [:]
     private let urlSession: URLSession
     private let retryPolicy: ConnectionRetryPolicy
 
@@ -23,12 +29,13 @@ public actor DeviceManager {
 
     @discardableResult
     public func registerDevice(
+        id: UUID = UUID(),
         name: String,
         address: String,
         credentials: ColorBoxCredentials? = nil
     ) throws -> UUID {
         let endpoint = try ColorBoxEndpoint.resolve(address)
-        let id = UUID()
+        reconnectTasks[id]?.cancel()
         let snapshot = ManagedColorBoxDevice(
             id: id,
             name: name,
@@ -40,6 +47,7 @@ public actor DeviceManager {
             credentials: credentials,
             hasConnectedOnce: false
         )
+        broadcastSnapshots()
         return id
     }
 
@@ -47,6 +55,7 @@ public actor DeviceManager {
         reconnectTasks[id]?.cancel()
         reconnectTasks[id] = nil
         devices[id] = nil
+        broadcastSnapshots()
     }
 
     public func deviceSnapshot(id: UUID) -> ManagedColorBoxDevice? {
@@ -55,6 +64,23 @@ public actor DeviceManager {
 
     public func allDeviceSnapshots() -> [ManagedColorBoxDevice] {
         devices.values.map(\.snapshot).sorted { $0.name < $1.name }
+    }
+
+    public func snapshotStream() -> AsyncStream<[ManagedColorBoxDevice]> {
+        let subscriberID = UUID()
+
+        return AsyncStream { continuation in
+            snapshotSubscribers[subscriberID] = SnapshotSubscriber(
+                id: subscriberID,
+                continuation: continuation
+            )
+            continuation.yield(allDeviceSnapshots())
+            continuation.onTermination = { _ in
+                Task {
+                    await self.removeSnapshotSubscriber(id: subscriberID)
+                }
+            }
+        }
     }
 
     @discardableResult
@@ -80,7 +106,9 @@ public actor DeviceManager {
             refreshed.firmwareInfo = try await firmwareInfo
             refreshed.pipelineState = try await pipelineState
             refreshed.presets = try await presets
-            refreshed.previewByteCount = try await previewFrame.count
+            let previewData = try await previewFrame
+            refreshed.previewFrameData = previewData
+            refreshed.previewByteCount = previewData.count
             refreshed.connectionState = .connected
             refreshed.lastErrorDescription = nil
 
@@ -90,6 +118,7 @@ public actor DeviceManager {
             devices[id] = updated
             reconnectTasks[id]?.cancel()
             reconnectTasks[id] = nil
+            broadcastSnapshots()
 
             return refreshed
         } catch {
@@ -173,8 +202,15 @@ public actor DeviceManager {
             let storedDevice = try requireDevice(id: id)
             let previewFrame = try await makeClient(for: storedDevice).fetchPreviewFrame()
             var updated = storedDevice
+            updated.snapshot.previewFrameData = previewFrame
             updated.snapshot.previewByteCount = previewFrame.count
+            updated.snapshot.connectionState = .connected
+            updated.snapshot.lastErrorDescription = nil
+            updated.hasConnectedOnce = true
             devices[id] = updated
+            reconnectTasks[id]?.cancel()
+            reconnectTasks[id] = nil
+            broadcastSnapshots()
             return updated.snapshot
         } catch {
             return try await handleFailure(id: id, error: error)
@@ -197,6 +233,7 @@ public actor DeviceManager {
         storedDevice.snapshot.connectionState = state
         storedDevice.snapshot.lastErrorDescription = nil
         devices[id] = storedDevice
+        broadcastSnapshots()
     }
 
     private func updatePipelineState(
@@ -212,6 +249,7 @@ public actor DeviceManager {
         devices[id] = updated
         reconnectTasks[id]?.cancel()
         reconnectTasks[id] = nil
+        broadcastSnapshots()
 
         return updated.snapshot
     }
@@ -222,7 +260,13 @@ public actor DeviceManager {
     ) throws -> ManagedColorBoxDevice {
         var storedDevice = try requireDevice(id: id)
         storedDevice.snapshot.presets = presets
+        storedDevice.snapshot.connectionState = .connected
+        storedDevice.snapshot.lastErrorDescription = nil
+        storedDevice.hasConnectedOnce = true
         devices[id] = storedDevice
+        reconnectTasks[id]?.cancel()
+        reconnectTasks[id] = nil
+        broadcastSnapshots()
         return storedDevice.snapshot
     }
 
@@ -236,10 +280,12 @@ public actor DeviceManager {
         if storedDevice.hasConnectedOnce {
             storedDevice.snapshot.connectionState = .degraded
             devices[id] = storedDevice
+            broadcastSnapshots()
             startReconnectLoopIfNeeded(for: id)
         } else {
             storedDevice.snapshot.connectionState = .error
             devices[id] = storedDevice
+            broadcastSnapshots()
         }
 
         return storedDevice.snapshot
@@ -283,6 +329,18 @@ public actor DeviceManager {
         storedDevice.snapshot.connectionState = .error
         devices[id] = storedDevice
         reconnectTasks[id] = nil
+        broadcastSnapshots()
+    }
+
+    private func removeSnapshotSubscriber(id: UUID) {
+        snapshotSubscribers[id] = nil
+    }
+
+    private func broadcastSnapshots() {
+        let snapshots = allDeviceSnapshots()
+        for subscriber in snapshotSubscribers.values {
+            subscriber.continuation.yield(snapshots)
+        }
     }
 
     private func requireDevice(id: UUID) throws -> StoredDevice {

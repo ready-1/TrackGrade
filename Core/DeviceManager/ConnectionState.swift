@@ -34,6 +34,7 @@ public struct ManagedColorBoxDevice: Identifiable, Sendable, Equatable {
     public var firmwareInfo: ColorBoxFirmwareInfo?
     public var pipelineState: ColorBoxPipelineState?
     public var presets: [ColorBoxPresetSummary]
+    public var previewFrameData: Data?
     public var previewByteCount: Int
 
     public init(
@@ -46,6 +47,7 @@ public struct ManagedColorBoxDevice: Identifiable, Sendable, Equatable {
         firmwareInfo: ColorBoxFirmwareInfo? = nil,
         pipelineState: ColorBoxPipelineState? = nil,
         presets: [ColorBoxPresetSummary] = [],
+        previewFrameData: Data? = nil,
         previewByteCount: Int = 0
     ) {
         self.id = id
@@ -57,6 +59,7 @@ public struct ManagedColorBoxDevice: Identifiable, Sendable, Equatable {
         self.firmwareInfo = firmwareInfo
         self.pipelineState = pipelineState
         self.presets = presets
+        self.previewFrameData = previewFrameData
         self.previewByteCount = previewByteCount
     }
 }

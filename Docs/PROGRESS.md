@@ -14,10 +14,12 @@
 - Step 6 complete: added `Docs/API-MAPPING.md` with the OpenAPI fetch placeholder.
 - Step 7 complete: verified `swift test`, `swift build --product MockColorBox`, and `xcodebuild test` all pass locally with the full Xcode toolchain.
 - Phase 1 kickoff inputs recorded from the user, including the reference ColorBox IP and open-source/license decisions.
+- Phase 1 connectivity foundation complete in `TrackGradeCore`: the handwritten ColorBox API wrapper, `DeviceManager`, mock-server contract, and integration tests now cover auth, pipeline config, toggles, presets, preview fetch, and reconnect behavior.
+- Phase 1 app shell now includes a SwiftData-backed device list, Keychain-backed credentials, a Bonjour discovery sidebar, manual add by IP, preview display, preset controls, pipeline toggles, and a reconnect banner.
 
 ## In-Flight Work
 
-- Fetching the live OpenAPI spec from the reference ColorBox and beginning device connectivity plumbing.
+- Fetching the live OpenAPI spec from the reference ColorBox and validating the new app shell against live hardware parity.
 
 ## Blockers
 
@@ -27,5 +29,6 @@
 ## Next Steps
 
 - Fetch and commit the live ColorBox OpenAPI spec from `172.29.14.51`.
-- Generate and wrap the API client surface needed for connectivity, pipeline actions, presets, and preview.
-- Implement Phase 1 device discovery, manual add, auth storage, pipeline configuration, preview, presets, and connection resilience.
+- Replace the provisional handwritten client calls with generated `swift-openapi-generator` surfaces once the real spec is available.
+- Add Bonjour advertisement to `MockColorBox` and verify discovery end-to-end against the iPad app shell.
+- Exercise the app shell against the mock server and real hardware to confirm Phase 1 acceptance on-device.
