@@ -122,6 +122,7 @@ final class TrackGradeIntegrationTests: XCTestCase {
             configuration: MockColorBoxConfiguration(
                 host: "127.0.0.1",
                 port: port,
+                bonjourServiceName: "MockColorBox-Test-\(port)",
                 username: password == nil ? nil : "admin",
                 password: password,
                 latencyMilliseconds: 0,

@@ -5,6 +5,7 @@ import TrackGradeCore
 struct MockColorBoxConfiguration: Sendable, Equatable {
     var host: String
     var port: Int
+    var bonjourServiceName: String
     var username: String?
     var password: String?
     var latencyMilliseconds: UInt64
@@ -16,6 +17,7 @@ struct MockColorBoxConfiguration: Sendable, Equatable {
         MockColorBoxConfiguration(
             host: Environment.get("MOCK_COLORBOX_HOST") ?? "0.0.0.0",
             port: Int(Environment.get("MOCK_COLORBOX_PORT") ?? "") ?? 8080,
+            bonjourServiceName: Environment.get("MOCK_COLORBOX_SERVICE_NAME") ?? "MockColorBox-TrackGrade",
             username: Environment.get("MOCK_COLORBOX_USERNAME"),
             password: Environment.get("MOCK_COLORBOX_PASSWORD"),
             latencyMilliseconds: UInt64(Environment.get("MOCK_COLORBOX_LATENCY_MS") ?? "") ?? 0,

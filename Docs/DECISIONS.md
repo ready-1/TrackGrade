@@ -102,3 +102,19 @@ Implement the first app shell around a SwiftData `StoredColorBoxDevice` model an
 - Saved ColorBox devices survive relaunches without storing passwords in the SwiftData store.
 - The app can re-register devices into `DeviceManager` on launch using the same stable device UUIDs.
 - Later persistence work can extend the same durability pattern to presets, snapshots, and other Phase 4 state.
+
+## 2026-04-21 — Publish the Mock Server Over Bonjour With Provisional ColorBox-Oriented TXT Keys
+
+### Context
+
+The brief requires `MockColorBox` to advertise itself as `_http._tcp` so discovery work can proceed without hardware. The exact TXT record keys used by a real ColorBox are still unknown because the live device API and metadata remain unreachable from this Mac.
+
+### Decision
+
+Publish `MockColorBox` over Bonjour with a configurable service name and a lightweight TXT record containing provisional `vendor`, `product`, `path`, and `serial` keys that identify it as a ColorBox-like endpoint.
+
+### Consequences
+
+- TrackGrade discovery work can proceed against a locally advertised development target.
+- The mock is locally discoverable today, but its TXT record schema may need to change once the real device advertisement is captured.
+- Discovery filtering logic should continue to tolerate service-name fallback until the real TXT keys are verified.
