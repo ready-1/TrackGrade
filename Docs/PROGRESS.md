@@ -34,18 +34,21 @@
 - The user confirmed that presets must live on the ColorBox and that the iPad should be treated as ephemeral, so TrackGrade will not rely on local-only preset persistence for the MVP.
 - Phase 1 acceptance checks are green locally: `swift test` and `xcodebuild test` both passed after the device-native preset-save persistence fix.
 - Phase 2 started with shared trackball mapping helpers that round-trip between touch control state and the current direct `pipelineStages` grade representation; package tests cover identity, clamping, and representative control-state round trips.
+- The temporary slider-based grade card has been replaced with a touch-native Phase 2 control surface: three trackballs with independent ball/ring gesture regions, a saturation roller, numeric tap-to-edit rows, double-tap reset affordances, and a settings sheet for sensitivity/haptics tuning.
+- The app target now compiles the UIKit touch bridge, settings feature, and haptics coordinator, and both `swift test` and `xcodebuild test` pass with the new control-surface code in place.
 
 ## In-Flight Work
 
-- Building the UIKit multi-touch bridge, settings-backed sensitivity controls, and the new grade surface that will replace the temporary slider UI.
+- Closing the remaining Phase 2 verification gap: the project still only has a minimal Xcode test target, so dedicated app-linked snapshot / multi-touch automation is not wired yet.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
+- The Xcode project does not yet have dedicated app-linked UI-test coverage for the new touch surface, so Phase 2 acceptance is functionally close but not fully closed on automated interaction testing.
 
 ## Next Steps
 
-- Finish the UIKit gesture bridge and haptics plumbing for simultaneous ball/ring/roller control.
-- Replace the temporary slider-based grade UI with the Phase 2 trackball, ring, saturation roller, and numeric edit surface.
-- Add the necessary verification coverage for the new control-surface behavior and rendering checkpoint.
+- Decide whether to wire a dedicated app-linked test target / UI-test target next, or capture the remaining Phase 2 acceptance work through a documented manual simulator/hardware checklist first.
+- Add stronger automated verification for the new control surface once the test-target wiring gap is resolved.
+- Tune the new gesture surface against real hardware if any sensitivity adjustments emerge during manual grading.
 - Keep bypass and preset UX aligned with the MVP ordering as the touch-native control surface work starts in the next phase.

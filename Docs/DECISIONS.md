@@ -346,3 +346,19 @@ Represent each Phase 2 trackball as a `ball + ring` control state, and map that 
 - The custom controls can ship on top of the already-verified hardware grading path instead of waiting for Phase 3 LUT baking.
 - TrackGrade now needs deterministic round-trip helpers between touch-state and device-state so preset recall and refresh keep the control surface visually aligned.
 - A later Phase 3 LUT-bake path may replace the transport, but it should preserve the same higher-level touch control model if possible.
+
+## 2026-04-21 — Persist Phase 2 Sensitivity And Feedback Settings With AppStorage
+
+### Context
+
+Phase 2 needs user-adjustable sensitivity values and haptics preferences immediately, but the broader long-term settings model from the brief is still larger than the current implementation scope.
+
+### Decision
+
+Use `@AppStorage`-backed settings keys for the initial Phase 2 control-surface tuning values and haptics toggle.
+
+### Consequences
+
+- Sensitivity and feedback settings persist across launches without adding new SwiftData schema work mid-phase.
+- The grade surface and settings sheet can share one lightweight persistence path today.
+- A later, more comprehensive settings architecture may absorb these keys, but it should preserve migration from the current stored values.
