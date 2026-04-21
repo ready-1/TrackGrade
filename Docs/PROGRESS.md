@@ -24,18 +24,21 @@
 - Live preset mutation mapping is now verified and implemented: save uses `StoreEntry` + `SetUserName`, recall uses `RecallEntry`, and delete uses `DeleteEntry` through `/v2/libraryControl`.
 - A follow-up false-color discovery pass across the live `/v2` contract and shipped device web bundles did not reveal a control path, so false color is now treated as unsupported/deferred on firmware `3.0.0.24`.
 - The user confirmed that authentication will remain disabled on the reference ColorBox, so auth UI work is no longer on the critical path for Phase 1.
+- TrackGrade now infers false-color support during device refresh and disables the UI control on known-unsupported firmware instead of presenting it as an always-available toggle.
+- Integration coverage now includes a mock-backed unsupported-false-color case so the app keeps the device connected while surfacing capability loss cleanly.
 
 ## In-Flight Work
 
-- Validating the new app shell against live hardware parity and moving on to the next hardware-backed feature now that presets are mapped and false color has been explicitly downgraded on current firmware.
+- Validating the new app shell against live hardware parity while investigating the remaining live LUT upload contract mismatch on firmware `3.0.0.24`.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
+- Live LUT import semantics are still unresolved: `POST /v2/upload` matches the shipped web UI and returns `200`, but test uploads do not populate `GET /v2/3dLutLibrary` on the reference ColorBox.
 
 ## Next Steps
 
 - Exercise the current app shell against the real ColorBox using the new generated `/v2` read path and selected write path.
-- Re-map LUT upload to the real `/v2/upload` and related library-selection endpoints.
-- Decide whether the UI should hide or disable false color on unsupported firmware, or simply keep the clearer unsupported-error path already in place.
+- Resolve or explicitly defer the `/v2/upload` contract mismatch after more live investigation or vendor guidance.
 - Verify the iPad app discovery flow end-to-end against the Bonjour-advertised `MockColorBox`.
+- Prepare a Phase 1 checkpoint once the remaining upload uncertainty is either resolved or carved out of the current phase scope.

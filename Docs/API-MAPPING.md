@@ -11,8 +11,8 @@
 
 ## TODO
 
-- Identify the real false-color control path, or explicitly downgrade false color on ColorBox firmware `3.0.0.24`.
-- Replace the remaining provisional mutation routes after the live write semantics are verified.
+- Verify how successful `POST /v2/upload` requests are supposed to materialize in the device libraries on firmware `3.0.0.24`.
+- Confirm whether `POST /v2/saveDynamicLutRequest` is intentionally absent on the reference firmware despite being present in the committed spec.
 
 ## Live Endpoint Surface
 
@@ -31,8 +31,8 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
 | Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
-| LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d` |
-| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Explicitly writes flash; spec warns to use sparingly |
+| LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d`; route verified live, persistence semantics still unresolved |
+| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Declared in the committed spec, but currently returns `404` on the reference hardware |
 
 ## Divergences From The Provisional Wrapper
 
@@ -59,7 +59,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Preset save | `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
 | Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
-| False color toggle | Falls back to provisional mock route only for now; live `/v2` mapping still not found |
+| False color toggle | Disabled in the app on firmware `3.0.0.24`; no live `/v2` mapping found |
 
 ## Verified Live Preset Semantics
 
@@ -76,6 +76,14 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - No dedicated false-color endpoint has been identified in the live `/v2` contract for firmware `3.0.0.24`.
 - A follow-up pass across the device’s shipped web UI bundles exposed `routing`, `pipelineStages`, `libraryControl`, `systemPresetLibrary`, `preview`, and related configuration routes, but still did not reveal a false-color control path.
 - TrackGrade should currently treat false color as unsupported on firmware `3.0.0.24` unless a future firmware or vendor reference reveals the correct API surface.
+
+## LUT Upload Status
+
+- The shipped device web UI posts library imports to `POST /v2/upload` with multipart fields `file`, `kind`, and `entry`.
+- Direct TrackGrade probes with valid `.cube` files against slots 1, 2, and 3 all returned `200`, matching the UI route.
+- Those successful responses did not produce visible entries in `GET /v2/3dLutLibrary` on the reference hardware, so upload persistence semantics remain unresolved.
+- `POST /v2/saveDynamicLutRequest` is listed in the committed spec but currently returns `404` on firmware `3.0.0.24`.
+- TrackGrade should not claim live LUT import parity until this mismatch is understood.
 
 ## Authentication Status
 

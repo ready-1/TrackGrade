@@ -234,3 +234,35 @@ Treat false color as unsupported on firmware `3.0.0.24` for now, with TrackGrade
 - False color is no longer a blocker for current hardware integration work.
 - Future work can revisit false color only if a newer firmware or vendor reference exposes a stable API path.
 - The remaining Phase 1 hardware work can focus on LUT upload and other verified `/v2` capabilities.
+
+## 2026-04-21 — Disable False Color UI When Firmware Or Runtime Behavior Marks It Unsupported
+
+### Context
+
+The reference ColorBox firmware `3.0.0.24` does not expose a false-color API path, and treating that as a generic transport failure makes the app look disconnected when the real issue is feature availability.
+
+### Decision
+
+TrackGrade should infer false-color availability from known unsupported firmware, mark the capability unavailable when a live toggle call returns the explicit unsupported-feature error, and disable the UI control instead of continuing to present a dead toggle.
+
+### Consequences
+
+- The grade screen now reflects capability state instead of inviting a control path that cannot succeed on the reference hardware.
+- Unsupported false color no longer drives reconnect behavior or degraded connection state.
+- Mock-backed integration tests now cover the unsupported-feature path directly.
+
+## 2026-04-21 — Treat Live `/v2/upload` Behavior As Unverified On Firmware 3.0.0.24
+
+### Context
+
+The committed OpenAPI spec and the shipped device web UI both point library imports at `POST /v2/upload`, but direct probes with valid `.cube` files returned `200` without creating visible entries in `GET /v2/3dLutLibrary` on the reference ColorBox.
+
+### Decision
+
+Do not implement TrackGrade’s live LUT import/write path on assumptions alone. Record the current `/v2/upload` behavior as unresolved until the library materialization semantics are verified against hardware or vendor guidance.
+
+### Consequences
+
+- LUT import is now the main remaining hardware integration uncertainty for the current phase.
+- Further work should favor explicit probing and documentation over speculative implementation.
+- The mock may continue to support provisional upload storage for testing, but the app should not claim live parity yet.
