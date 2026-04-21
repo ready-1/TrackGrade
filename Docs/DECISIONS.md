@@ -31,3 +31,26 @@ Use a repo-root Swift package named `TrackGradeCore` for the `Core/` modules and
 - `swift test` and `swift run MockColorBox` validate the package and mock-server side independently of the iPad app.
 - `xcodebuild test` validates the iPad app target and Xcode project configuration separately.
 - The app target can begin with minimal UI scaffolding while the core package evolves in parallel under test.
+
+## 2026-04-21 — Adopt User Product Decisions for Phase 1 Kickoff
+
+### Context
+
+Phase 1 depends on concrete product and repository decisions that were still open at the end of Phase 0.
+
+### Decision
+
+- Keep placeholder signing metadata until the Apple Developer account is unlocked.
+- Use the reference ColorBox at `172.29.14.51` for live API and firmware inspection.
+- Switch the project license from MIT to Apache-2.0.
+- Treat Library import from the Files app as in-scope for v1.
+- Keep the repository public during development.
+- Confirm the product name as `TrackGrade`.
+- Accept a placeholder app icon for now.
+- Publish `info@getready1.com` as the Code of Conduct contact.
+
+### Consequences
+
+- Repository-facing materials must reflect Apache-2.0 instead of MIT.
+- Bundle identifiers and signing settings may remain placeholder values until account access is restored.
+- Phase 1 can proceed with live device inspection and OpenAPI capture using the supplied ColorBox endpoint.

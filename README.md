@@ -4,7 +4,7 @@ TrackGrade is an open-source native iPadOS 18+ control surface for live color gr
 
 ## Project Status
 
-TrackGrade is in active early development. Phase 0 is focused on scaffolding, repository hygiene, a mock ColorBox server, and durable project documentation.
+TrackGrade is in active early development. Phase 1 is focused on connectivity, device state plumbing, OpenAPI integration, and mock-backed ColorBox workflows.
 
 ## Screenshots
 
@@ -45,7 +45,7 @@ Contribution guidelines live in [CONTRIBUTING.md](CONTRIBUTING.md). Please also 
 
 ## License
 
-TrackGrade is currently licensed under the MIT License. See [LICENSE](LICENSE).
+TrackGrade is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
 
 ## Disclaimer
 
