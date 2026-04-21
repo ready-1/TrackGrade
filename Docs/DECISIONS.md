@@ -202,3 +202,35 @@ Implement device-native preset save / rename / recall / delete using:
 - TrackGrade’s preset CRUD behavior now matches live hardware semantics instead of the earlier guessed provisional routes.
 - `MockColorBox` must preserve the same `libraryControl` action flow so integration tests cover the real contract shape.
 - False color is now the only unresolved Phase 1 control-path mismatch from the original guessed routes.
+
+## 2026-04-21 — Defer Authentication UX Work For The Reference ColorBox
+
+### Context
+
+The reference ColorBox reports `authenticationEnable: false`, and the user confirmed that authentication will remain disabled for the foreseeable future.
+
+### Decision
+
+Keep the transport-layer credential support already in place, but remove authentication UX work from the current critical path.
+
+### Consequences
+
+- Phase 1 no longer depends on API-key entry or credential-management expansion for the reference hardware.
+- The app can continue to preserve optional auth support for future hardware without spending immediate implementation time on it.
+- Open questions should no longer block on authentication.
+
+## 2026-04-21 — Treat False Color As Unsupported On ColorBox Firmware 3.0.0.24
+
+### Context
+
+The live `/v2` OpenAPI contract does not expose a false-color endpoint, and a follow-up pass over the device’s shipped web UI bundles also failed to reveal any hidden route or action related to false color.
+
+### Decision
+
+Treat false color as unsupported on firmware `3.0.0.24` for now, with TrackGrade surfacing a clear unsupported message instead of pretending the control is available.
+
+### Consequences
+
+- False color is no longer a blocker for current hardware integration work.
+- Future work can revisit false color only if a newer firmware or vendor reference exposes a stable API path.
+- The remaining Phase 1 hardware work can focus on LUT upload and other verified `/v2` capabilities.

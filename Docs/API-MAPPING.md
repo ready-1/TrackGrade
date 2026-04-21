@@ -71,7 +71,14 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - `DeleteEntry` removes the preset from the library listing cleanly.
 - `RecallEntry` against the pre-existing slot 1 (`current-show`) returned a device-side error on this box: `"Internal problems recalling preset"`, which suggests that not every listed preset is necessarily recallable.
 
-## Open Questions From The Live Spec
+## False Color Status
 
-- No dedicated false-color endpoint has been identified in the live contract yet.
-- The spec documents `X-API-KEY` auth, and TrackGrade now has transport support for it, but the app UI still needs an API-key entry path if auth is enabled on future hardware.
+- No dedicated false-color endpoint has been identified in the live `/v2` contract for firmware `3.0.0.24`.
+- A follow-up pass across the device’s shipped web UI bundles exposed `routing`, `pipelineStages`, `libraryControl`, `systemPresetLibrary`, `preview`, and related configuration routes, but still did not reveal a false-color control path.
+- TrackGrade should currently treat false color as unsupported on firmware `3.0.0.24` unless a future firmware or vendor reference reveals the correct API surface.
+
+## Authentication Status
+
+- The reference ColorBox reports `authenticationEnable: false`.
+- The user has confirmed that authentication will remain disabled for the foreseeable future.
+- TrackGrade keeps transport-level support for credentials, but API-key entry is no longer a Phase 1 requirement for this hardware.
