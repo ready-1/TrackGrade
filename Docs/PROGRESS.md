@@ -44,6 +44,13 @@
 ## In-Flight Work
 
 - Closing the remaining Phase 2 acceptance gap around true simultaneous multi-touch and real-device feel, which XCUITest still cannot validate end to end on its own.
+- Applying the first round of layout feedback from live UI review:
+  - remove vertical scrolling and keep the grading interface static in landscape
+  - collapse telemetry into compact regions instead of large stacked cards
+  - allow bypass, presets, and similar secondary actions to move into a drawer
+  - move the LGG/S state display into a smaller top-center window and use the side areas for secondary device telemetry
+  - move saturation above the trackballs
+  - make the LGG/S reset affordances clearly visible in the main layout
 
 ## Blockers
 
@@ -52,6 +59,11 @@
 
 ## Next Steps
 
+- Refactor the grading screen into a fixed landscape layout with no vertical scroll.
+- Compress the telemetry layout and promote the compact top-center LGG/S state window.
+- Rework secondary actions such as bypass and presets into a drawer-oriented presentation if the static layout needs the space.
+- Move the saturation control above the trackball row.
+- Ensure reset controls for Lift / Gamma / Gain / Saturation are immediately visible and legible in the static layout.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` once an iPad and ColorBox are available together again.
 - Tune the gesture surface against real hardware if any sensitivity adjustments emerge during manual grading.
 - Decide whether Phase 2 acceptance is satisfied with the new offline UI suite plus manual multi-touch validation, or whether another automation pass is needed before moving on.

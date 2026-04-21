@@ -378,3 +378,26 @@ Use `@AppStorage`-backed settings keys for the initial Phase 2 control-surface t
 - Sensitivity and feedback settings persist across launches without adding new SwiftData schema work mid-phase.
 - The grade surface and settings sheet can share one lightweight persistence path today.
 - A later, more comprehensive settings architecture may absorb these keys, but it should preserve migration from the current stored values.
+
+## 2026-04-21 — Reshape The Grade Screen Into A Static Landscape Control Surface
+
+### Context
+
+The first live UI review showed that the current vertically scrolling grade screen is not viable for the intended iPad control-surface workflow. The layout needs to stay fixed, keep grading controls visible at once, and compress telemetry so the operator is not scrolling during a show.
+
+### Decision
+
+For the next Phase 2 UI pass:
+
+- Remove vertical scrolling from the main grading interface.
+- Compress telemetry into smaller, denser regions.
+- Use a compact top-center LGG/S state display and place secondary telemetry to the sides.
+- Allow bypass, presets, and related secondary controls to live in a drawer if needed.
+- Move saturation above the trackballs.
+- Keep reset controls for Lift / Gamma / Gain / Saturation visibly present in the main layout.
+
+### Consequences
+
+- The current stacked-card layout is a temporary implementation and should be treated as transitional.
+- The next UI refactor should optimize for a fixed live-operation surface rather than for inspector-style content flow.
+- Secondary controls may become less immediately exposed, but the core grading gestures and their state readout should become faster to operate in show conditions.
