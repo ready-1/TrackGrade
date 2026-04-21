@@ -34,6 +34,7 @@ struct GradeFeatureView: View {
                 } label: {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
+                .accessibilityIdentifier("grade-settings-button")
             }
         }
         .sheet(isPresented: $isShowingSettings) {
@@ -135,6 +136,7 @@ struct GradeFeatureView: View {
                     }
                 )
             )
+            .accessibilityIdentifier("bypass-toggle")
 
             Toggle(
                 "False Color",
@@ -152,6 +154,7 @@ struct GradeFeatureView: View {
                 )
             )
             .disabled(device.supportsFalseColor == false)
+            .accessibilityIdentifier("false-color-toggle")
 
             if device.supportsFalseColor == false {
                 Text(falseColorUnsupportedMessage)
@@ -270,7 +273,8 @@ private struct DynamicGradeControlsCard: View {
                 DoubleTapActionChip(
                     title: "Reset All",
                     tint: .orange,
-                    requiresExplicitLabel: resetRequiresConfirmation
+                    requiresExplicitLabel: resetRequiresConfirmation,
+                    identifier: "reset-all-chip"
                 ) {
                     emitButtonHaptic()
                     draftGrade = .identity
@@ -369,6 +373,7 @@ private struct DynamicGradeControlsCard: View {
             )
         }
         .cardStyle()
+        .accessibilityIdentifier("dynamic-grade-card")
         .sheet(item: $activeEditor) { target in
             NumericGradeEditorSheet(
                 target: target,
@@ -712,24 +717,28 @@ private struct GradeStateDisplay: View {
                 NumericDisplayRow(
                     label: "Lift",
                     value: formatted(grade.lift),
+                    identifier: "lift-state-row",
                     action: { onEdit(.lift) }
                 )
 
                 NumericDisplayRow(
                     label: "Gamma",
                     value: formatted(grade.gamma),
+                    identifier: "gamma-state-row",
                     action: { onEdit(.gamma) }
                 )
 
                 NumericDisplayRow(
                     label: "Gain",
                     value: formatted(grade.gain),
+                    identifier: "gain-state-row",
                     action: { onEdit(.gain) }
                 )
 
                 NumericDisplayRow(
                     label: "Sat",
                     value: formatted(grade.saturation),
+                    identifier: "sat-state-row",
                     action: { onEdit(.saturation) }
                 )
 
@@ -751,6 +760,7 @@ private struct GradeStateDisplay: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Color.black.opacity(0.92))
         )
+        .accessibilityIdentifier("grade-state-display")
     }
 
     private func formatted(_ value: Float) -> String {
@@ -765,6 +775,7 @@ private struct GradeStateDisplay: View {
 private struct NumericDisplayRow: View {
     let label: String
     let value: String
+    let identifier: String
     let action: () -> Void
 
     var body: some View {
@@ -783,6 +794,8 @@ private struct NumericDisplayRow: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+        .accessibilityValue(value)
     }
 }
 
@@ -810,6 +823,7 @@ private struct PreviewThumbnail: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("grade-preview-thumbnail")
         .overlay(alignment: .bottomTrailing) {
             Text("Hold to refresh")
                 .font(.caption2.weight(.semibold))
@@ -886,6 +900,7 @@ private struct TrackballClusterView: View {
                     title: "Reset Ball",
                     tint: .cyan,
                     requiresExplicitLabel: true,
+                    identifier: "\(kind.rawValue)-reset-ball-chip",
                     action: onResetBall
                 )
 
@@ -893,6 +908,7 @@ private struct TrackballClusterView: View {
                     title: "Reset Ring",
                     tint: .mint,
                     requiresExplicitLabel: true,
+                    identifier: "\(kind.rawValue)-reset-ring-chip",
                     action: onResetRing
                 )
             }
@@ -1086,6 +1102,7 @@ private struct SaturationRollerView: View {
                     title: "Reset To 1.00",
                     tint: .yellow,
                     requiresExplicitLabel: true,
+                    identifier: "saturation-reset-chip",
                     action: onReset
                 )
                 Spacer()
@@ -1101,6 +1118,7 @@ private struct DoubleTapActionChip: View {
     let title: String
     let tint: Color
     let requiresExplicitLabel: Bool
+    let identifier: String
     let action: () -> Void
 
     var body: some View {
@@ -1117,6 +1135,7 @@ private struct DoubleTapActionChip: View {
             .onTapGesture(count: 2, perform: action)
             .accessibilityAddTraits(.isButton)
             .accessibilityHint("Double-tap to \(title.lowercased()).")
+            .accessibilityIdentifier(identifier)
     }
 }
 
@@ -1171,13 +1190,17 @@ private struct NumericGradeEditorSheet: View {
                 switch target {
                 case .saturation:
                     Section("Value") {
-                        numericField("Saturation", text: $scalarValue)
+                        numericField(
+                            "Saturation",
+                            text: $scalarValue,
+                            identifier: "numeric-saturation-field"
+                        )
                     }
                 case .lift, .gamma, .gain:
                     Section("RGB") {
-                        numericField("Red", text: $redValue)
-                        numericField("Green", text: $greenValue)
-                        numericField("Blue", text: $blueValue)
+                        numericField("Red", text: $redValue, identifier: "numeric-red-field")
+                        numericField("Green", text: $greenValue, identifier: "numeric-green-field")
+                        numericField("Blue", text: $blueValue, identifier: "numeric-blue-field")
                     }
                 }
             }
@@ -1202,12 +1225,14 @@ private struct NumericGradeEditorSheet: View {
 
     private func numericField(
         _ label: String,
-        text: Binding<String>
+        text: Binding<String>,
+        identifier: String
     ) -> some View {
         TextField(label, text: text)
             .keyboardType(.numbersAndPunctuation)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .accessibilityIdentifier(identifier)
     }
 
     private func updatedGrade() -> ColorBoxGradeControlState {

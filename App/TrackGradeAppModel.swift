@@ -26,10 +26,12 @@ final class TrackGradeAppModel {
     private let credentialStore = TrackGradeKeychainStore()
     private let deviceManager = DeviceManager()
     private let discovery = TrackGradeDeviceDiscovery()
+    private let launchConfiguration = TrackGradeLaunchConfiguration.current
     private var hasStarted = false
     private var modelContext: ModelContext?
     private var snapshotTask: Task<Void, Never>?
     private var suppressedBannerUntil: Date?
+    private var fixturePresetGrades: [UUID: [Int: ColorBoxGradeControlState]] = [:]
 
     var selectedSnapshot: ManagedColorBoxDevice? {
         guard let selectedDeviceID else {
@@ -73,6 +75,10 @@ final class TrackGradeAppModel {
 
         hasStarted = true
         self.modelContext = modelContext
+        if launchConfiguration.usesUITestFixture {
+            loadUITestFixture()
+            return
+        }
         discovery.onDevicesChanged = { [weak self] devices in
             self?.discoveredDevices = devices
         }
@@ -82,6 +88,9 @@ final class TrackGradeAppModel {
     }
 
     func refreshDiscovery() {
+        guard launchConfiguration.usesUITestFixture == false else {
+            return
+        }
         discovery.restart()
     }
 
@@ -251,6 +260,14 @@ final class TrackGradeAppModel {
     }
 
     func connect(to deviceID: UUID) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: deviceID) { snapshot in
+                snapshot.connectionState = .connected
+                snapshot.lastErrorDescription = nil
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.connect(id: deviceID)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -265,6 +282,14 @@ final class TrackGradeAppModel {
     }
 
     func refreshDevice(id: UUID) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                snapshot.connectionState = .connected
+                snapshot.lastErrorDescription = nil
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.refreshDevice(id: id)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -274,6 +299,20 @@ final class TrackGradeAppModel {
     }
 
     func configurePipeline(id: UUID) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: current?.bypassEnabled ?? false,
+                    falseColorEnabled: current?.falseColorEnabled ?? false,
+                    dynamicLUTMode: "dynamic",
+                    gradeControl: current?.gradeControl ?? .identity,
+                    lastRecalledPresetSlot: current?.lastRecalledPresetSlot
+                )
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.configurePipelineForTrackGrade(id: id)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -286,6 +325,20 @@ final class TrackGradeAppModel {
         id: UUID,
         enabled: Bool
     ) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: enabled,
+                    falseColorEnabled: current?.falseColorEnabled ?? false,
+                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                    gradeControl: current?.gradeControl ?? .identity,
+                    lastRecalledPresetSlot: current?.lastRecalledPresetSlot
+                )
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.setBypass(id: id, enabled: enabled)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -298,6 +351,21 @@ final class TrackGradeAppModel {
         id: UUID,
         enabled: Bool
     ) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: current?.bypassEnabled ?? false,
+                    falseColorEnabled: enabled,
+                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                    gradeControl: current?.gradeControl ?? .identity,
+                    lastRecalledPresetSlot: current?.lastRecalledPresetSlot
+                )
+                snapshot.supportsFalseColor = true
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.setFalseColor(id: id, enabled: enabled)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -310,6 +378,20 @@ final class TrackGradeAppModel {
         id: UUID,
         gradeControl: ColorBoxGradeControlState
     ) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: current?.bypassEnabled ?? false,
+                    falseColorEnabled: current?.falseColorEnabled ?? false,
+                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                    gradeControl: gradeControl,
+                    lastRecalledPresetSlot: current?.lastRecalledPresetSlot
+                )
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.updateGradeControl(
                 id: id,
@@ -322,6 +404,13 @@ final class TrackGradeAppModel {
     }
 
     func refreshPreview(id: UUID) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                snapshot.previewByteCount = snapshot.previewFrameData?.count ?? 0
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.refreshPreview(id: id)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -335,6 +424,24 @@ final class TrackGradeAppModel {
         slot: Int,
         name: String
     ) async {
+        if launchConfiguration.usesUITestFixture {
+            let gradeControl = snapshots.first { $0.id == id }?.pipelineState?.gradeControl ?? .identity
+            var storedGrades = fixturePresetGrades[id] ?? [:]
+            storedGrades[slot] = gradeControl
+            fixturePresetGrades[id] = storedGrades
+
+            updateFixtureDevice(id: id) { snapshot in
+                let summary = ColorBoxPresetSummary(slot: slot, name: name)
+                if let existingIndex = snapshot.presets.firstIndex(where: { $0.slot == slot }) {
+                    snapshot.presets[existingIndex] = summary
+                } else {
+                    snapshot.presets.append(summary)
+                    snapshot.presets.sort { $0.slot < $1.slot }
+                }
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.savePreset(
                 id: id,
@@ -351,6 +458,21 @@ final class TrackGradeAppModel {
         id: UUID,
         slot: Int
     ) async {
+        if launchConfiguration.usesUITestFixture {
+            let storedGrade = fixturePresetGrades[id]?[slot]
+            updateFixtureDevice(id: id) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: current?.bypassEnabled ?? false,
+                    falseColorEnabled: current?.falseColorEnabled ?? false,
+                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                    gradeControl: storedGrade ?? current?.gradeControl ?? .identity,
+                    lastRecalledPresetSlot: slot
+                )
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.recallPreset(id: id, slot: slot)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -363,6 +485,17 @@ final class TrackGradeAppModel {
         id: UUID,
         slot: Int
     ) async {
+        if launchConfiguration.usesUITestFixture {
+            var storedGrades = fixturePresetGrades[id] ?? [:]
+            storedGrades[slot] = nil
+            fixturePresetGrades[id] = storedGrades
+
+            updateFixtureDevice(id: id) { snapshot in
+                snapshot.presets.removeAll { $0.slot == slot }
+            }
+            return
+        }
+
         do {
             let snapshot = try await deviceManager.deletePreset(id: id, slot: slot)
             handleAuthenticationPromptIfNeeded(for: snapshot)
@@ -441,6 +574,25 @@ final class TrackGradeAppModel {
     private func normalizedUsername(from username: String) -> String {
         let trimmed = username.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "admin" : trimmed
+    }
+
+    private func loadUITestFixture() {
+        let fixture = TrackGradeUITestFixture.make()
+        knownDevices = fixture.knownDevices
+        snapshots = fixture.snapshots
+        selectedDeviceID = fixture.snapshots.first?.id
+        fixturePresetGrades = fixture.presetGrades
+    }
+
+    private func updateFixtureDevice(
+        id: UUID,
+        mutate: (inout ManagedColorBoxDevice) -> Void
+    ) {
+        guard let index = snapshots.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+
+        mutate(&snapshots[index])
     }
 
     private func handleAuthenticationPromptIfNeeded(

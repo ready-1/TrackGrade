@@ -22,6 +22,7 @@ struct PresetsFeatureView: View {
                     isShowingSaveSheet = true
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("save-preset-button")
             }
 
             if device.presets.isEmpty {
@@ -46,6 +47,7 @@ struct PresetsFeatureView: View {
                                     }
                                 }
                                 .buttonStyle(.borderedProminent)
+                                .accessibilityIdentifier("preset-slot-\(preset.slot)-recall")
 
                                 Button("Delete", role: .destructive) {
                                     Task {
@@ -56,6 +58,7 @@ struct PresetsFeatureView: View {
                                     }
                                 }
                                 .buttonStyle(.bordered)
+                                .accessibilityIdentifier("preset-slot-\(preset.slot)-delete")
                             }
                         }
                         .padding(16)
@@ -64,6 +67,7 @@ struct PresetsFeatureView: View {
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .fill(Color(uiColor: .tertiarySystemGroupedBackground))
                         )
+                        .accessibilityIdentifier("preset-slot-\(preset.slot)")
                     }
                 }
             }
@@ -103,6 +107,7 @@ private struct SavePresetSheet: View {
                         Text("Slot \(slot)")
                     }
                     TextField("Preset name", text: $name)
+                        .accessibilityIdentifier("preset-name-field")
                 }
             }
             .navigationTitle("Save Preset")
