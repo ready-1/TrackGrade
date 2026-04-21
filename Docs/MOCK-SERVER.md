@@ -24,6 +24,7 @@ Optional environment variables:
 
 - Serves the generated-client `/v2` read routes for build info, system config, system status, routing, pipeline stages, preset library, library control, and preview
 - Serves `/v2/routing` and `/v2/pipelineStages` writes so bypass and dynamic-node configuration exercise the same contract shape as hardware
+- Serves `POST /v2/saveDynamicLutRequest` and snapshots the current dynamic grade so preset save matches the live hardware workflow
 - Serves `PUT /v2/libraryControl` with `StoreEntry`, `SetUserName`, `RecallEntry`, and `DeleteEntry` so preset CRUD follows the live hardware contract
 - Keeps the provisional TrackGrade false-color route while the live `/v2` control path is still being verified
 - Can deliberately return `404` for false color when `MOCK_COLORBOX_SUPPORTS_FALSE_COLOR=0`, which lets integration tests exercise unsupported-feature handling
@@ -41,5 +42,6 @@ Optional environment variables:
 ## Notes
 
 - The mock now tracks the committed live `/v2` read contract closely enough for the generated client path used during device connection and refresh.
+- Dynamic-grade preset persistence follows the same sequence as the real ColorBox: save the current dynamic LUT first, then store the preset slot, then name it.
 - False color remains provisional until the real `/v2` operation mapping is verified against hardware, but the mock can now simulate unsupported firmware explicitly.
 - The Bonjour TXT record is intentionally lightweight for now and may be updated once the real device advertises its exact keys.

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-- Phase 1 — Connectivity and state plumbing started
+- Phase 1 — Connectivity and state plumbing complete; awaiting phase-boundary confirmation before Phase 2
 
 ## Completed Items
 
@@ -30,20 +30,20 @@
 - MVP priorities are now ordered as: dynamic 3D LUT control plus saturation, preset save, bypass toggle, then everything else.
 - TrackGrade now exposes app-facing Lift / Gamma / Gain and saturation controls that read from and write to `lut3d_1.colorCorrector` and `procAmp.sat` through `/v2/pipelineStages`.
 - The new dynamic-grade control path passed `swift test`, `xcodebuild test`, and a live round-trip check on the reference ColorBox, including restoring the hardware back to baseline after verification.
+- Device-native preset save for the dynamic grade path is now live-verified on firmware `3.0.0.24`: TrackGrade first calls `POST /v2/saveDynamicLutRequest`, then stores the `systemPreset`, then sets the user-visible preset name.
+- The user confirmed that presets must live on the ColorBox and that the iPad should be treated as ephemeral, so TrackGrade will not rely on local-only preset persistence for the MVP.
+- Phase 1 acceptance checks are green locally: `swift test` and `xcodebuild test` both passed after the device-native preset-save persistence fix.
 
 ## In-Flight Work
 
-- Investigating how preset save should work for the MVP now that direct dynamic-stage controls are live but the current device-native preset path does not preserve those runtime grade values on the reference firmware.
+- No in-flight implementation work. The repo is at the Phase 1 checkpoint and waiting for user confirmation before Phase 2 custom-control work begins.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
-- Device-native preset save is not preserving the dynamic grade values driven through `/v2/pipelineStages` on firmware `3.0.0.24`, even though `StoreEntry` / `RecallEntry` succeed without device-side errors.
 
 ## Next Steps
 
-- Exercise the current app shell against the real ColorBox using the new generated `/v2` read path and selected write path.
-- Decide whether the MVP preset requirement can be satisfied with TrackGrade-local presets / snapshots, or whether it must remain device-native despite the current firmware limitation.
-- Keep bypass and preset UX aligned with the new MVP ordering once the preset direction is settled.
-- Verify the iPad app discovery flow end-to-end against the Bonjour-advertised `MockColorBox`.
-- Prepare a Phase 1 checkpoint once the remaining upload uncertainty is either resolved or carved out of the current phase scope.
+- Present the Phase 1 checkpoint summary and wait for user confirmation before starting Phase 2.
+- Begin the Phase 2 custom-control implementation with the multi-touch gesture bridge, trackball/ring widgets, saturation roller, and reset interactions once approved.
+- Keep bypass and preset UX aligned with the MVP ordering as the touch-native control surface work starts in the next phase.

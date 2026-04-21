@@ -12,7 +12,6 @@
 ## TODO
 
 - Verify how successful `POST /v2/upload` requests are supposed to materialize in the device libraries on firmware `3.0.0.24`.
-- Confirm whether `POST /v2/saveDynamicLutRequest` is intentionally absent on the reference firmware despite being present in the committed spec.
 
 ## Live Endpoint Surface
 
@@ -32,7 +31,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
 | Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
 | LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d`; route verified live, persistence semantics still unresolved |
-| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Live route verified; returns `200` on the reference hardware |
+| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Live route verified; required before preset store when the current dynamic grade should survive recall |
 
 ## Divergences From The Provisional Wrapper
 
@@ -57,7 +56,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Configure node 4 dynamic | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` |
 | Update Lift / Gamma / Gain / Saturation | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` with `lut3d_1.colorCorrector` and `procAmp.sat` |
 | Bypass toggle | `GET /v2/routing` then `PUT /v2/routing` |
-| Preset save | `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
+| Preset save | `POST /v2/saveDynamicLutRequest`, then `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
 | Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
 | False color toggle | Disabled in the app on firmware `3.0.0.24`; no live `/v2` mapping found |
@@ -68,6 +67,7 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 
 - `StoreEntry` alone writes the slot contents but does not make a friendly preset name visible in `GET /v2/systemPresetLibrary`.
 - `SetUserName` on the same slot is required to surface the saved preset name in the library listing.
+- `POST /v2/saveDynamicLutRequest` must be called before `StoreEntry` when the current dynamic Lift / Gamma / Gain / Saturation state should survive preset recall.
 - `RecallEntry` successfully restores saved pipeline state when the slot contains a valid stored preset.
 - `DeleteEntry` removes the preset from the library listing cleanly.
 - `RecallEntry` against the pre-existing slot 1 (`current-show`) returned a device-side error on this box: `"Internal problems recalling preset"`, which suggests that not every listed preset is necessarily recallable.
@@ -83,7 +83,7 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - The shipped device web UI posts library imports to `POST /v2/upload` with multipart fields `file`, `kind`, and `entry`.
 - Direct TrackGrade probes with valid `.cube` files against slots 1, 2, and 3 all returned `200`, matching the UI route.
 - Those successful responses did not produce visible entries in `GET /v2/3dLutLibrary` on the reference hardware, so upload persistence semantics remain unresolved.
-- `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24` and returns `200`, but it has not yet been tied into a reliable MVP preset-save workflow.
+- `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24`, returns `200`, and is part of the reliable MVP preset-save workflow for dynamic grade persistence.
 - TrackGrade should not claim live LUT import parity until this mismatch is understood.
 
 ## Dynamic Grade Control Status
@@ -92,11 +92,11 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - A sanity check changed Lift and saturation on the real ColorBox, read the new values back successfully, and restored the original stage values cleanly.
 - This is now the primary MVP grading path for TrackGrade.
 
-## Preset Save Limitation
+## Preset Save Requirement For Dynamic Grade
 
-- On firmware `3.0.0.24`, saving a system preset after changing the dynamic grade fields did not recall those saved runtime values later, even though `StoreEntry`, `SetUserName`, and `RecallEntry` all succeeded without errors.
-- The recalled stage returned to identity/default Lift / Gamma / Gain / Saturation rather than to the saved dynamic grade.
-- TrackGrade should therefore treat device-native preset save for the direct dynamic-grade path as unresolved until the product direction or hardware workaround is confirmed.
+- On firmware `3.0.0.24`, `StoreEntry` plus `SetUserName` alone is not enough to preserve the current dynamic Lift / Gamma / Gain / Saturation state.
+- Calling `POST /v2/saveDynamicLutRequest` first makes later `RecallEntry` restore the saved dynamic grade values instead of returning to identity/default.
+- A live verification saved a named slot, changed the active grade afterward, then recalled the slot and got the saved Lift / Gamma / Gain / Saturation values back with `lut3d_1.dynamic = true` and `libraryEntry = 0`.
 
 ## Authentication Status
 

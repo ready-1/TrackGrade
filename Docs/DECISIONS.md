@@ -299,18 +299,34 @@ Implement the current MVP grade path by reading and writing the dynamic stage fi
 - The grade UI and device state model should treat `pipelineStages` as the source of truth for the current MVP look state.
 - Preset behavior now has to be evaluated against this direct stage-control path, not against a future uploaded-LUT workflow.
 
-## 2026-04-21 — Treat Device-Native Preset Save For Dynamic Grade State As Unresolved On Firmware 3.0.0.24
+## 2026-04-21 — Persist The Dynamic LUT Before Saving A Device-Native Preset
 
 ### Context
 
-Live verification showed that after modifying `lut3d_1.colorCorrector` and `procAmp.sat`, then saving a system preset with `StoreEntry` and `SetUserName`, `RecallEntry` returned the stage to identity/default values rather than to the saved dynamic grade. The calls succeeded without device-side errors.
+Direct grading through `PUT /v2/pipelineStages` successfully updates `lut3d_1.colorCorrector` and `procAmp.sat` on the reference ColorBox, but `StoreEntry` plus `SetUserName` alone did not preserve those runtime dynamic-grade values when the preset was recalled later on firmware `3.0.0.24`.
 
 ### Decision
 
-Do not assume that ColorBox `systemPreset` entries preserve the runtime dynamic grade values driven through `/v2/pipelineStages` on firmware `3.0.0.24`.
+When TrackGrade saves a ColorBox-resident preset for the dynamic grading workflow, it must first call `POST /v2/saveDynamicLutRequest`, then `StoreEntry`, then `SetUserName`.
 
 ### Consequences
 
-- The MVP preset requirement now needs an explicit product decision: rely on TrackGrade-local presets/snapshots, keep investigating a device-native workaround, or accept a narrower preset definition.
-- Existing preset CRUD wiring remains valid for device-native library actions, but it does not yet satisfy the new MVP expectation for dynamic grade recall.
-- `Docs/OPEN-QUESTIONS.md` must carry this until the product direction is confirmed.
+- TrackGrade can satisfy the MVP requirement that presets live on the ColorBox instead of the iPad.
+- The mock server and integration tests must preserve the same sequence so package tests match the live device contract.
+- Preset save is now tied to the device's persisted dynamic-LUT snapshot step and should not be simplified back to `StoreEntry` alone.
+
+## 2026-04-21 — Keep Presets Device-Native Because The iPad Is Ephemeral
+
+### Context
+
+The user clarified that preset data must live on the ColorBox itself and that the iPad should be considered ephemeral.
+
+### Decision
+
+Do not introduce TrackGrade-local preset storage as an MVP fallback. Device-native ColorBox presets are the required behavior.
+
+### Consequences
+
+- Any preset workflow that does not round-trip through the ColorBox is out of scope for the MVP.
+- Device-side preset save and recall correctness remain more important than iPad-side snapshot convenience.
+- Open questions should not present local-only presets as an acceptable substitute.
