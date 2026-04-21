@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-- Phase 2 — Custom controls started
+- Phase 2 — Custom controls verification
 
 ## Completed Items
 
@@ -36,19 +36,21 @@
 - Phase 2 started with shared trackball mapping helpers that round-trip between touch control state and the current direct `pipelineStages` grade representation; package tests cover identity, clamping, and representative control-state round trips.
 - The temporary slider-based grade card has been replaced with a touch-native Phase 2 control surface: three trackballs with independent ball/ring gesture regions, a saturation roller, numeric tap-to-edit rows, double-tap reset affordances, and a settings sheet for sensitivity/haptics tuning.
 - The app target now compiles the UIKit touch bridge, settings feature, and haptics coordinator, and both `swift test` and `xcodebuild test` pass with the new control-surface code in place.
+- TrackGrade now includes an offline `-ui-test-fixture` launch mode that seeds an in-memory ColorBox device, enabling app-level verification without direct hardware access.
+- `TrackGrade.xcodeproj` now contains a real `TrackGradeUITests` target, and `xcodebuild test` covers fixture-backed launch, bypass toggle, settings-sheet launch, and preset-save flows on the iPad simulator.
+- `Docs/PHASE-2-TESTING.md` now records the offline fixture path, simulator command, and the remaining manual checklist for simultaneous multi-touch and hardware feel validation.
 
 ## In-Flight Work
 
-- Closing the remaining Phase 2 verification gap: the project still only has a minimal Xcode test target, so dedicated app-linked snapshot / multi-touch automation is not wired yet.
+- Closing the remaining Phase 2 acceptance gap around true simultaneous multi-touch and real-device feel, which XCUITest still cannot validate end to end on its own.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
-- The Xcode project does not yet have dedicated app-linked UI-test coverage for the new touch surface, so Phase 2 acceptance is functionally close but not fully closed on automated interaction testing.
+- True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware even though the offline fixture-backed UI suite is now in place.
 
 ## Next Steps
 
-- Decide whether to wire a dedicated app-linked test target / UI-test target next, or capture the remaining Phase 2 acceptance work through a documented manual simulator/hardware checklist first.
-- Add stronger automated verification for the new control surface once the test-target wiring gap is resolved.
-- Tune the new gesture surface against real hardware if any sensitivity adjustments emerge during manual grading.
-- Keep bypass and preset UX aligned with the MVP ordering as the touch-native control surface work starts in the next phase.
+- Run the manual checklist in `Docs/PHASE-2-TESTING.md` once an iPad and ColorBox are available together again.
+- Tune the gesture surface against real hardware if any sensitivity adjustments emerge during manual grading.
+- Decide whether Phase 2 acceptance is satisfied with the new offline UI suite plus manual multi-touch validation, or whether another automation pass is needed before moving on.

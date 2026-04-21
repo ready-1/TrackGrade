@@ -251,6 +251,22 @@ TrackGrade should infer false-color availability from known unsupported firmware
 - Unsupported false color no longer drives reconnect behavior or degraded connection state.
 - Mock-backed integration tests now cover the unsupported-feature path directly.
 
+## 2026-04-21 — Add An Offline UI Fixture Mode For Phase 2 Verification
+
+### Context
+
+Phase 2 needs app-level verification for the custom control surface, but the ColorBox will not always be reachable from the development machine and the Xcode project previously only had a placeholder UI-test file with no runnable UI-test target.
+
+### Decision
+
+Add a real `TrackGradeUITests` target and a `-ui-test-fixture` launch mode that boots the app with an in-memory SwiftData store plus a seeded fixture ColorBox snapshot whose preset and toggle state mutate locally.
+
+### Consequences
+
+- `xcodebuild test` can now verify key app flows without live hardware access.
+- Fixture-backed tests can cover launch, bypass, settings, and preset save behavior deterministically.
+- True simultaneous multi-touch and final sensitivity tuning still require manual validation on actual iPad hardware.
+
 ## 2026-04-21 — Treat Live `/v2/upload` Behavior As Unverified On Firmware 3.0.0.24
 
 ### Context
