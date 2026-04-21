@@ -28,3 +28,7 @@ playground.xcworkspace
 # Editors
 *.swp
 *.swo
+
+# Local source materials
+OPUS-Interview.txt
+Project-Brief.txt
