@@ -109,9 +109,49 @@ final class TrackGradeIntegrationTests: XCTestCase {
         try await application?.asyncShutdown()
     }
 
+    func testManagerMarksFalseColorUnsupportedWithoutDegradingDevice() async throws {
+        let application = try await makeApplication(
+            port: 18083,
+            supportsFalseColor: false
+        )
+        defer {
+            Task {
+                try? await application.asyncShutdown()
+            }
+        }
+
+        let manager = DeviceManager(retryPolicy: .testing)
+        let deviceID = try await manager.registerDevice(
+            name: "False Color Unsupported",
+            address: "http://127.0.0.1:18083"
+        )
+
+        let connectedDevice = try await manager.connect(id: deviceID)
+        XCTAssertEqual(connectedDevice.connectionState, .connected)
+        XCTAssertEqual(connectedDevice.supportsFalseColor, true)
+
+        do {
+            _ = try await manager.setFalseColor(id: deviceID, enabled: true)
+            XCTFail("Expected an unsupported false-color error.")
+        } catch let error as ColorBoxAPIError {
+            XCTAssertEqual(
+                error,
+                .unsupportedFeature(
+                    "False color is not exposed by the ColorBox `/v2` API on firmware 3.0.0.24."
+                )
+            )
+        }
+
+        let updatedDevice = await manager.deviceSnapshot(id: deviceID)
+        XCTAssertEqual(updatedDevice?.connectionState, .connected)
+        XCTAssertEqual(updatedDevice?.supportsFalseColor, false)
+        XCTAssertEqual(updatedDevice?.pipelineState?.falseColorEnabled, false)
+    }
+
     private func makeApplication(
         port: Int,
-        password: String? = nil
+        password: String? = nil,
+        supportsFalseColor: Bool = true
     ) async throws -> Application {
         let application = try await Application.make(.testing)
         application.http.server.configuration.hostname = "127.0.0.1"
@@ -125,6 +165,7 @@ final class TrackGradeIntegrationTests: XCTestCase {
                 bonjourServiceName: "MockColorBox-Test-\(port)",
                 username: password == nil ? nil : "admin",
                 password: password,
+                supportsFalseColor: supportsFalseColor,
                 latencyMilliseconds: 0,
                 firmwareVersion: "mock-1.0.0",
                 firmwareBuild: "build-1",

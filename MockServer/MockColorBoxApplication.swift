@@ -8,6 +8,7 @@ struct MockColorBoxConfiguration: Sendable, Equatable {
     var bonjourServiceName: String
     var username: String?
     var password: String?
+    var supportsFalseColor: Bool
     var latencyMilliseconds: UInt64
     var firmwareVersion: String
     var firmwareBuild: String
@@ -20,6 +21,7 @@ struct MockColorBoxConfiguration: Sendable, Equatable {
             bonjourServiceName: Environment.get("MOCK_COLORBOX_SERVICE_NAME") ?? "MockColorBox-TrackGrade",
             username: Environment.get("MOCK_COLORBOX_USERNAME"),
             password: Environment.get("MOCK_COLORBOX_PASSWORD"),
+            supportsFalseColor: Environment.get("MOCK_COLORBOX_SUPPORTS_FALSE_COLOR") != "0",
             latencyMilliseconds: UInt64(Environment.get("MOCK_COLORBOX_LATENCY_MS") ?? "") ?? 0,
             firmwareVersion: Environment.get("MOCK_COLORBOX_FIRMWARE_VERSION") ?? "mock-1.0.0",
             firmwareBuild: Environment.get("MOCK_COLORBOX_FIRMWARE_BUILD") ?? "mock-build-1",
@@ -216,6 +218,9 @@ enum MockColorBoxApplication {
         }
 
         app.patch("pipeline", "false-color") { request async throws -> ColorBoxPipelineState in
+            guard configuration.supportsFalseColor else {
+                throw Abort(.notFound, reason: "False color is disabled in this mock configuration.")
+            }
             let toggle = try request.content.decode(ColorBoxBooleanToggle.self)
             return try await state.setFalseColor(toggle.enabled)
         }

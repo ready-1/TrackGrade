@@ -33,6 +33,7 @@ public struct ManagedColorBoxDevice: Identifiable, Sendable, Equatable {
     public var systemInfo: ColorBoxSystemInfo?
     public var firmwareInfo: ColorBoxFirmwareInfo?
     public var pipelineState: ColorBoxPipelineState?
+    public var supportsFalseColor: Bool?
     public var presets: [ColorBoxPresetSummary]
     public var previewFrameData: Data?
     public var previewByteCount: Int
@@ -46,6 +47,7 @@ public struct ManagedColorBoxDevice: Identifiable, Sendable, Equatable {
         systemInfo: ColorBoxSystemInfo? = nil,
         firmwareInfo: ColorBoxFirmwareInfo? = nil,
         pipelineState: ColorBoxPipelineState? = nil,
+        supportsFalseColor: Bool? = nil,
         presets: [ColorBoxPresetSummary] = [],
         previewFrameData: Data? = nil,
         previewByteCount: Int = 0
@@ -58,6 +60,7 @@ public struct ManagedColorBoxDevice: Identifiable, Sendable, Equatable {
         self.systemInfo = systemInfo
         self.firmwareInfo = firmwareInfo
         self.pipelineState = pipelineState
+        self.supportsFalseColor = supportsFalseColor
         self.presets = presets
         self.previewFrameData = previewFrameData
         self.previewByteCount = previewByteCount

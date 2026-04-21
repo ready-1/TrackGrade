@@ -124,6 +124,13 @@ struct GradeFeatureView: View {
                     }
                 )
             )
+            .disabled(device.supportsFalseColor == false)
+
+            if device.supportsFalseColor == false {
+                Text(falseColorUnsupportedMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
         .cardStyle()
     }
@@ -139,6 +146,15 @@ struct GradeFeatureView: View {
             )
         }
         .cardStyle()
+    }
+
+    private var falseColorUnsupportedMessage: String {
+        if let firmwareVersion = device.firmwareInfo?.version,
+           firmwareVersion.isEmpty == false {
+            return "False color is not exposed by ColorBox firmware \(firmwareVersion)."
+        }
+
+        return "False color is not exposed by this ColorBox firmware."
     }
 }
 

@@ -105,6 +105,7 @@ public actor DeviceManager {
             refreshed.systemInfo = try await systemInfo
             refreshed.firmwareInfo = try await firmwareInfo
             refreshed.pipelineState = try await pipelineState
+            refreshed.supportsFalseColor = inferredFalseColorSupport(from: refreshed.firmwareInfo)
             refreshed.presets = try await presets
             let previewData = try await previewFrame
             refreshed.previewFrameData = previewData
@@ -153,7 +154,20 @@ public actor DeviceManager {
         do {
             let storedDevice = try requireDevice(id: id)
             let pipelineState = try await makeClient(for: storedDevice).setFalseColor(enabled)
-            return try await updatePipelineState(id: id, pipelineState: pipelineState)
+            return try await updatePipelineState(
+                id: id,
+                pipelineState: pipelineState,
+                supportsFalseColor: true
+            )
+        } catch let error as ColorBoxAPIError {
+            if case let .unsupportedFeature(message) = error {
+                try markFalseColorUnsupported(
+                    id: id,
+                    message: message
+                )
+                throw error
+            }
+            return try await handleFailure(id: id, error: error)
         } catch {
             return try await handleFailure(id: id, error: error)
         }
@@ -238,11 +252,13 @@ public actor DeviceManager {
 
     private func updatePipelineState(
         id: UUID,
-        pipelineState: ColorBoxPipelineState
+        pipelineState: ColorBoxPipelineState,
+        supportsFalseColor: Bool? = nil
     ) async throws -> ManagedColorBoxDevice {
         let currentSnapshot = try requireDevice(id: id)
         var updated = currentSnapshot
         updated.snapshot.pipelineState = pipelineState
+        updated.snapshot.supportsFalseColor = supportsFalseColor ?? updated.snapshot.supportsFalseColor
         updated.snapshot.connectionState = .connected
         updated.snapshot.lastErrorDescription = nil
         updated.hasConnectedOnce = true
@@ -252,6 +268,30 @@ public actor DeviceManager {
         broadcastSnapshots()
 
         return updated.snapshot
+    }
+
+    private func markFalseColorUnsupported(
+        id: UUID,
+        message: String
+    ) throws {
+        var storedDevice = try requireDevice(id: id)
+        storedDevice.snapshot.supportsFalseColor = false
+        storedDevice.snapshot.connectionState = .connected
+        storedDevice.snapshot.lastErrorDescription = message
+
+        if let pipelineState = storedDevice.snapshot.pipelineState {
+            storedDevice.snapshot.pipelineState = ColorBoxPipelineState(
+                bypassEnabled: pipelineState.bypassEnabled,
+                falseColorEnabled: false,
+                dynamicLUTMode: pipelineState.dynamicLUTMode,
+                lastRecalledPresetSlot: pipelineState.lastRecalledPresetSlot
+            )
+        }
+
+        devices[id] = storedDevice
+        reconnectTasks[id]?.cancel()
+        reconnectTasks[id] = nil
+        broadcastSnapshots()
     }
 
     private func updatePresets(
@@ -349,6 +389,24 @@ public actor DeviceManager {
         }
 
         return storedDevice
+    }
+
+    private func inferredFalseColorSupport(
+        from firmwareInfo: ColorBoxFirmwareInfo?
+    ) -> Bool? {
+        guard let firmwareInfo else {
+            return nil
+        }
+
+        if firmwareInfo.version == "3.0.0.24" {
+            return false
+        }
+
+        if firmwareInfo.version.hasPrefix("mock-") {
+            return true
+        }
+
+        return nil
     }
 }
 
