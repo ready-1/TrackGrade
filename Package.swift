@@ -18,6 +18,9 @@ let package = Package(
             targets: ["MockColorBox"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.0.0"),
+    ],
     targets: [
         .target(
             name: "TrackGradeCore",
@@ -25,7 +28,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "MockColorBox",
-            dependencies: ["TrackGradeCore"],
+            dependencies: [
+                "TrackGradeCore",
+                .product(name: "Vapor", package: "vapor"),
+            ],
             path: "MockServer"
         ),
         .testTarget(
@@ -35,7 +41,11 @@ let package = Package(
         ),
         .testTarget(
             name: "TrackGradeIntegrationTests",
-            dependencies: ["TrackGradeCore"],
+            dependencies: [
+                "TrackGradeCore",
+                "MockColorBox",
+                .product(name: "Vapor", package: "vapor"),
+            ],
             path: "Tests/IntegrationTests"
         ),
     ],

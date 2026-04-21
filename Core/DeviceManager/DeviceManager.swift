@@ -1,5 +1,306 @@
 import Foundation
 
 public actor DeviceManager {
-    public init() {}
+    private struct StoredDevice: Sendable {
+        var snapshot: ManagedColorBoxDevice
+        let endpoint: ColorBoxEndpoint
+        let credentials: ColorBoxCredentials?
+        var hasConnectedOnce: Bool
+    }
+
+    private var devices: [UUID: StoredDevice] = [:]
+    private var reconnectTasks: [UUID: Task<Void, Never>] = [:]
+    private let urlSession: URLSession
+    private let retryPolicy: ConnectionRetryPolicy
+
+    public init(
+        urlSession: URLSession = .shared,
+        retryPolicy: ConnectionRetryPolicy = .default
+    ) {
+        self.urlSession = urlSession
+        self.retryPolicy = retryPolicy
+    }
+
+    @discardableResult
+    public func registerDevice(
+        name: String,
+        address: String,
+        credentials: ColorBoxCredentials? = nil
+    ) throws -> UUID {
+        let endpoint = try ColorBoxEndpoint.resolve(address)
+        let id = UUID()
+        let snapshot = ManagedColorBoxDevice(
+            id: id,
+            name: name,
+            address: address
+        )
+        devices[id] = StoredDevice(
+            snapshot: snapshot,
+            endpoint: endpoint,
+            credentials: credentials,
+            hasConnectedOnce: false
+        )
+        return id
+    }
+
+    public func removeDevice(id: UUID) {
+        reconnectTasks[id]?.cancel()
+        reconnectTasks[id] = nil
+        devices[id] = nil
+    }
+
+    public func deviceSnapshot(id: UUID) -> ManagedColorBoxDevice? {
+        devices[id]?.snapshot
+    }
+
+    public func allDeviceSnapshots() -> [ManagedColorBoxDevice] {
+        devices.values.map(\.snapshot).sorted { $0.name < $1.name }
+    }
+
+    @discardableResult
+    public func connect(id: UUID) async throws -> ManagedColorBoxDevice {
+        try updateConnectionState(for: id, to: .connecting)
+        return try await refreshDevice(id: id)
+    }
+
+    @discardableResult
+    public func refreshDevice(id: UUID) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let client = makeClient(for: storedDevice)
+
+            async let systemInfo = client.fetchSystemInfo()
+            async let firmwareInfo = client.fetchFirmwareInfo()
+            async let pipelineState = client.fetchPipelineState()
+            async let presets = client.listPresets()
+            async let previewFrame = client.fetchPreviewFrame()
+
+            var refreshed = storedDevice.snapshot
+            refreshed.systemInfo = try await systemInfo
+            refreshed.firmwareInfo = try await firmwareInfo
+            refreshed.pipelineState = try await pipelineState
+            refreshed.presets = try await presets
+            refreshed.previewByteCount = try await previewFrame.count
+            refreshed.connectionState = .connected
+            refreshed.lastErrorDescription = nil
+
+            var updated = storedDevice
+            updated.snapshot = refreshed
+            updated.hasConnectedOnce = true
+            devices[id] = updated
+            reconnectTasks[id]?.cancel()
+            reconnectTasks[id] = nil
+
+            return refreshed
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func configurePipelineForTrackGrade(id: UUID) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let pipelineState = try await makeClient(for: storedDevice).configureDynamicLUTNode()
+            return try await updatePipelineState(id: id, pipelineState: pipelineState)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func setBypass(id: UUID, enabled: Bool) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let pipelineState = try await makeClient(for: storedDevice).setBypass(enabled)
+            return try await updatePipelineState(id: id, pipelineState: pipelineState)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func setFalseColor(id: UUID, enabled: Bool) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let pipelineState = try await makeClient(for: storedDevice).setFalseColor(enabled)
+            return try await updatePipelineState(id: id, pipelineState: pipelineState)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func savePreset(
+        id: UUID,
+        slot: Int,
+        name: String
+    ) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let presets = try await makeClient(for: storedDevice).savePreset(slot: slot, name: name)
+            return try updatePresets(id: id, presets: presets)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func recallPreset(id: UUID, slot: Int) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let pipelineState = try await makeClient(for: storedDevice).recallPreset(slot: slot)
+            return try await updatePipelineState(id: id, pipelineState: pipelineState)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func deletePreset(id: UUID, slot: Int) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let presets = try await makeClient(for: storedDevice).deletePreset(slot: slot)
+            return try updatePresets(id: id, presets: presets)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
+    public func refreshPreview(id: UUID) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let previewFrame = try await makeClient(for: storedDevice).fetchPreviewFrame()
+            var updated = storedDevice
+            updated.snapshot.previewByteCount = previewFrame.count
+            devices[id] = updated
+            return updated.snapshot
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    private func makeClient(for storedDevice: StoredDevice) -> ColorBoxAPIClient {
+        ColorBoxAPIClient(
+            endpoint: storedDevice.endpoint,
+            credentials: storedDevice.credentials,
+            urlSession: urlSession
+        )
+    }
+
+    private func updateConnectionState(
+        for id: UUID,
+        to state: ConnectionState
+    ) throws {
+        var storedDevice = try requireDevice(id: id)
+        storedDevice.snapshot.connectionState = state
+        storedDevice.snapshot.lastErrorDescription = nil
+        devices[id] = storedDevice
+    }
+
+    private func updatePipelineState(
+        id: UUID,
+        pipelineState: ColorBoxPipelineState
+    ) async throws -> ManagedColorBoxDevice {
+        let currentSnapshot = try requireDevice(id: id)
+        var updated = currentSnapshot
+        updated.snapshot.pipelineState = pipelineState
+        updated.snapshot.connectionState = .connected
+        updated.snapshot.lastErrorDescription = nil
+        updated.hasConnectedOnce = true
+        devices[id] = updated
+        reconnectTasks[id]?.cancel()
+        reconnectTasks[id] = nil
+
+        return updated.snapshot
+    }
+
+    private func updatePresets(
+        id: UUID,
+        presets: [ColorBoxPresetSummary]
+    ) throws -> ManagedColorBoxDevice {
+        var storedDevice = try requireDevice(id: id)
+        storedDevice.snapshot.presets = presets
+        devices[id] = storedDevice
+        return storedDevice.snapshot
+    }
+
+    private func handleFailure(
+        id: UUID,
+        error: Error
+    ) async throws -> ManagedColorBoxDevice {
+        var storedDevice = try requireDevice(id: id)
+        storedDevice.snapshot.lastErrorDescription = String(describing: error)
+
+        if storedDevice.hasConnectedOnce {
+            storedDevice.snapshot.connectionState = .degraded
+            devices[id] = storedDevice
+            startReconnectLoopIfNeeded(for: id)
+        } else {
+            storedDevice.snapshot.connectionState = .error
+            devices[id] = storedDevice
+        }
+
+        return storedDevice.snapshot
+    }
+
+    private func startReconnectLoopIfNeeded(for id: UUID) {
+        guard reconnectTasks[id] == nil else {
+            return
+        }
+
+        reconnectTasks[id] = Task { [retryPolicy] in
+            for delay in retryPolicy.delays {
+                if Task.isCancelled {
+                    return
+                }
+
+                let nanoseconds = UInt64(delay * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanoseconds)
+
+                if Task.isCancelled {
+                    return
+                }
+
+                do {
+                    _ = try await self.refreshDevice(id: id)
+                    return
+                } catch {
+                    continue
+                }
+            }
+
+            self.markRetryExhausted(for: id)
+        }
+    }
+
+    private func markRetryExhausted(for id: UUID) {
+        guard var storedDevice = devices[id] else {
+            return
+        }
+
+        storedDevice.snapshot.connectionState = .error
+        devices[id] = storedDevice
+        reconnectTasks[id] = nil
+    }
+
+    private func requireDevice(id: UUID) throws -> StoredDevice {
+        guard let storedDevice = devices[id] else {
+            throw DeviceManagerError.unknownDevice(id)
+        }
+
+        return storedDevice
+    }
+}
+
+public enum DeviceManagerError: Error, LocalizedError, Sendable, Equatable {
+    case unknownDevice(UUID)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .unknownDevice(id):
+            return "Unknown device identifier: \(id.uuidString)"
+        }
+    }
 }
