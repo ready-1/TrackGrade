@@ -35,10 +35,16 @@ public struct ColorBoxEndpoint: Codable, Sendable, Equatable {
 public struct ColorBoxCredentials: Codable, Sendable, Equatable {
     public let username: String
     public let password: String
+    public let apiKey: String?
 
-    public init(username: String, password: String) {
+    public init(
+        username: String,
+        password: String,
+        apiKey: String? = nil
+    ) {
         self.username = username
         self.password = password
+        self.apiKey = apiKey
     }
 }
 

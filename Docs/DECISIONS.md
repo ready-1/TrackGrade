@@ -150,3 +150,35 @@ Treat API-key support as the required auth model for real ColorBox write operati
 - The app’s current Keychain model and credential UI need to evolve beyond username/password fields.
 - Mutating calls should not be switched to the generated hardware client until a real API-key flow is defined.
 - `Docs/OPEN-QUESTIONS.md` must track the missing API-key input from the user.
+
+## 2026-04-21 — Use The Generated `/v2` Client For Connect-Time Reads And Verified Mutations First
+
+### Context
+
+The live ColorBox spec is now committed and the generated client compiles. The real hardware clearly exposes `/v2/buildInfo`, `/v2/system/config`, `/v2/system/status`, `/v2/routing`, `/v2/pipelineStages`, `/v2/systemPresetLibrary`, and `/v2/preview`, but preset mutations and false color still lack a verified mapping.
+
+### Decision
+
+Move TrackGrade’s connect-time reads, preview fetch, preset listing, pipeline-node configuration, and bypass mutation onto the generated `/v2` client now, while leaving false color and preset save / recall / delete on the older provisional compatibility path until their live write semantics are confirmed.
+
+### Consequences
+
+- Real hardware connections now validate against the committed spec instead of the earlier guessed read routes.
+- `MockColorBox` must serve matching `/v2` responses so integration tests continue to exercise the same contract shape.
+- A later Phase 1 follow-up still needs to eliminate the remaining provisional mutation routes.
+
+## 2026-04-21 — Treat The Reference ColorBox As Currently Unauthenticated While Preserving Future Auth Support
+
+### Context
+
+`GET /v2/system/config` on the reference hardware at `172.29.14.51` currently reports `authenticationEnable: false`, even though the spec declares an API-key security scheme.
+
+### Decision
+
+Treat credentials as optional for the current reference device, but preserve transport-layer support for both Basic auth and `X-API-KEY` headers so TrackGrade can target authenticated hardware later without reworking the client foundation again.
+
+### Consequences
+
+- Phase 1 hardware validation is no longer blocked on obtaining an API key from the current ColorBox.
+- The app UI can defer API-key entry for a short time, but it remains required before TrackGrade can claim parity with authenticated devices.
+- Open questions now focus more on preset and false-color mapping than on immediate credential acquisition.

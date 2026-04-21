@@ -27,7 +27,11 @@ let package = Package(
     targets: [
         .target(
             name: "TrackGradeCore",
-            dependencies: ["ColorBoxOpenAPI"],
+            dependencies: [
+                "ColorBoxOpenAPI",
+                .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime"),
+                .product(name: "OpenAPIURLSession", package: "swift-openapi-urlsession"),
+            ],
             path: "Core",
             exclude: [
                 "ColorBoxAPI/GeneratedClient",

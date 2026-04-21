@@ -1,6 +1,6 @@
 # Mock ColorBox
 
-`MockColorBox` is the local development stand-in for an AJA ColorBox. It runs as a macOS Swift executable, mirrors the provisional TrackGrade endpoint surface, and now advertises itself over Bonjour as `_http._tcp`.
+`MockColorBox` is the local development stand-in for an AJA ColorBox. It runs as a macOS Swift executable, advertises itself over Bonjour as `_http._tcp`, and now serves both the older provisional TrackGrade routes and the generated-client `/v2` read surface used by the real hardware path.
 
 ## Run It
 
@@ -21,9 +21,11 @@ Optional environment variables:
 
 ## Current Behavior
 
-- Serves the provisional TrackGrade endpoint surface used by `ColorBoxAPIClient`
+- Serves the generated-client `/v2` read routes for build info, system config, system status, routing, pipeline stages, preset library, library control, and preview
+- Serves `/v2/routing` and `/v2/pipelineStages` writes so bypass and dynamic-node configuration exercise the same contract shape as hardware
+- Keeps the provisional TrackGrade routes for false color and preset mutations while the live `/v2` write mapping is still being verified
 - Stores dynamic LUT uploads in memory
-- Serves a static PNG preview frame
+- Serves a static PNG preview frame, both as raw `/preview/frame` bytes and as base64 image JSON on `/v2/preview`
 - Supports optional HTTP Basic auth
 - Publishes a Bonjour `_http._tcp` service with ColorBox-oriented TXT keys for discovery work
 
@@ -35,5 +37,6 @@ Optional environment variables:
 
 ## Notes
 
-- The mock contract remains provisional until `Docs/openapi-colorbox.json` can be fetched from the live ColorBox and the transport layer is regenerated from the real spec.
+- The mock now tracks the committed live `/v2` read contract closely enough for the generated client path used during device connection and refresh.
+- False color and preset mutation behavior remain provisional until the real `/v2` operation mapping is verified against hardware.
 - The Bonjour TXT record is intentionally lightweight for now and may be updated once the real device advertises its exact keys.
