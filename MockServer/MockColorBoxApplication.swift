@@ -199,6 +199,11 @@ enum MockColorBoxApplication {
             }
         }
 
+        app.post("v2", "saveDynamicLutRequest") { request async throws -> HTTPStatus in
+            try await state.saveDynamicLutRequest()
+            return .ok
+        }
+
         app.get("v2", "libraryControl") { request async throws -> MockColorBoxLibraryControl in
             let control = try await state.libraryControl()
             return MockColorBoxLibraryControl(

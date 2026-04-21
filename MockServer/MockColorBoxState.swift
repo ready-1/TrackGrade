@@ -6,6 +6,7 @@ actor MockColorBoxState {
     private let systemInfoValue: ColorBoxSystemInfo
     private var firmwareInfoValue: ColorBoxFirmwareInfo
     private var pipelineStateValue: ColorBoxPipelineState
+    private var persistedDynamicGradeValue: ColorBoxGradeControlState
     private var presetStore: [Int: ColorBoxPresetSummary]
     private var presetPipelineStore: [Int: ColorBoxPipelineState]
     private var libraryControlValue: MockLibraryControlState
@@ -32,6 +33,7 @@ actor MockColorBoxState {
             gradeControl: .identity,
             lastRecalledPresetSlot: nil
         )
+        self.persistedDynamicGradeValue = .identity
         self.presetStore = [
             1: ColorBoxPresetSummary(slot: 1, name: "Factory Neutral"),
             2: ColorBoxPresetSummary(slot: 2, name: "Corporate LED"),
@@ -89,6 +91,11 @@ actor MockColorBoxState {
             byteCount: data.count,
             sequenceID: sequenceID
         )
+    }
+
+    func saveDynamicLutRequest() async throws {
+        try await applyLatency()
+        persistedDynamicGradeValue = pipelineStateValue.gradeControl
     }
 
     func setBypass(_ enabled: Bool) async throws -> ColorBoxPipelineState {
@@ -203,7 +210,16 @@ actor MockColorBoxState {
         case "StoreEntry":
             let existingName = presetStore[entry]?.name ?? "Preset \(entry)"
             presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: existingName)
-            presetPipelineStore[entry] = pipelineStateValue
+            let storedGradeControl = pipelineStateValue.dynamicLUTMode == "dynamic"
+                ? persistedDynamicGradeValue
+                : pipelineStateValue.gradeControl
+            presetPipelineStore[entry] = ColorBoxPipelineState(
+                bypassEnabled: pipelineStateValue.bypassEnabled,
+                falseColorEnabled: pipelineStateValue.falseColorEnabled,
+                dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
+                gradeControl: storedGradeControl,
+                lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
+            )
         case "SetUserName":
             let normalizedName = data.trimmingCharacters(in: .whitespacesAndNewlines)
             let resolvedName = normalizedName.isEmpty ? "Preset \(entry)" : normalizedName

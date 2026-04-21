@@ -160,6 +160,7 @@ public struct ColorBoxAPIClient: Sendable {
 
     public func savePreset(slot: Int, name: String) async throws -> [ColorBoxPresetSummary] {
         do {
+            try await saveDynamicLutRequestV2()
             try await performLibraryActionV2(
                 library: "systemPreset",
                 entry: slot,
@@ -434,6 +435,14 @@ public struct ColorBoxAPIClient: Sendable {
                 name: firstNonEmpty([entry.userName, fallbackName]) ?? "Preset \(index + 1)"
             )
         }
+    }
+
+    private func saveDynamicLutRequestV2() async throws {
+        try await performNoContentRequest(
+            path: "v2/saveDynamicLutRequest",
+            method: "POST",
+            contentType: "application/json"
+        )
     }
 
     private func performLibraryActionV2(

@@ -56,6 +56,7 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertEqual(recalledPresetDevice.pipelineState?.lastRecalledPresetSlot, 3)
         XCTAssertEqual(recalledPresetDevice.pipelineState?.gradeControl.saturation ?? 0, 1.25, accuracy: 0.0001)
         XCTAssertEqual(recalledPresetDevice.pipelineState?.gradeControl.gain.red ?? 0, 1.2, accuracy: 0.0001)
+        XCTAssertEqual(recalledPresetDevice.pipelineState?.gradeControl.gamma.red ?? 0, 0.1, accuracy: 0.0001)
 
         let previewDevice = try await manager.refreshPreview(id: deviceID)
         XCTAssertGreaterThan(previewDevice.previewByteCount, 0)
