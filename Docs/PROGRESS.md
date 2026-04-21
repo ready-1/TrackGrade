@@ -21,7 +21,7 @@
 
 ## Blockers
 
-- No user-input blocker at the moment.
+- The reference ColorBox at `172.29.14.51` is visible over Bonjour but is currently unreachable over HTTP from this Mac, so the live OpenAPI fetch is blocked pending device/network verification.
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
 
 ## Next Steps
