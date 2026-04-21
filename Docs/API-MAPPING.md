@@ -1,33 +1,46 @@
 # API Mapping
 
-## TODO
-
-- Fetch the live ColorBox OpenAPI JSON from the reference device at `172.29.14.51` once its HTTP interface is reachable from this Mac.
-- Commit the fetched specification to `Docs/openapi-colorbox.json`.
-- Generate the typed client with `swift-openapi-generator`.
-- Replace the handwritten request wrapper with generated client calls once the committed spec is available.
-
 ## Current Status
 
-- Bonjour discovery confirms a ColorBox service named `ColorBox-1SC001145` on `_http._tcp.local` at `172.29.14.51:80`.
-- Direct HTTP/TCP access from this development machine is currently failing with `No route to host` / `host-unreach`, so the live spec cannot yet be fetched.
+- The live OpenAPI document was fetched from `http://172.29.14.51/api/openapi.yaml` on 2026-04-21 and committed to [openapi-colorbox.json](/Users/bob/dev/TrackGrade/Docs/openapi-colorbox.json) and [openapi-colorbox.yaml](/Users/bob/dev/TrackGrade/Docs/openapi-colorbox.yaml).
+- The real device is serving firmware/app version `3.0.0.24` via `GET /v2/buildInfo` and `GET /v2/system/status`.
+- The live contract uses server base `'/v2'`, which means the provisional `/system/info`-style paths in the handwritten mock and wrapper do not match the real device surface.
+- The document declares an API key security scheme named `app_id` carried in the `X-API-KEY` header.
 
-## Current Endpoint Surface
+## TODO
 
-The following routes are implemented in `Core/ColorBoxAPI/ColorBoxAPIClient.swift` and mirrored by the in-process `MockColorBox` Vapor server. These route assumptions are provisional until the live OpenAPI document is fetched from the real device.
+- Generate the typed client with `swift-openapi-generator` from the committed live spec.
+- Replace the handwritten request wrapper with generated client calls once the auth and endpoint-mapping questions are settled.
+- Update the mock server so its route surface matches the real `/v2` hardware contract closely enough for Phase 1 parity testing.
 
-| Capability | Method | Path | Current caller |
+## Live Endpoint Surface
+
+The following endpoints are the real hardware routes currently relevant to TrackGrade. This table intentionally focuses on Phase 1 connectivity work rather than every endpoint in the device spec.
+
+| Capability | Method | Path | Notes |
 | --- | --- | --- | --- |
-| Fetch OpenAPI document | `GET` | `/api` | `fetchOpenAPIDocument()` |
-| Fetch system info | `GET` | `/system/info` | `fetchSystemInfo()` |
-| Fetch firmware info | `GET` | `/system/firmware` | `fetchFirmwareInfo()` |
-| Fetch pipeline state | `GET` | `/pipeline/state` | `fetchPipelineState()` |
-| Configure node 4 for dynamic LUTs | `PATCH` | `/pipeline/aja/nodes/3dlut/dynamic` | `configureDynamicLUTNode()` |
-| Upload dynamic LUT text | `PUT` | `/pipeline/aja/nodes/3dlut/dynamic` | `uploadDynamicLUT(cubeText:sequenceID:)` |
-| Toggle pipeline bypass | `PATCH` | `/pipeline/bypass` | `setBypass(_:)` |
-| Toggle false color | `PATCH` | `/pipeline/false-color` | `setFalseColor(_:)` |
-| List presets | `GET` | `/presets` | `listPresets()` |
-| Save preset | `POST` | `/presets/save` | `savePreset(slot:name:)` |
-| Recall preset | `POST` | `/presets/recall` | `recallPreset(slot:)` |
-| Delete preset | `DELETE` | `/presets/{slot}` | `deletePreset(slot:)` |
-| Fetch preview frame | `GET` | `/preview/frame` | `fetchPreviewFrame()` |
+| Fetch OpenAPI UI | `GET` | `/api/index.html` | Swagger UI page discovered on the live device |
+| Fetch OpenAPI source | `GET` | `/api/openapi.yaml` | Source of truth committed under `Docs/` |
+| Build / firmware info | `GET` | `/v2/buildInfo` | Returns app version, build type, repo hash, build date |
+| System status | `GET` | `/v2/system/status` | Returns running / boot versions and transform-mode state |
+| Global device status | `GET` | `/v2/status` | Larger system-wide status object |
+| Routing / bypass state | `GET` / `PUT` | `/v2/routing` | Contains `pipelineBypassButton` and `pipelineBypassUser` |
+| Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, and library entry selections |
+| Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
+| Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
+| Library control | `GET` / `PUT` | `/v2/libraryControl` | Likely used for some library operations; needs mapping confirmation |
+| LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d` |
+| Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Explicitly writes flash; spec warns to use sparingly |
+
+## Divergences From The Provisional Wrapper
+
+- `ColorBoxAPIClient.fetchSystemInfo()` and `fetchFirmwareInfo()` were built around guessed `/system/info` and `/system/firmware` routes, but the real spec exposes `GET /v2/buildInfo` and `GET /v2/system/status`.
+- The real pipeline model is represented as `PipelineStages` and `Routing`, not `pipeline/state` plus dedicated bypass / false-color endpoints.
+- Preview fetches are JSON objects with base64 image payloads, not raw image bytes from `/preview/frame`.
+- Presets are exposed as a library array and likely controlled through library operations, not `GET/POST/DELETE /presets/*`.
+- Dynamic LUT replacement appears to involve `POST /v2/upload` and related library / stage selection state, not a direct `PUT /pipeline/aja/nodes/3dlut/dynamic`.
+
+## Open Questions From The Live Spec
+
+- The spec documents `X-API-KEY` auth, but the current app shell only models username/password credentials.
+- No dedicated false-color endpoint has been identified in the live contract yet.

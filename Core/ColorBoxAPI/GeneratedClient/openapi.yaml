@@ -1,0 +1,2523 @@
+openapi: 3.0.1
+info:
+  title: OpenAPI ColorBox
+  description: This is a REST API for the AJA ColorBox product.
+  contact:
+    name: AJA API Support
+    url: http://www.aja.com/support
+    email: support@aja.com
+  license:
+    name: Apache-2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+  version: 1.0.0
+servers:
+  - url: '/v2'
+
+paths:
+  /buildInfo:
+    get:
+      description: Return the build info object
+      operationId: getBuildInfo
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildInfo'
+  /system/config:
+    get:
+      description: Return an object with the system configuration
+      operationId: getSystemConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemConfig'
+    put:
+      description: Modify the system configuration
+      operationId: setSystemConfig
+      requestBody:
+        description: System config object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /system/status:
+    get:
+      description: Return an object with the system status
+      operationId: getSystemStatus
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+    put:
+      description: Modify the system status
+      operationId: setSystemStatus
+      security:
+        - app_id: []
+      requestBody:
+        description: System status object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemStatus'
+      responses:
+        '200':
+          description: Successful operation
+  /routing:
+    get:
+      description: Get the routing object
+      operationId: getRouting
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Routing'
+    put:
+      description: Modify the routing object
+      operationId: setRouting
+      requestBody:
+        description: Routing object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Routing'
+      responses:
+        '200':
+          description: Successful operation
+  /pipelineStages:
+    get:
+      description: Get the stages object
+      operationId: getPipelineStages
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineStages'
+    put:
+      description: Modify the stages object
+      operationId: setPipelineStages
+      requestBody:
+        description: Stages object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PipelineStages'
+      responses:
+        '200':
+          description: Successful operation
+  /acesConfig:
+    get:
+      description: Get the AcesConfig object
+      operationId: getAcesConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcesConfig'
+    put:
+      description: Modify the AcesConfig object
+      operationId: setAcesConfig
+      requestBody:
+        description: AcesConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcesConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /bbcConfig:
+    get:
+      description: Get the BbcConfig object
+      operationId: getBbcConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BbcConfig'
+    put:
+      description: Modify the BbcConfig object
+      operationId: setBbcConfig
+      requestBody:
+        description: BbcConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BbcConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /colorfrontConfig:
+    get:
+      description: Get the ColorfrontConfig object
+      operationId: getColorfrontConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ColorfrontConfig'
+    put:
+      description: Modify the ColorfrontConfig object
+      operationId: setColorfrontConfig
+      requestBody:
+        description: ColorfrontConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ColorfrontConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /nbcConfig:
+    get:
+      description: Get the NbcConfig object
+      operationId: getNbcConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NbcConfig'
+    put:
+      description: Modify the NbcConfig object
+      operationId: setNbcConfig
+      requestBody:
+        description: NbcConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NbcConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /orionConfig:
+    get:
+      description: Get the OrionConfig object
+      operationId: getOrionConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrionConfig'
+    put:
+      description: Modify the OrionConfig object
+      operationId: setOrionConfig
+      requestBody:
+        description: OrionConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrionConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /upload:
+    post:
+      description: Upload a file
+      operationId: uploadFile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  default: ""
+                  description: "The kind of file being uploaded valid kinds are:
+                                **lut_1d**,
+                                **lut_3d**,
+                                **matrix**,
+                                **image**,
+                                **overlay**,
+                                **preset**,
+                                **orionPreset**,
+                                **license**,
+                                **update**"
+                entry:
+                  type: integer
+                  default: -1
+                  description: "The entry number to upload the file to, **not** used with kinds:
+                                **license** and **update**"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+        "400":
+          description: Error uploading
+          content:
+            text/plain:
+              schema:
+                type: string
+  /uploadMultiple:
+    post:
+      description: Upload Multiple files
+      operationId: uploadMultipleFiles
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                kind:
+                  type: string
+                  default: ""
+                  description: "The kind of file being uploaded valid kinds are:
+                                **amf**"
+                entry:
+                  type: integer
+                  default: -1
+                  description: "The entry number to upload the file to"
+                selection:
+                  type: string
+                  default: ""
+                  description: "The AMF file that should be used from the sent files,
+                                an uploaded directory can contain multiple AMF files, the one that
+                                matches this parameter will be the one stored to the device."
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+        "400":
+          description: Error uploading
+          content:
+            text/plain:
+              schema:
+                type: string
+  /licenseGenerationRequest:
+    post:
+      description: Request a license request file to be generated
+      operationId: setLicenseGenerationRequest
+      responses:
+        "200":
+          description: Successful operation
+  /preview:
+    put:
+      description: Set the preview image
+      operationId: setPreviewImage
+      requestBody:
+        description: base 64 JPEG encoded image
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preview'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Return a preview image
+      operationId: getPreviewImage
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preview'
+  /sdiInputStatus:
+    put:
+      description: Set the SDI input status
+      operationId: setSdiInputStatus
+      requestBody:
+        description: SDI object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SDI'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Get the SDI input status
+      operationId: getSdiInputStatus
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDI'
+  /sdiInputConfig:
+    put:
+      description: Set the SDI input config
+      operationId: setSdiInputConfig
+      requestBody:
+        description: SDI object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SDI'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Get the SDI input config
+      operationId: getSdiInputConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SDI'
+  /outputConfig:
+    put:
+      description: Set the SDI/HDMI output config
+      operationId: setOutputConfig
+      requestBody:
+        description: OutputConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutputConfig'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Get the SDI/HDMI output config
+      operationId: getOutputConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutputConfig'
+  /outputStatus:
+    put:
+      description: Set the SDI/HDMI output status
+      operationId: setOutputStatus
+      requestBody:
+        description: OutputConfig object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutputConfig'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Get the SDI/HDMI output status
+      operationId: getOutputStatus
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutputConfig'
+  /frameStore:
+    put:
+      description: Set the frame store config
+      operationId: setFrameStore
+      requestBody:
+        description: FrameStore object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FrameStore'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Get the frame store configuration
+      operationId: getFrameStore
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameStore'
+  /overlay:
+    get:
+      description: Get the overlay configuration
+      operationId: getOverlay
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Overlay'
+    put:
+      description: Set the overlay configuration
+      operationId: setOverlay
+      requestBody:
+        description: Overlay object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Overlay'
+      responses:
+        '200':
+          description: Successful operation
+  /1dLutLibrary:
+    get:
+      description: Get the 1d LUT Library array
+      operationId: get1dLutLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /3dLutLibrary:
+    get:
+      description: Get the 3d LUT Library array
+      operationId: get3dLutLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /matrixLibrary:
+    get:
+      description: Get the matrix Library array
+      operationId: getMatrixLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /imageLibrary:
+    get:
+      description: Get the image Library array
+      operationId: getImageLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /overlayLibrary:
+    get:
+      description: Get the overlay Library array
+      operationId: getOverlayLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /amfLibrary:
+    get:
+      description: Get the AMF Library array
+      operationId: getAmfLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /systemPresetLibrary:
+    get:
+      description: Get the System Preset Library array
+      operationId: getSystemPresetLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /orionPresetLibrary:
+    get:
+      description: Get the Orion Preset Library array
+      operationId: getOrionPresetLibrary
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LibraryEntry'
+  /libraryControl:
+    put:
+      description: Perform actions on Library entries
+      operationId: setLibraryControl
+      requestBody:
+        description: LibraryControl object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LibraryControl'
+      responses:
+        '200':
+          description: Successful operation
+    get:
+      description: Get the library control object
+      operationId: getLibraryControl
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibraryControl'
+  /net/devices:
+    get:
+      description: Return an array of all the NetDevice objects.
+      operationId: getAllNetDevices
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NetDevice'
+  '/net/device/{devIdx}/status':
+    get:
+      description: Return an object with status for network interface at devIdx
+      operationId: getStatusForGivenNetDeviceIndex
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetStatus'
+    put:
+      description: Set the status for network interface at devIdx
+      operationId: setStatusForGivenNetDeviceIndex
+      security:
+        - app_id: []
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      requestBody:
+        description: Net Device status object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetStatus'
+      responses:
+        '200':
+          description: Successful operation
+  '/net/device/{devIdx}/config':
+    get:
+      description: Return an object with config for network interface at devIdx
+      operationId: getConfigForGivenNetDeviceIndex
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetConfig'
+    put:
+      description: Set the config for network interface at devIdx
+      operationId: setConfigForGivenNetDeviceIndex
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      requestBody:
+        description: Net Device config object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetConfig'
+      responses:
+        '200':
+          description: Successful operation
+  '/net/device/{devIdx}/activeParams':
+    get:
+      description: Return an object with active params for network interface at devIdx
+      operationId: getActiveParamsForGivenNetDeviceIndex
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetParams'
+    put:
+      description: Set the active params for network interface at devIdx
+      operationId: setActiveParamsForGivenNetDeviceIndex
+      security:
+        - app_id: []
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      requestBody:
+        description: Net Device params object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetParams'
+      responses:
+        '200':
+          description: Successful operation
+  '/net/device/{devIdx}/stagedParams':
+    get:
+      description: Return an object with staged params for network interface at devIdx
+      operationId: getStagedParamsForGivenNetDeviceIndex
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetParams'
+    put:
+      description: Set the staged params for network interface at devIdx
+      operationId: setStagedParamsForGivenNetDeviceIndex
+      parameters:
+        - name: devIdx
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/DeviceIdx'
+      requestBody:
+        description: Net Device params object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NetParams'
+      responses:
+        '200':
+          description: Successful operation
+  /wifiConfig:
+    get:
+      description: Return the complete wifi config object
+      operationId: getWiFiConfig
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WiFiDeviceConfig'
+    put:
+      description: Modify the wifi config object
+      operationId: setWiFiConfig
+      security:
+        - app_id: []
+      requestBody:
+        description: WiFi Config object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WiFiDeviceConfig'
+      responses:
+        '200':
+          description: Successful operation
+  /wifiStatus:
+    get:
+      description: Return the complete wifi status object
+      operationId: getWiFiStatus
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WiFiDeviceStatus'
+    put:
+      description: Modify the wifi status object
+      operationId: setWiFiStatus
+      security:
+        - app_id: []
+      requestBody:
+        description: WiFi Status object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WiFiDeviceStatus'
+      responses:
+        '200':
+          description: Successful operation
+  /system/password:
+    put:
+      description: Update the system password
+      operationId: setSystemPassword
+      requestBody:
+        description: System password object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemPassword'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemPasswordResponse'
+  /discovers:
+    get:
+      description: Return an array of objects with the discovered devices
+      operationId: getAllSystemDiscovers
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SystemDiscover'
+    put:
+      description: Modify the array of discovered devices
+      operationId: setAllSystemDiscovers
+      security:
+        - app_id: []
+      requestBody:
+        description: Array of system discover objects
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/SystemDiscover'
+      responses:
+        '200':
+          description: Successful operation
+  /status:
+    get:
+      description: Return the complete status object
+      operationId: getAllStatus
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+    put:
+      description: Modify the status object
+      operationId: setAllStatus
+      security:
+        - app_id: []
+      requestBody:
+        description: Status object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Status'
+      responses:
+        '200':
+          description: Successful operation
+  /ancCaptureFilter:
+    get:
+      description: Return the acn capture filter object
+      operationId: getAncCaptureFilter
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AncCaptureFilter'
+    put:
+      description: Modify the anc capture filter object
+      operationId: setAncCaptureFilter
+      requestBody:
+        description: AncCaptureFilter object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AncCaptureFilter'
+      responses:
+        '200':
+          description: Successful operation
+  /calibrationPattern:
+    get:
+      description: Return the calibration pattern object
+      operationId: getCalibrationPattern
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalibrationPattern'
+    put:
+      description: Modify the calibration pattern object
+      operationId: setCalibrationPattern
+      requestBody:
+        description: CalibrationPattern object
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalibrationPattern'
+      responses:
+        '200':
+          description: Successful operation
+  /saveDynamicLutRequest:
+    post:
+      description: "Request a save of the current dynamic lut state.
+                    **Note:** This API call should be used sparingly as it writes a file to flash which has 
+                    a finite number of write cycles."
+      operationId: saveDynamicLutRequest
+      responses:
+        "200":
+          description: Successful operation
+components:
+  securitySchemes:
+    app_id:
+      type: apiKey
+      description: API key to authorize requests
+      in: header
+      name: X-API-KEY
+  schemas:
+    BuildInfo:
+      description: Build particulars from when the application was built.
+      type: object
+      properties:
+        date:
+          description: Date of the build, in local time of build machine
+          type: string
+        time:
+          description: Time of the build, in local time of build machine
+          type: string
+        repoident:
+          description: Code repo identifier, git hash
+          type: string
+        buildType:
+          description: Debug, Release, RelWithDebInfo, etc
+          type: string
+        appVersion:
+          description: Build version of application
+          type: string
+        qtVersion:
+          description: Version of Qt used
+          type: string
+    SystemConfig:
+      type: object
+      properties:
+        hostName:
+          type: string
+        systemOrganizationName:
+          type: string
+        ssdpEnable:
+          type: boolean
+          default: false
+        identify:
+          type: boolean
+          default: false
+        updateRequest:
+          type: boolean
+          default: false
+        reboot:
+          type: boolean
+          default: false
+        refresh:
+          type: boolean
+          default: false
+        shutdown:
+          type: boolean
+          default: false
+        factoryPreset:
+          type: boolean
+          default: false
+        factoryReset:
+          type: boolean
+          default: false
+        transformMode:
+          $ref: '#/components/schemas/TransformMode'
+        previewAncEnable:
+          type: boolean
+          default: false
+        authenticationEnable:
+          type: boolean
+          default: false
+        fanSpeed:
+          type: number
+          minimum: 0
+          maximum: 255
+          default: 170
+        startupPreset:
+          type: integer
+          minimum: 0
+          maximum: 10
+          default: 0
+    SystemStatus:
+      type: object
+      properties:
+        safebootVersion:
+          type: string
+          example: "1.0.0.1d"
+        mainbootVersion:
+          type: string
+          example: "1.0.0.2d"
+        runningVersion:
+          type: string
+          example: "1.0.0.3d"
+        safeboot:
+          type: boolean
+        updateMsg:
+          type: array
+          items:
+            type: string
+          example: ["str1", "str2", "str3"]
+        transformModeChanging:
+          type: boolean
+          default: false
+        transformModeTimestamp:
+          type: string
+          format: date-time
+    Routing:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/Mode'
+        previewTap:
+          $ref: '#/components/schemas/PreviewTap'
+        pipelineBypassButton:
+          description: This is the bypass state due to the button on the device being pressed
+          type: boolean
+        pipelineBypassUser:
+          description: This is the bypass state set by the user in the UI
+          type: boolean
+    Mode:
+      type: string
+      enum:
+        - Input
+        - Output
+      default: Input
+    PreviewTap:
+      type: string
+      enum:
+        - INPUT
+        - OUTPUT
+      default: OUTPUT
+    PipelineStages:
+      type: object
+      properties:
+        lut1d_1:
+          $ref: '#/components/schemas/Stage'
+        m3x3_2:
+          $ref: '#/components/schemas/Stage'
+        lut1d_2:
+          $ref: '#/components/schemas/Stage'
+        lut3d_1:
+          $ref: '#/components/schemas/Stage'
+        lut1d_3:
+          $ref: '#/components/schemas/Stage'
+        m3x3_3:
+          $ref: '#/components/schemas/Stage'
+        lut1d_4:
+          $ref: '#/components/schemas/Stage'
+        inColorimetry:
+          $ref: '#/components/schemas/Colorimetry'
+        inRange:
+          $ref: '#/components/schemas/PipelineRange'
+        outColorimetry:
+          $ref: '#/components/schemas/Colorimetry'
+        outRange:
+          $ref: '#/components/schemas/PipelineRange'
+        transferCharacteristic:
+          $ref: '#/components/schemas/Transfer'
+        cscFilter:
+          $ref: '#/components/schemas/CSCFilter'
+    Stage:
+      type: object
+      properties:
+        enabled:
+          description: true if stage is enabled else disabled (unity passthru)
+          type: boolean
+        dynamic:
+          description: true if stage can be dynamically adjusted
+          type: boolean
+        libraryEntry:
+          description: library entry number, zero is unity bypass
+          type: integer
+        colorCorrector:
+          $ref: '#/components/schemas/ColorCorrector'
+        procAmp:
+          $ref: '#/components/schemas/ProcAmp'
+    SDI:
+      type: object
+      properties:
+        colorSpace:
+          $ref: '#/components/schemas/ColorSpace'
+        rgbRange:
+          $ref: '#/components/schemas/RgbRange'
+        bitDepth:
+          $ref: '#/components/schemas/BitDepth'
+        scanMode:
+          $ref: '#/components/schemas/ScanMode'
+        sdiMode3g:
+          $ref: '#/components/schemas/SdiMode3g'
+        colorimetry:
+          $ref: '#/components/schemas/Colorimetry'
+        transfer:
+          $ref: '#/components/schemas/Transfer'
+        format:
+          $ref: '#/components/schemas/VideoFormat'
+    OutputConfig:
+      type: object
+      properties:
+        colorSpace:
+          $ref: '#/components/schemas/ColorSpace'
+        rgbRange:
+          $ref: '#/components/schemas/RgbRange'
+        bitDepth:
+          $ref: '#/components/schemas/BitDepth'
+        scanMode:
+          $ref: '#/components/schemas/ScanMode'
+        colorimetry:
+          $ref: '#/components/schemas/Colorimetry'
+        transfer:
+          $ref: '#/components/schemas/Transfer'
+        format:
+          $ref: '#/components/schemas/VideoFormat'
+        sdiFormat:
+          $ref: '#/components/schemas/VideoFormat'
+        sdiDownConvert:
+          $ref: '#/components/schemas/DownConvert'
+        sdiMode3g:
+          $ref: '#/components/schemas/SdiMode3g'
+        hdmiFormat:
+          $ref: '#/components/schemas/VideoFormat'
+        hdmiConnection:
+          $ref: '#/components/schemas/Connection'
+        hdmiCrop4k2k:
+          $ref: '#/components/schemas/Crop4k2k'
+        hdmiDownConvert:
+          $ref: '#/components/schemas/DownConvert'
+        hdmiColorSpace:
+          $ref: '#/components/schemas/ColorSpace'
+        hdmiBitDepth:
+          $ref: '#/components/schemas/BitDepth'
+    Crop4k2k:
+      type: string
+      enum:
+        - Auto
+        - 'On'
+        - 'Off'
+      default: Auto
+    Connection:
+      type: string
+      enum:
+        - Auto
+        - HDMI
+        - DVI
+    ColorSpace:
+      type: string
+      enum:
+        - Auto
+        - 4:2:2 YCbCr
+        - 4:4:4 RGB
+        - 4:2:0 YCbCr
+    DownConvert:
+      type: string
+      enum:
+        - 'Follow Input'
+        - '2K/1080p'
+      default: 'Follow Input'
+    RgbRange:
+      type: string
+      enum:
+        - Auto
+        - SMPTE Full
+        - SMPTE Narrow
+    BitDepth:
+      type: string
+      enum:
+        - Auto
+        - 10 Bit
+        - 12 Bit
+        - 8 Bit
+    ScanMode:
+      type: string
+      enum:
+        - Auto
+        - Progressive
+        - Interlaced
+        - PsF
+    SdiMode3g:
+      type: string
+      enum:
+        - Auto
+        - A
+        - B
+    Colorimetry:
+      type: string
+      enum:
+        - Auto
+        - BT.709
+        - BT.2020
+    Transfer:
+      type: string
+      enum:
+        - Auto
+        - SDR
+        - HLG
+        - PQ
+    CSCFilter:
+      type: string
+      enum:
+        - None
+        - Auto
+        - Full
+        - Light
+      default: None
+    VideoFormat:
+      type: string
+      enum:
+        - Auto
+        - Unknown
+        - 720p50
+        - 720p59.94
+        - 720p60
+        - 1080i50
+        - 1080i59.94
+        - 1080i60
+        - 1080PsF23.98
+        - 1080PsF24
+        - 1080PsF25
+        - 1080PsF29.97
+        - 1080PsF30
+        - 1080p23.98
+        - 1080p24
+        - 1080p25
+        - 1080p29.97
+        - 1080p30
+        - 1080p50
+        - 1080p59.94
+        - 1080p60
+        - 2Kp23.98
+        - 2Kp24
+        - 2Kp25
+        - 2Kp29.97
+        - 2Kp30
+        - 2Kp47.95
+        - 2Kp48
+        - 2Kp50
+        - 2Kp59.94
+        - 2Kp60
+        - 2KPsF23.98
+        - 2KPsF24
+        - 2KPsF25
+        - UHDp23.98
+        - UHDp24
+        - UHDp25
+        - UHDp29.97
+        - UHDp30
+        - UHDp50
+        - UHDp59.94
+        - UHDp60
+        - 4Kp23.98
+        - 4Kp24
+        - 4Kp25
+        - 4Kp29.97
+        - 4Kp30
+        - 4Kp47.95
+        - 4Kp48
+        - 4Kp50
+        - 4Kp59.94
+        - 4Kp60
+    VideoConvertChoice:
+      type: string
+      enum:
+        - VideoConvertActual
+        - VideoConvertScale
+      default: VideoConvertActual
+    FileTypeChoice:
+      type: string
+      enum:
+        - TIFF
+        - PNG
+        - JPEG
+    FrameStore:
+      type: object
+      properties:
+        enabled:
+          description: true if frame store is enabled else disabled
+          type: boolean
+        dynamic:
+          description: true if frame store can be dynamically adjusted
+          type: boolean
+        imageName:
+          description: The custom name for the captured image
+          type: string
+        timecodeAppended:
+          description: Flag to append the timecode of the captured image onto the filename
+          type: boolean
+        fileType:
+          description: File type for the captured image
+          $ref: '#/components/schemas/FileTypeChoice'
+        libraryEntry:
+          description: library entry number, zero is black
+          type: integer
+        format:
+          description: video output format
+          $ref: '#/components/schemas/VideoFormat'
+        convert:
+          description: how to convert non-standard rasters
+          $ref: '#/components/schemas/VideoConvertChoice'
+        rgbRange:
+          $ref: '#/components/schemas/RgbRange'
+    SystemPassword:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+    SystemPasswordResponse:
+      type: object
+      properties:
+        successful:
+          type: boolean
+        message:
+          type: string
+    Overlay:
+      type: object
+      properties:
+        enabled:
+          description: true if overlay is enabled else disabled
+          type: boolean
+        inVpidFormat:
+          type: boolean
+        inVpidRange:
+          type: boolean
+        inVpidHdr:
+          type: boolean
+        inVpidBitDepth:
+          type: boolean
+        outVpidFormat:
+          type: boolean
+        outVpidRange:
+          type: boolean
+        outVpidHdr:
+          type: boolean
+        outVpidBitDepth:
+          type: boolean
+        timeCode:
+          type: boolean
+        closedCaption:
+          type: boolean
+        userTextEnabled:
+          type: boolean
+        userTextLine1:
+          type: string
+          minLength: 0
+          maxLength: 110
+        userTextLine2:
+          type: string
+          minLength: 0
+          maxLength: 110
+        pipelineConfig:
+          type: boolean
+        location:
+          $ref: '#/components/schemas/Locations'
+        userOverlayEnabled:
+          type: boolean
+          default: false
+        libraryEntry:
+          description: library entry number of user overlay graphic
+          type: integer
+          default: 1
+    Locations:
+      type: string
+      enum:
+        - Top Left
+        - Top Center
+        - Top Right
+        - Bottom Left
+        - Bottom Center
+        - Bottom Right
+      default: Bottom Center
+    LibraryEntry:
+      type: object
+      properties:
+        userName:
+          type: string
+        fileName:
+          type: string
+    LibraryControl:
+      type: object
+      properties:
+        library:
+          description: Which library to act on
+          $ref: '#/components/schemas/Library'
+        entry:
+          description: The library entry to act on(starting at 1)
+          type: integer
+        action:
+          description: Action to be performed on the library entry
+          $ref: '#/components/schemas/LibraryAction'
+        data:
+          description: Data to be used with action
+          type: string
+        errorMsg:
+          description: Message to alert when things go wrong
+          type: string
+    Library:
+      type: string
+      enum:
+        - 1D LUT
+        - 3D LUT
+        - Matrix
+        - Image
+        - systemPreset
+        - Overlay
+        - orionPreset
+        - AMF
+    LibraryAction:
+      type: string
+      enum:
+        - Idle
+        - DeleteEntry
+        - StoreEntry
+        - RecallEntry
+        - SetUserName
+        - Capture
+        - Rescan
+    Preview:
+      type: object
+      properties:
+        image:
+          description: Image data
+          type: string
+          format: byte
+        imageType:
+          description: Type of image data i.e. "jpg"
+          type: string
+        ancData:
+          type: string
+          format: byte
+        userData1:
+          type: string
+        userData2:
+          type: string
+    Frame:
+      type: object
+      properties:
+        image:
+          description: Image data
+          type: string
+          format: byte
+        ancData:
+          type: string
+          format: byte
+        userData1:
+          type: string
+        userData2:
+          type: string
+    NetDevice:
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/NetConfig'
+        status:
+          $ref: '#/components/schemas/NetStatus'
+        activeParams:
+          $ref: '#/components/schemas/NetParams'
+        stagedParams:
+          $ref: '#/components/schemas/NetParams'
+    DeviceIdx:
+      type: integer
+      minimum: 0
+      maximum: 1
+      default: 0
+    NetConfig:
+      type: object
+      properties:
+        ipConfig:
+          $ref: '#/components/schemas/IpConfig'
+        ipChangeCommit:
+          type: integer
+          default: 0
+    IpConfig:
+      type: string
+      enum:
+        - DHCP
+        - Static
+      default: DHCP
+    NetParams:
+      type: object
+      properties:
+        address:
+          type: string
+        subnet:
+          type: string
+        gateway:
+          type: string
+        dnsServer1:
+          type: string
+        dnsServer2:
+          type: string
+        dnsSearch:
+          type: string
+    NetStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        mac:
+          type: string
+        connected:
+          type: boolean
+          default: false
+        dhcpState:
+          $ref: '#/components/schemas/DHCPState'
+        interfaceSetupState:
+          $ref: '#/components/schemas/InterfaceSetupState'
+        ipAddressOffered:
+          type: string
+        linkErrors:
+          type: integer
+          default: 0
+        linkState:
+          type: string
+        lldpChassisId:
+          type: string
+        lldpPortId:
+          type: string
+        lldpName:
+          type: string
+    DHCPState:
+      type: string
+      enum:
+        - Disabled
+        - Discover
+        - Request
+        - Bound
+      default: Disabled
+    InterfaceSetupState:
+      type: string
+      enum:
+        - Uninitialized
+        - Preparing
+        - Complete
+      default: Uninitialized
+    WiFiDeviceConfig:
+      type: object
+      properties:
+        wifiControl:
+          type: string
+          enum:
+            - 'Off'
+            - 'On'
+          default: 'Off'
+        wifiNetwork:
+          type: string
+        wifiPassword:
+          type: string
+        wifiSecurity:
+          type: string
+          enum:
+            - WPA
+            - None
+          default: None
+        wifiIpConfig:
+          type: string
+          enum:
+            - DHCP
+            - Static
+          default: DHCP
+        address:
+          type: string
+        subnet:
+          type: string
+        gateway:
+          type: string
+        wifiIpChangeCommit:
+          type: integer
+          default: 0
+        wifiPasswordLength:
+          type: integer
+        wifiRegion:
+          type: string
+    WiFiDeviceStatus:
+      type: object
+      properties:
+        name:
+          type: string
+        mac:
+          type: string
+        address:
+          type: string
+        subnet:
+          type: string
+        gateway:
+          type: string
+        networks:
+          type: array
+          items:
+            type: string
+        connected:
+          type: boolean
+          default: false
+        dhcpState:
+          $ref: '#/components/schemas/DHCPState'
+        interfaceSetupState:
+          $ref: '#/components/schemas/InterfaceSetupState'
+        ipAddressOffered:
+          type: string
+        linkState:
+          type: string
+        wifiDongleState:
+          type: string
+        authenticationState:
+          type: string
+    SystemDiscover:
+      type: object
+      properties:
+        serviceDescription:
+          type: string
+        serviceType:
+          type: string
+        serviceDomain:
+          type: string
+        hostName:
+          type: string
+        ipAddress:
+          type: string
+        port:
+          type: number
+        deviceName:
+          type: string
+        description:
+          type: string
+        boardType:
+          type: string
+        boardNumber:
+          type: string
+        boardID:
+          type: string
+    TransformMode:
+      type: string
+      enum:
+        - LUT
+        - COLORFRONT
+        - ORION
+        - BBC
+        - NBC
+        - ACES
+      default: LUT
+    PipelineRange:
+      type: string
+      enum:
+        - SMPTEFull
+        - SMPTENarrow
+        - SMPTESDIFull
+      default: SMPTEFull
+    OrionConfig:
+      type: object
+      properties:
+        enabled:
+          description: true if stage is enabled else disabled (unity passthru)
+          type: boolean
+        gammaComp:
+          type: boolean
+          default: false
+        conversion:
+          $ref: '#/components/schemas/OrionConversion'
+        mode:
+          $ref: '#/components/schemas/OrionMode'
+        method:
+          $ref: '#/components/schemas/OrionMethod'
+        sourceRange:
+          $ref: '#/components/schemas/OrionSourceRange'
+        hdrRef:
+          type: number
+          minimum: 1.0
+          maximum: 109.0
+          default: 75.0
+        sdrRef:
+          type: number
+          minimum: 1.0
+          maximum: 109.0
+          default: 100.0
+        hdrPeak:
+          type: integer
+          minimum: 100
+          maximum: 4000
+          default: 1000
+        sdrEotf:
+          $ref: '#/components/schemas/OrionSdrEotf'
+        preKnee:
+          type: number
+          minimum: 0.0
+          maximum: 100.0
+          default: 100.0
+        preAmount:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.0
+        postKnee:
+          type: number
+          minimum: 0.0
+          maximum: 100.0
+          default: 100.0
+        postAmount:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.0
+        clamping:
+          $ref: '#/components/schemas/OrionClamping'
+        implementation:
+          $ref: '#/components/schemas/OrionImplementation'
+    OrionConversion:
+      type: string
+      enum:
+        - HLG to SDR
+        - SDR to HLG
+        - HLG Compress
+        - PQ to SDR
+        - SDR to PQ
+        - PQ Compress
+        - HLG to PQ
+        - PQ to HLG
+      default: HLG to SDR
+    OrionMode:
+      type: string
+      enum:
+        - Display Light
+        - Scene Light
+      default: Display Light
+    OrionMethod:
+      type: string
+      enum:
+        - Luma
+        - Max(RGB)
+      default: MAX(RGB)
+    OrionSourceRange:
+      type: string
+      enum:
+        - Narrow
+        - Full
+      default: Narrow
+    OrionSdrEotf:
+      type: string
+      enum:
+        - 2.4 Gamma
+        - 2.2 Gamma
+        - Piecewise ~2.4
+        - Piecewise ~2.2
+      default: 2.4 Gamma
+    OrionClamping:
+      type: string
+      enum:
+        - Unclamped
+        - Clip SubBlacks
+        - -7 to 109 IRE
+        - -5 to 105 IRE
+        - 0 to 100 IRE
+      default: -7 to 109 IRE
+    OrionImplementation:
+      type: string
+      enum:
+        - Engine
+        - Render
+      default: Engine
+    ColorfrontConfig:
+      type: object
+      properties:
+        enabled:
+          description: true if stage is enabled else disabled (unity passthru)
+          type: boolean
+        inDynRangeGamut:
+          description: "**NOTE** Used in ColorBox v1, left in for compatibility reasons"
+          $ref: '#/components/schemas/ColorfrontDynRangeGamut'
+        outDynRangeGamut:
+          description: "**NOTE** Used in ColorBox v1, left in for compatibility reasons"
+          $ref: '#/components/schemas/ColorfrontDynRangeGamut'
+        mode:
+          description: "The active mode"
+          $ref: '#/components/schemas/ColorfrontMode'
+        tvMode:
+          description: "Setting for when in TV mode"
+          $ref: '#/components/schemas/ColorfrontTvMode'
+        liveMode:
+          description: "Setting for when in Live mode"
+          $ref: '#/components/schemas/ColorfrontLiveMode'
+        upmapMode:
+          description: "Setting for when in SDR to Dolby Vision Preview mode"
+          $ref: '#/components/schemas/ColorfrontUpmapMode'
+    ColorfrontDynRangeGamut:
+      type: string
+      description: "**NOTE** Used in ColorBox v1, left in for compatibility reasons"
+      enum:
+        - SDR BT.709
+        - HLG BT.2100
+        - PQ BT.2020
+      default: SDR BT.709
+    ColorfrontMode:
+      type: string
+      enum:
+        - TV
+        - Live
+        - SDR to Dolby Vision Preview
+      default: TV
+    ColorfrontEngine:
+      type: string
+      enum:
+        - Default
+        - Adjust
+      default: Default
+    ColorfrontDynRangeGamutTvModeIn:
+      type: string
+      enum:
+        - SDR BT.709
+        - HLG BT.2020
+        - PQ BT.2020
+        - Sony SLog3 BT.2020
+      default: SDR BT.709
+    ColorfrontDynRangeGamutTvModeOut:
+      type: string
+      enum:
+        - SDR BT.709
+        - HLG BT.2020
+        - PQ BT.2020
+        - PQ BT.2020 ConstrainP3
+        - Sony SLog3 BT.2020
+      default: SDR BT.709
+    ColorfrontDynRangeGamutLiveModeIn:
+      type: string
+      enum:
+        - SDR BT.709 100 Nits
+        - SDR Extended BT.709
+        - PQ BT.2020 1000 Nits
+        - PQ P3D65 1000 Nits
+        - HLG BT.2100
+        - HLG Extended BT.709
+        - HLG Extended BT.2100
+        - Sony SLog3 S-Gamut3
+        - Sony SLog3 S-Gamut3 Cine
+        - Sony SLog3 BT.2020
+        - ARRI Log C Wide Gamut
+        - ARRI LogC4 Wide Gamut 4
+        - ARRI LogC4 Wide Gamut 4 WVO
+        - Panasonic V-Log
+        - RED Log3G10 Wide Gamut
+        - Canon Log 2
+        - Canon Log 3
+      default: SDR BT.709 100 Nits
+    ColorfrontDynRangeGamutLiveModeOut:
+      type: string
+      enum:
+        - SDR BT.709 100 Nits
+        - SDR Extended BT.709
+        - PQ BT.2020 1000 Nits
+        - PQ P3D65 1000 Nits
+        - HLG BT.2100
+        - HLG Extended BT.709
+        - HLG Extended BT.2100
+        - Sony SLog3 S-Gamut3
+        - Sony SLog3 BT.2020
+        - ARRI Log C Wide Gamut
+        - ARRI LogC4 Wide Gamut 4
+      default: SDR BT.709 100 Nits
+    ColorfrontTvMode:
+      type: object
+      properties:
+        engine:
+          $ref: '#/components/schemas/ColorfrontEngine'
+        inDynRangeGamut:
+          $ref: '#/components/schemas/ColorfrontDynRangeGamutTvModeIn'
+        outDynRangeGamut:
+          $ref: '#/components/schemas/ColorfrontDynRangeGamutTvModeOut'
+        brightness:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        highlight:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        colorfulness:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        superHighlight:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        roundtrip:
+          type: boolean
+          default: false
+        clampToLegal:
+          type: boolean
+          default: false
+        colorCorrector:
+          type: boolean
+          default: false
+        liftMaster:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        liftRed:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        liftGreen:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        liftBlue:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        gammaMaster:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gammaRed:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gammaGreen:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gammaBlue:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gainMaster:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        gainRed:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        gainGreen:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        gainBlue:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        saturation:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1.0
+        cameraCorrection:
+          type: boolean
+          default: false
+        exposure:
+          type: number
+          minimum: -4.0
+          maximum: 4.0
+          default: 0
+        colorTemp:
+          type: number
+          minimum: -10.0
+          maximum: 10.0
+          default: 0
+        tint:
+          type: number
+          minimum: -16.0
+          maximum: 16.0
+          default: 0
+    ColorfrontLiveMode:
+      type: object
+      properties:
+        engine:
+          $ref: '#/components/schemas/ColorfrontEngine'
+        inDynRangeGamut:
+          $ref: '#/components/schemas/ColorfrontDynRangeGamutLiveModeIn'
+        outDynRangeGamut:
+          $ref: '#/components/schemas/ColorfrontDynRangeGamutLiveModeOut'
+        sdrPreview:
+          type: boolean
+          default: false
+        hdrAmount:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        ambLightComp:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        hdrLogLook:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.5
+        sdrSoftness:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0
+        liftMaster:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        liftRed:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        liftGreen:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        liftBlue:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0
+        gammaMaster:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gammaRed:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gammaGreen:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gammaBlue:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1
+        gainMaster:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        gainRed:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        gainGreen:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        gainBlue:
+          type: number
+          minimum: 0.0
+          maximum: 5.0
+          default: 1
+        saturation:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 1.0
+        exposure:
+          type: number
+          minimum: -4.0
+          maximum: 4.0
+          default: 0
+        colorTemp:
+          type: number
+          minimum: -10.0
+          maximum: 10.0
+          default: 0
+        tint:
+          type: number
+          minimum: -16.0
+          maximum: 16.0
+          default: 0
+        pqOutputNitLevel:
+          type: number
+          minimum: 48
+          maximum: 4000
+          default: 1000
+        p3ColorspaceClamp:
+          type: boolean
+          default: false
+        bt2408Mode:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0
+    ColorfrontLowMidHigh:
+      type: string
+      enum:
+        - Low
+        - Mid
+        - High
+      default: Mid
+    ColorfrontUpmapMode:
+      type: object
+      properties:
+        bypass:
+          type: boolean
+          default: false
+        contrast:
+          $ref: '#/components/schemas/ColorfrontLowMidHigh'
+        highlights:
+          $ref: '#/components/schemas/ColorfrontLowMidHigh'
+    BbcConfig:
+      type: object
+      properties:
+        lut1d_1:
+          $ref: '#/components/schemas/Stage'
+        m3x3_2:
+          $ref: '#/components/schemas/Stage'
+        lut3d_1:
+          $ref: '#/components/schemas/Stage'
+    NbcConfig:
+      type: object
+      properties:
+        lut1d_1:
+          $ref: '#/components/schemas/Stage'
+        m3x3_2:
+          $ref: '#/components/schemas/Stage'
+        lut3d_1:
+          $ref: '#/components/schemas/Stage'
+    AcesIdt:
+      type: string
+      enum:
+        - ARRI LogC3 (EI800)
+        - ARRI LogC4
+        - CanonLog2 CinemaGamut D55
+        - CanonLog3 CinemaGamut D55
+        - V-Log V-Gamut
+        - Log3G10 REDWideGamutRGB
+        - S-Log3 S-Gamut3
+        - S-Log3 S-Gamut3.Cine
+        - S-Log3 Venice S-Gamut3
+        - S-Log3 Venice S-Gamut3.Cine
+      default: ARRI LogC3 (EI800)
+    AcesOdt:
+      type: string
+      enum:
+        - 'Rec.1886 Rec.709 - Display/ACES 1.0 - SDR Video'
+        - 'Rec.2100-HLG - Display/ACES 1.1 - HDR Video (1000 nits & Rec.2020 lim)'
+        - 'Rec.2100-PQ - Display/ACES 1.1 - HDR Video (1000 nits & Rec.2020 lim)'
+        - 'Rec.2100-PQ - Display/ACES 1.1 - HDR Video (2000 nits & Rec.2020 lim)'
+        - 'Rec.2100-PQ - Display/ACES 1.1 - HDR Video (4000 nits & Rec.2020 lim)'
+      default: 'Rec.1886 Rec.709 - Display/ACES 1.0 - SDR Video'
+    AcesConfig:
+      type: object
+      properties:
+        enabled:
+          description: true if stage is enabled else disabled (unity passthru)
+          type: boolean
+        amfLibraryEntry:
+          description: library entry number, zero is unity bypass
+          type: integer
+        acesIdt:
+          $ref: '#/components/schemas/AcesIdt'
+        acesOdt:
+          $ref: '#/components/schemas/AcesOdt'
+        acesIdtOverride:
+          type: boolean
+          default: false
+        acesOdtOverride:
+          type: boolean
+          default: false
+        enableArriWVOLogC4Decoder:
+          type: boolean
+          default: false
+    StatusState:
+      type: string
+      description: The good/maybe/bad/unknown of the status object
+      enum:
+        - StatusStateGood
+        - StatusStateMaybe
+        - StatusStateBad
+        - StatusStateUnknown
+      default: StatusStateUnknown
+    StatusInfo:
+      type: object
+      properties:
+        upperBoundGood:
+          description: The upper bound for the state to be considered StatusStateGood
+          type: number
+        upperBoundMaybe:
+          description: The upper bound for the state to be considered StatusStateMaybe
+          type: number
+        value:
+          description: The instantaneous value for this status object
+          type: string
+        valueInt:
+          description: The instantaneous value for this status object
+          type: number
+        label:
+          description: A descriptive label of what this status object represents
+          type: string
+        extraValue:
+          description: A second value that is optional
+          type: string
+        extraLabel:
+          description: A second descriptive label for the extraValue
+          type: string
+        state:
+          $ref: '#/components/schemas/StatusState'
+    Status:
+      type: object
+      properties:
+        deviceDieTemp:
+          description: The FPGA die temperature
+          $ref: '#/components/schemas/StatusInfo'
+        systemDate:
+          type: string
+        systemTime:
+          type: string
+        systemUptime:
+          type: string
+        systemOsName:
+          type: string
+        systemSerialNumber:
+          type: string
+        systemBoardRevision:
+          type: string
+        systemCatalogNumber:
+          type: string
+        systemAppSwVersion:
+          type: string
+        systemSupportInfo:
+          type: string
+        eulaAccepted:
+          type: boolean
+        licenseActive:
+          type: boolean
+        bbcLutsLicensed:
+          type: boolean
+        orionEngineLicensed:
+          type: boolean
+        colorfrontEngineLicensed:
+          type: boolean
+        resetTime:
+          type: integer
+        shutdownTime:
+          type: integer
+        colorfrontTransformVersion:
+          type: string
+        colorfrontEngineVersion:
+          type: string
+        orionVersion:
+          type: string
+        bbcLutVersion:
+          type: string
+        nbcuLutVersion:
+          type: string
+        cpuBusy:
+          type: boolean
+        acesVersion:
+          type: string
+        hardwareVariant:
+          type: string
+        hardwareName:
+          type: string
+        ogRearModuleValid:
+          type: boolean
+    AncCaptureFilter:
+      type: object
+      properties:
+        enable:
+          type: boolean
+          default: false
+        dids:
+          type: array
+          items:
+            type: number
+          example: [0x44, 0x20]
+    ColorCorrector:
+      type: object
+      properties:
+        blackRed:
+          type: number
+          minimum: -20.0
+          maximum: 20.0
+          default: 0.0
+        blackGreen:
+          type: number
+          minimum: -20.0
+          maximum: 20.0
+          default: 0.0
+        blackBlue:
+          type: number
+          minimum: -20.0
+          maximum: 20.0
+          default: 0.0
+        gainRed:
+          type: number
+          minimum: 0
+          maximum: 1.50
+          default: 1.0
+        gainGreen:
+          type: number
+          minimum: 0
+          maximum: 1.50
+          default: 1.0
+        gainBlue:
+          type: number
+          minimum: 0
+          maximum: 1.50
+          default: 1.0
+        gammaRed:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0.0
+        gammaGreen:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0.0
+        gammaBlue:
+          type: number
+          minimum: -1.0
+          maximum: 1.0
+          default: 0.0
+        unitsBlack:
+          type: string
+          default: "IRE"
+        unitsGain:
+          type: string
+          default: ""
+        unitsGamma:
+          type: string
+          default: ""
+    ProcAmp:
+      type: object
+      properties:
+        black:
+          type: number
+          minimum: -20.0
+          maximum: 20.0
+          default: 0.0
+        gain:
+          type: number
+          minimum: 0
+          maximum: 1.50
+          default: 1.0
+        hue:
+          type: number
+          minimum: -179
+          maximum: 180
+          default: 0
+        sat:
+          type: number
+          minimum: 0.0
+          maximum: 1.5
+          default: 1.0
+        unitsBlack:
+          type: string
+          default: "IRE"
+        unitsGain:
+          type: string
+          default: ""
+        unitsHue:
+          type: string
+          default: "degrees"
+        unitsSat:
+          type: string
+          default: ""
+    PatternColor:
+      type: object
+      properties:
+        depth:
+          description: "The color depth in bits, valid values are: 8, 10, 12 & 16"
+          type: integer
+          minimum: 8
+          maximum: 16
+          default: 10
+        blue:
+          description: "The blue component of the color, max value depends on bit depth"
+          type: integer
+          minimum: 0
+          maximum: 65535
+          default: 0
+        green:
+          description: "The green component of the color, max value depends on bit depth"
+          type: integer
+          minimum: 0
+          maximum: 65535
+          default: 0
+        red:
+          description: "The red component of the color, max value depends on bit depth"
+          type: integer
+          minimum: 0
+          maximum: 65535
+          default: 0
+    PatternRect:
+      type: object
+      properties:
+        xstart:
+          description: "The x start point in for the rect, normalized to 0.0 - 1.0"
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0
+        ystart:
+          description: "The y start point in for the rect, normalized to 0.0 - 1.0"
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0
+        width:
+          description: "The width of the rect, normalized to 0.0 - 1.0"
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0
+        height:
+          description: "The height of the rect, normalized to 0.0 - 1.0"
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+          default: 0
+    CalibrationPattern:
+      type: object
+      description: "Holds the information for a calibration pattern patch"
+      properties:
+        bgColor:
+          description: "Background color for the pattern"
+          $ref: '#/components/schemas/PatternColor'
+        fgColor:
+          description: "Foreground color for the pattern"
+          $ref: '#/components/schemas/PatternColor'
+        fgRect:
+          description: "Foreground rectangle for the pattern"
+          $ref: '#/components/schemas/PatternRect'
+        stamp:
+          description: "For internal use only"
+          type: string

@@ -118,3 +118,35 @@ Publish `MockColorBox` over Bonjour with a configurable service name and a light
 - TrackGrade discovery work can proceed against a locally advertised development target.
 - The mock is locally discoverable today, but its TXT record schema may need to change once the real device advertisement is captured.
 - Discovery filtering logic should continue to tolerate service-name fallback until the real TXT keys are verified.
+
+## 2026-04-21 — Use The Live ColorBox `/v2` OpenAPI Contract As The New Integration Baseline
+
+### Context
+
+The real ColorBox at `172.29.14.51` became reachable over HTTP and exposed a Swagger UI at `/api/index.html` backed by `/api/openapi.yaml`. The live contract differs materially from the provisional mock and handwritten wrapper.
+
+### Decision
+
+Adopt the fetched live OpenAPI contract as the new source of truth for ColorBox integration, and treat the earlier `/system/info`, `/pipeline/state`, `/presets/*`, and `/preview/frame` routes as temporary scaffolding to be replaced.
+
+### Consequences
+
+- `Docs/openapi-colorbox.json` and `Docs/openapi-colorbox.yaml` are now the authoritative device contract snapshots in the repo.
+- The provisional wrapper and mock will need a compatibility pass to match the real `/v2` endpoint surface.
+- Any Phase 1 work built on the old guessed routes must be revalidated before it can count as true hardware parity.
+
+## 2026-04-21 — TrackGrade Must Support ColorBox API-Key Auth, Not Just Username/Password
+
+### Context
+
+The live OpenAPI document declares an `app_id` security scheme carried in the `X-API-KEY` header. This conflicts with the earlier assumption that device auth would be handled by optional admin password and HTTP Basic Auth.
+
+### Decision
+
+Treat API-key support as the required auth model for real ColorBox write operations until the live hardware proves otherwise.
+
+### Consequences
+
+- The app’s current Keychain model and credential UI need to evolve beyond username/password fields.
+- Mutating calls should not be switched to the generated hardware client until a real API-key flow is defined.
+- `Docs/OPEN-QUESTIONS.md` must track the missing API-key input from the user.

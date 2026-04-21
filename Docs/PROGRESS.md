@@ -17,19 +17,22 @@
 - Phase 1 connectivity foundation complete in `TrackGradeCore`: the handwritten ColorBox API wrapper, `DeviceManager`, mock-server contract, and integration tests now cover auth, pipeline config, toggles, presets, preview fetch, and reconnect behavior.
 - Phase 1 app shell now includes a SwiftData-backed device list, Keychain-backed credentials, a Bonjour discovery sidebar, manual add by IP, preview display, preset controls, pipeline toggles, and a reconnect banner.
 - `MockColorBox` now publishes a Bonjour `_http._tcp` service and was verified locally with `dns-sd` using the instance name `MockColorBox-BonjourCheck`.
+- The live ColorBox OpenAPI spec was fetched successfully from the hardware and committed under `Docs/openapi-colorbox.json` and `Docs/openapi-colorbox.yaml`.
 
 ## In-Flight Work
 
-- Fetching the live OpenAPI spec from the reference ColorBox and validating the new app shell against live hardware parity.
+- Validating the new app shell against live hardware parity and replacing the provisional transport layer with generated code from the real `/v2` spec.
 
 ## Blockers
 
-- The reference ColorBox at `172.29.14.51` is visible over Bonjour but is currently unreachable over HTTP from this Mac, so the live OpenAPI fetch is blocked pending device/network verification.
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
+- The live OpenAPI contract uses `X-API-KEY` auth instead of Basic Auth, so the current credential model is incomplete for mutating calls.
+- The real device spec has not yet revealed a dedicated false-color control route matching the brief.
 
 ## Next Steps
 
-- Fetch and commit the live ColorBox OpenAPI spec from `172.29.14.51`.
-- Replace the provisional handwritten client calls with generated `swift-openapi-generator` surfaces once the real spec is available.
+- Integrate `swift-openapi-generator` against the committed live spec and get the generated client compiling in the package.
+- Decide how TrackGrade should acquire and store the `X-API-KEY` required by secured write operations.
+- Re-map pipeline, preset, preview, and LUT-upload flows to the real `/v2` endpoints before replacing the handwritten wrapper.
 - Verify the iPad app discovery flow end-to-end against the Bonjour-advertised `MockColorBox`.
 - Exercise the app shell against the mock server and real hardware to confirm Phase 1 acceptance on-device.
