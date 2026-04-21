@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/.build/
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Archives and debug output
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.moved-aside
+*.hmap
+
+# Editors
+*.swp
+*.swo

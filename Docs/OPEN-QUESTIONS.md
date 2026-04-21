@@ -10,3 +10,4 @@ All questions below are currently unanswered and addressed to the user.
 6. Should the repository remain public during development, or should the visibility/timeline change before `v0.1.0`?
 7. Is the product name definitively `TrackGrade`, or should an alternative name be considered?
 8. Is a placeholder app icon acceptable for TestFlight, and are there any early art-direction constraints for the final icon?
+9. What contact method should be published for Code of Conduct reports?
