@@ -3,7 +3,7 @@
 All questions below are currently unanswered and addressed to the user.
 
 1. What Apple Developer Team ID and bundle ID prefix should TrackGrade use?
-2. What reference ColorBox IP address should be used to fetch the live OpenAPI spec during development?
+2. What reference ColorBox IP address should be used to fetch the live OpenAPI spec and commit it to `Docs/openapi-colorbox.json`?
 3. Which ColorBox firmware version should TrackGrade target and document as the tested version?
 4. What is the final open-source license decision: keep MIT, or switch to Apache-2.0 as suggested in the brief?
 5. Should Library import from the Files app be in v1 or deferred to v2?
