@@ -12,12 +12,18 @@ struct AuthenticationPrompt: Identifiable, Equatable {
     }
 }
 
+private struct GradeHistoryState {
+    var undo: [ColorBoxGradeControlState] = []
+    var redo: [ColorBoxGradeControlState] = []
+}
+
 @MainActor
 @Observable
 final class TrackGradeAppModel {
     var knownDevices: [StoredColorBoxDevice] = []
     var discoveredDevices: [DiscoveredColorBoxDevice] = []
     var snapshots: [ManagedColorBoxDevice] = []
+    var gradeSnapshots: [StoredGradeSnapshot] = []
     var selectedDeviceID: UUID?
     var isShowingAddDeviceSheet = false
     var activeAuthPrompt: AuthenticationPrompt?
@@ -32,6 +38,8 @@ final class TrackGradeAppModel {
     private var snapshotTask: Task<Void, Never>?
     private var suppressedBannerUntil: Date?
     private var fixturePresetGrades: [UUID: [Int: ColorBoxGradeControlState]] = [:]
+    private var gradeHistory: [UUID: GradeHistoryState] = [:]
+    private let maximumUndoDepth = 50
 
     var selectedSnapshot: ManagedColorBoxDevice? {
         guard let selectedDeviceID else {
@@ -47,6 +55,32 @@ final class TrackGradeAppModel {
         }
 
         return knownDevices.first { $0.id == selectedDeviceID }
+    }
+
+    var selectedDeviceSnapshots: [StoredGradeSnapshot] {
+        guard let selectedDeviceID else {
+            return []
+        }
+
+        return gradeSnapshots
+            .filter { $0.deviceID == selectedDeviceID && $0.kind == .standard }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    var canUndoSelectedGrade: Bool {
+        guard let selectedDeviceID else {
+            return false
+        }
+
+        return gradeHistory[selectedDeviceID]?.undo.isEmpty == false
+    }
+
+    var canRedoSelectedGrade: Bool {
+        guard let selectedDeviceID else {
+            return false
+        }
+
+        return gradeHistory[selectedDeviceID]?.redo.isEmpty == false
     }
 
     var visibleConnectionBanner: String? {
@@ -85,6 +119,7 @@ final class TrackGradeAppModel {
         discovery.start()
         startSnapshotObservation()
         await reloadStoredDevices()
+        await reloadStoredSnapshots()
     }
 
     func refreshDiscovery() {
@@ -173,9 +208,19 @@ final class TrackGradeAppModel {
             }
 
             modelContext.delete(record)
+            let relatedSnapshots = try modelContext.fetch(
+                FetchDescriptor<StoredGradeSnapshot>(
+                    predicate: #Predicate { $0.deviceID == id }
+                )
+            )
+            for snapshot in relatedSnapshots {
+                modelContext.delete(snapshot)
+            }
             try modelContext.save()
             knownDevices = try fetchKnownDevices()
+            gradeSnapshots = try fetchStoredSnapshots()
             await deviceManager.removeDevice(id: id)
+            gradeHistory[id] = nil
 
             if selectedDeviceID == id {
                 selectedDeviceID = knownDevices.first?.id
@@ -504,6 +549,170 @@ final class TrackGradeAppModel {
         }
     }
 
+    func recordCommittedGradeChange(
+        id: UUID,
+        from previous: ColorBoxGradeControlState,
+        to next: ColorBoxGradeControlState
+    ) {
+        guard previous != next else {
+            return
+        }
+
+        var history = gradeHistory[id] ?? GradeHistoryState()
+        history.undo.append(previous)
+        if history.undo.count > maximumUndoDepth {
+            history.undo.removeFirst(history.undo.count - maximumUndoDepth)
+        }
+        history.redo.removeAll()
+        gradeHistory[id] = history
+    }
+
+    func undoSelectedGrade() async {
+        guard let selectedDeviceID else {
+            return
+        }
+
+        await undoGrade(id: selectedDeviceID)
+    }
+
+    func redoSelectedGrade() async {
+        guard let selectedDeviceID else {
+            return
+        }
+
+        await redoGrade(id: selectedDeviceID)
+    }
+
+    func saveSnapshot(
+        id: UUID,
+        customName: String? = nil
+    ) async {
+        guard let device = snapshots.first(where: { $0.id == id }),
+              let gradeControl = device.pipelineState?.gradeControl else {
+            return
+        }
+
+        let snapshotName = customName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            ? customName!.trimmingCharacters(in: .whitespacesAndNewlines)
+            : defaultSnapshotName(for: device)
+
+        let record = StoredGradeSnapshot(
+            deviceID: id,
+            deviceName: device.name,
+            name: snapshotName,
+            kind: .standard,
+            previewFrameData: device.previewFrameData,
+            gradeControl: gradeControl
+        )
+
+        do {
+            if let modelContext {
+                modelContext.insert(record)
+                try modelContext.save()
+                gradeSnapshots = try fetchStoredSnapshots()
+            } else {
+                gradeSnapshots.insert(record, at: 0)
+            }
+        } catch {
+            errorMessage = "Failed to save the snapshot: \(error.localizedDescription)"
+        }
+    }
+
+    func deleteSnapshot(id snapshotID: UUID) async {
+        do {
+            if let existingIndex = gradeSnapshots.firstIndex(where: { $0.id == snapshotID }) {
+                let record = gradeSnapshots[existingIndex]
+                if let modelContext {
+                    modelContext.delete(record)
+                    try modelContext.save()
+                    gradeSnapshots = try fetchStoredSnapshots()
+                } else {
+                    gradeSnapshots.remove(at: existingIndex)
+                }
+            }
+        } catch {
+            errorMessage = "Failed to delete the snapshot: \(error.localizedDescription)"
+        }
+    }
+
+    func recallSnapshot(id snapshotID: UUID) async {
+        guard let record = gradeSnapshots.first(where: { $0.id == snapshotID }) else {
+            return
+        }
+
+        await applyStoredGrade(
+            deviceID: record.deviceID,
+            gradeControl: record.gradeControl
+        )
+    }
+
+    func captureScratchSlot(
+        id: UUID,
+        slot: ABScratchSlot
+    ) async {
+        guard let device = snapshots.first(where: { $0.id == id }),
+              let gradeControl = device.pipelineState?.gradeControl else {
+            return
+        }
+
+        do {
+            if let existing = scratchSnapshot(for: id, slot: slot) {
+                existing.name = "Scratch \(slot.displayName)"
+                existing.deviceName = device.name
+                existing.previewFrameData = device.previewFrameData
+                existing.updatedAt = .now
+                existing.gradeControl = gradeControl
+
+                if let modelContext {
+                    try modelContext.save()
+                    gradeSnapshots = try fetchStoredSnapshots()
+                }
+            } else {
+                let scratchRecord = StoredGradeSnapshot(
+                    deviceID: id,
+                    deviceName: device.name,
+                    name: "Scratch \(slot.displayName)",
+                    kind: slot.snapshotKind,
+                    previewFrameData: device.previewFrameData,
+                    gradeControl: gradeControl
+                )
+
+                if let modelContext {
+                    modelContext.insert(scratchRecord)
+                    try modelContext.save()
+                    gradeSnapshots = try fetchStoredSnapshots()
+                } else {
+                    gradeSnapshots.insert(scratchRecord, at: 0)
+                }
+            }
+        } catch {
+            errorMessage = "Failed to store scratch slot \(slot.displayName): \(error.localizedDescription)"
+        }
+    }
+
+    func recallScratchSlot(
+        id: UUID,
+        slot: ABScratchSlot
+    ) async {
+        guard let record = scratchSnapshot(for: id, slot: slot) else {
+            return
+        }
+
+        await applyStoredGrade(
+            deviceID: id,
+            gradeControl: record.gradeControl
+        )
+    }
+
+    func scratchSnapshot(
+        for deviceID: UUID,
+        slot: ABScratchSlot
+    ) -> StoredGradeSnapshot? {
+        gradeSnapshots.first {
+            $0.deviceID == deviceID && $0.kind == slot.snapshotKind
+        }
+    }
+
     func dismissConnectionBanner() {
         suppressedBannerUntil = .now.addingTimeInterval(60)
     }
@@ -550,6 +759,14 @@ final class TrackGradeAppModel {
         }
     }
 
+    private func reloadStoredSnapshots() async {
+        do {
+            gradeSnapshots = try fetchStoredSnapshots()
+        } catch {
+            errorMessage = "Failed to load saved snapshots: \(error.localizedDescription)"
+        }
+    }
+
     private func fetchKnownDevices() throws -> [StoredColorBoxDevice] {
         guard let modelContext else {
             return []
@@ -557,6 +774,20 @@ final class TrackGradeAppModel {
 
         let descriptor = FetchDescriptor<StoredColorBoxDevice>(
             sortBy: [SortDescriptor(\.name)]
+        )
+        return try modelContext.fetch(descriptor)
+    }
+
+    private func fetchStoredSnapshots() throws -> [StoredGradeSnapshot] {
+        guard let modelContext else {
+            return gradeSnapshots
+        }
+
+        let descriptor = FetchDescriptor<StoredGradeSnapshot>(
+            sortBy: [
+                SortDescriptor(\.updatedAt, order: .reverse),
+                SortDescriptor(\.createdAt, order: .reverse),
+            ]
         )
         return try modelContext.fetch(descriptor)
     }
@@ -582,6 +813,8 @@ final class TrackGradeAppModel {
         snapshots = fixture.snapshots
         selectedDeviceID = fixture.snapshots.first?.id
         fixturePresetGrades = fixture.presetGrades
+        gradeSnapshots = fixture.snapshotsData
+        gradeHistory.removeAll()
     }
 
     private func updateFixtureDevice(
@@ -611,5 +844,64 @@ final class TrackGradeAppModel {
                   snapshot.connectionState == .connected {
             activeAuthPrompt = nil
         }
+    }
+
+    private func defaultSnapshotName(
+        for device: ManagedColorBoxDevice
+    ) -> String {
+        let timeStamp = Date.now.formatted(
+            Date.FormatStyle()
+                .month(.abbreviated)
+                .day(.twoDigits)
+                .hour(.twoDigits(amPM: .abbreviated))
+                .minute(.twoDigits)
+        )
+
+        return "\(device.name) \(timeStamp)"
+    }
+
+    private func applyStoredGrade(
+        deviceID: UUID,
+        gradeControl: ColorBoxGradeControlState
+    ) async {
+        let currentGrade = snapshots.first { $0.id == deviceID }?.pipelineState?.gradeControl
+            ?? .identity
+        recordCommittedGradeChange(
+            id: deviceID,
+            from: currentGrade,
+            to: gradeControl
+        )
+        selectedDeviceID = deviceID
+        await updateGradeControl(
+            id: deviceID,
+            gradeControl: gradeControl
+        )
+    }
+
+    private func undoGrade(id: UUID) async {
+        guard var history = gradeHistory[id],
+              let previous = history.undo.popLast() else {
+            return
+        }
+
+        let current = snapshots.first { $0.id == id }?.pipelineState?.gradeControl ?? .identity
+        history.redo.append(current)
+        gradeHistory[id] = history
+        await updateGradeControl(id: id, gradeControl: previous)
+    }
+
+    private func redoGrade(id: UUID) async {
+        guard var history = gradeHistory[id],
+              let next = history.redo.popLast() else {
+            return
+        }
+
+        let current = snapshots.first { $0.id == id }?.pipelineState?.gradeControl ?? .identity
+        history.undo.append(current)
+        if history.undo.count > maximumUndoDepth {
+            history.undo.removeFirst(history.undo.count - maximumUndoDepth)
+        }
+        gradeHistory[id] = history
+        await updateGradeControl(id: id, gradeControl: next)
     }
 }

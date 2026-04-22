@@ -32,6 +32,7 @@ struct TrackGradeUITestFixture {
     let knownDevices: [StoredColorBoxDevice]
     let snapshots: [ManagedColorBoxDevice]
     let presetGrades: [UUID: [Int: ColorBoxGradeControlState]]
+    let snapshotsData: [StoredGradeSnapshot]
 
     static func make() -> TrackGradeUITestFixture {
         let deviceID = UUID(uuidString: "A0C95A0B-4B33-4A4B-A2D4-2A2BC4E4F001") ?? UUID()
@@ -76,6 +77,13 @@ struct TrackGradeUITestFixture {
             name: "Fixture ColorBox",
             address: "mock://fixture-colorbox"
         )
+        let storedSnapshot = StoredGradeSnapshot(
+            deviceID: deviceID,
+            deviceName: "Fixture ColorBox",
+            name: "Lobby Warm-Up",
+            previewFrameData: previewData,
+            gradeControl: grade
+        )
 
         return TrackGradeUITestFixture(
             knownDevices: [knownDevice],
@@ -84,7 +92,8 @@ struct TrackGradeUITestFixture {
                 deviceID: [
                     preset.slot: grade
                 ]
-            ]
+            ],
+            snapshotsData: [storedSnapshot]
         )
     }
 
