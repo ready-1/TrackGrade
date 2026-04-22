@@ -20,15 +20,18 @@ Current grading surface in simulator fixture mode:
 - Device discovery, ColorBox-resident preset save / recall / delete, and local snapshots / scratch slots
 - Distinct `Before / After` compare control alongside persistent ColorBox bypass
 - Focus-device gang broadcast to linked peer devices with sync / drift status
+- Per-device working color space selection for `Rec.709 SDR` and `Rec.709 HLG`
 - Fixed landscape control surface with drawer-based secondary controls
 - Read-only device library browser for 1D LUT, 3D LUT, matrix, image, and overlay slots
 - Mock ColorBox server for local development without hardware
+- Phase 3 color-math core with CDL, transfer functions, `.cube` baking, and a queued dynamic-LUT upload path validated against the mock
 
 ## Planned Next
 
 - Final live-hardware sensitivity tuning on iPad
 - Additional workflow polish, library import tooling, and release packaging
-- Later-phase LUT baking / upload and deeper multi-device validation
+- Final live verification of the dynamic-LUT upload path once the hardware-side `/v2/upload` behavior is fully understood
+- Deeper multi-device validation on real ColorBox peers
 
 ## Requirements
 
@@ -42,6 +45,8 @@ Current grading surface in simulator fixture mode:
 1. Open `TrackGrade.xcodeproj` in Xcode.
 2. Select the `TrackGrade` scheme and an iPad simulator or device running iPadOS 18.0+.
 3. Build and run the app target.
+
+For an offline UI walkthrough in Simulator, add the launch argument `-ui-test-fixture` to the `TrackGrade` scheme before running.
 
 For package-based checks:
 
