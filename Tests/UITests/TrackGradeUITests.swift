@@ -52,6 +52,11 @@ final class TrackGradeUITests: XCTestCase {
         settingsButton.tap()
 
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        let colorSpaceControl = app.segmentedControls["working-color-space-picker"]
+        XCTAssertTrue(colorSpaceControl.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Rec.709 SDR"].exists)
+        XCTAssertTrue(app.buttons["Rec.709 HLG"].exists)
+        app.buttons["Rec.709 HLG"].tap()
     }
 
     func testSavingPresetAddsFixturePresetCard() throws {

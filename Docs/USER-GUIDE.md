@@ -162,6 +162,7 @@ TrackGrade has two different save concepts:
 
 The settings sheet currently exposes:
 
+- per-device working color space selection (`Rec.709 SDR` or `Rec.709 HLG`)
 - per-control sensitivities
 - haptics enable / disable
 - reset-confirmation behavior

@@ -235,6 +235,22 @@ Implement the full color-math core now in `Core/ColorMath` and add a per-device 
 - The brief’s Phase 3 acceptance work can be substantially completed offline, including color-math coverage and queue behavior verification.
 - The shipping hardware path remains conservative and trustworthy: live grading still uses the direct `pipelineStages` route on the reference ColorBox until a later hardware session confirms the dynamic upload path end to end.
 
+## 2026-04-21 — Persist Working Color Space Per Device And Ship A Real Placeholder App Icon
+
+### Context
+
+The brief calls for a per-device working color-space setting, and the repo still lacked a real app icon asset catalog even though placeholder art was explicitly acceptable for early builds.
+
+### Decision
+
+Persist the selected `TransferFunction` on each `StoredColorBoxDevice`, expose it in the settings sheet as a segmented `Rec.709 SDR / Rec.709 HLG` control, and add a bundled placeholder `AppIcon` asset catalog to the app target.
+
+### Consequences
+
+- The color-math path now has a durable device-level transfer-function setting instead of relying on a hardcoded label in the UI.
+- Future bake/upload work can use the same stored value without inventing another settings model later.
+- Simulator and packaged builds now present TrackGrade with a project-specific placeholder icon instead of the generic Xcode icon.
+
 ## 2026-04-21 — Defer Authentication UX Work For The Reference ColorBox
 
 ### Context

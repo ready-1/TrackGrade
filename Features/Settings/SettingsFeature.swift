@@ -57,6 +57,7 @@ extension TrackGradeControlSensitivity {
 
 struct SettingsFeatureView: View {
     let deviceName: String
+    let onWorkingTransferFunctionChanged: (TransferFunction) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -70,13 +71,34 @@ struct SettingsFeatureView: View {
     @AppStorage(TrackGradeSettingsKey.hapticsEnabled) private var hapticsEnabled = true
     @AppStorage(TrackGradeSettingsKey.autoRefreshInterval) private var autoRefreshInterval = 0.0
     @AppStorage(TrackGradeSettingsKey.resetRequiresConfirmation) private var resetRequiresConfirmation = true
+    @State private var selectedWorkingTransferFunction: TransferFunction
+
+    init(
+        deviceName: String,
+        workingTransferFunction: TransferFunction,
+        onWorkingTransferFunctionChanged: @escaping (TransferFunction) -> Void
+    ) {
+        self.deviceName = deviceName
+        self.onWorkingTransferFunctionChanged = onWorkingTransferFunctionChanged
+        _selectedWorkingTransferFunction = State(initialValue: workingTransferFunction)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Device") {
                     LabeledContent("Focused Device", value: deviceName)
-                    LabeledContent("Working Color Space", value: "Rec.709 SDR")
+                    Picker(
+                        "Working Color Space",
+                        selection: $selectedWorkingTransferFunction
+                    ) {
+                        ForEach(TransferFunction.allCases, id: \.self) { transferFunction in
+                            Text(transferFunction.displayName)
+                                .tag(transferFunction)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("working-color-space-picker")
                     LabeledContent("LUT Resolution", value: "33³")
                 }
 
@@ -141,6 +163,9 @@ struct SettingsFeatureView: View {
             }
         }
         .presentationDetents([.large])
+        .onChange(of: selectedWorkingTransferFunction) { _, newValue in
+            onWorkingTransferFunctionChanged(newValue)
+        }
     }
 
     private var appVersion: String {

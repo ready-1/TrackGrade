@@ -79,6 +79,12 @@ final class TrackGradeAppModel {
         return knownDevices.first { $0.id == selectedDeviceID }
     }
 
+    func workingTransferFunction(
+        for deviceID: UUID
+    ) -> TransferFunction {
+        knownDevices.first { $0.id == deviceID }?.workingTransferFunction ?? .rec709SDR
+    }
+
     var selectedDeviceSnapshots: [StoredGradeSnapshot] {
         guard let selectedDeviceID else {
             return []
@@ -353,6 +359,26 @@ final class TrackGradeAppModel {
             }
         } catch {
             errorMessage = "Failed to update gang membership: \(error.localizedDescription)"
+        }
+    }
+
+    func setWorkingTransferFunction(
+        deviceID: UUID,
+        transferFunction: TransferFunction
+    ) {
+        guard let record = knownDevices.first(where: { $0.id == deviceID }) else {
+            return
+        }
+
+        record.workingTransferFunction = transferFunction
+
+        do {
+            if let modelContext {
+                try modelContext.save()
+                knownDevices = try fetchKnownDevices()
+            }
+        } catch {
+            errorMessage = "Failed to update the working color space: \(error.localizedDescription)"
         }
     }
 
@@ -1029,6 +1055,7 @@ final class TrackGradeAppModel {
                 username: device.username,
                 credentialReference: device.credentialReference,
                 isGanged: device.isGanged,
+                workingTransferFunction: device.workingTransferFunction,
                 createdAt: device.createdAt
             )
             modelContext.insert(record)

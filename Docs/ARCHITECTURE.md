@@ -143,6 +143,7 @@ This keeps the UI-side architecture ready for the brief’s intended dynamic-LUT
   - address
   - username
   - credential reference
+  - per-device working transfer function
 - `StoredGradeSnapshot`
   - device association
   - name

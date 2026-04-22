@@ -37,6 +37,7 @@ final class StoredColorBoxDevice {
     var username: String
     var credentialReference: String?
     var isGanged: Bool
+    var workingTransferFunctionRawValue: String
     var createdAt: Date
 
     init(
@@ -46,6 +47,7 @@ final class StoredColorBoxDevice {
         username: String = "admin",
         credentialReference: String? = nil,
         isGanged: Bool = false,
+        workingTransferFunction: TransferFunction = .rec709SDR,
         createdAt: Date = .now
     ) {
         self.id = id
@@ -54,7 +56,17 @@ final class StoredColorBoxDevice {
         self.username = username
         self.credentialReference = credentialReference
         self.isGanged = isGanged
+        self.workingTransferFunctionRawValue = workingTransferFunction.rawValue
         self.createdAt = createdAt
+    }
+
+    var workingTransferFunction: TransferFunction {
+        get {
+            TransferFunction(rawValue: workingTransferFunctionRawValue) ?? .rec709SDR
+        }
+        set {
+            workingTransferFunctionRawValue = newValue.rawValue
+        }
     }
 }
 

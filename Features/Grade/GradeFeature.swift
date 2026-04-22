@@ -54,7 +54,16 @@ struct GradeFeatureView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $isShowingSettings) {
-            SettingsFeatureView(deviceName: device.name)
+            SettingsFeatureView(
+                deviceName: device.name,
+                workingTransferFunction: model.workingTransferFunction(for: device.id),
+                onWorkingTransferFunctionChanged: { transferFunction in
+                    model.setWorkingTransferFunction(
+                        deviceID: device.id,
+                        transferFunction: transferFunction
+                    )
+                }
+            )
         }
     }
 

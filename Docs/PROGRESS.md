@@ -61,6 +61,8 @@
 - Mock-backed integration coverage now verifies both a full identity LUT upload and aggressive queue coalescing, proving that the newest LUT wins when uploads arrive faster than the device ingest path can drain them.
 - `Core/ColorMath` automated line coverage is now `92.71%`, clearing the brief’s `>= 90%` Phase 3 target for the color-math module.
 - The release-only `LUTBakerPerformanceTests` timing check passed locally with a `33^3` identity bake completing well under the brief’s `< 16 ms` threshold.
+- `StoredColorBoxDevice` now persists a per-device working color space selection, and the settings sheet exposes `Rec.709 SDR` vs `Rec.709 HLG` as a real segmented control instead of a placeholder label.
+- The app target now includes a real placeholder app icon asset catalog under `App/Assets.xcassets`, so the project no longer ships with the generic Xcode icon in simulator builds and future packaged builds.
 
 ## In-Flight Work
 
@@ -68,6 +70,7 @@
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 - Choosing the next non-hardware polish slice after the library browser, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
 - Deciding how far to wire the bake/upload path into the live app shell before hardware is back, given that real firmware `3.0.0.24` still exposes unresolved `/v2/upload` persistence semantics.
+- Deciding whether to spend the next offline pass on more workflow polish, such as preset overwrite / rename ergonomics, or on release packaging items such as tagging and final README cleanup.
 
 ## Blockers
 
