@@ -201,6 +201,8 @@ private struct DynamicGradeControlsCard: View {
     @State private var gainState: ColorBoxTrackballState
     @State private var pendingUpdateTask: Task<Void, Never>?
     @State private var activeEditor: GradeEditorTarget?
+    @State private var activeTouchCount = 0
+    @State private var interactionOrigin: ColorBoxGradeControlState?
 
     @State private var ballAnchors: [TrackballSurfaceKind: ColorBoxControlPoint] = [:]
     @State private var ringAnchors: [TrackballSurfaceKind: Float] = [:]
@@ -256,9 +258,10 @@ private struct DynamicGradeControlsCard: View {
                     identifier: "reset-all-chip"
                 ) {
                     emitButtonHaptic()
-                    draftGrade = .identity
-                    syncSurfaceStates(from: .identity)
-                    pushGradeControlImmediately(successHaptic: true)
+                    performDiscreteGradeMutation(successHaptic: true) {
+                        draftGrade = .identity
+                        syncSurfaceStates(from: .identity)
+                    }
                 }
             }
 
@@ -317,8 +320,9 @@ private struct DynamicGradeControlsCard: View {
                 onEvent: handleSaturationEvent,
                 onReset: {
                     emitButtonHaptic()
-                    draftGrade.saturation = 1
-                    pushGradeControlImmediately(successHaptic: true)
+                    performDiscreteGradeMutation(successHaptic: true) {
+                        draftGrade.saturation = 1
+                    }
                 }
             )
 
@@ -335,13 +339,17 @@ private struct DynamicGradeControlsCard: View {
                     onRingEvent: handleLiftRing,
                     onResetBall: {
                         emitButtonHaptic()
-                        liftState.ball = .zero
-                        updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: true)
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            liftState.ball = .zero
+                            draftGrade.lift = ColorBoxTrackballMapping.vector(for: liftState, kind: .lift)
+                        }
                     },
                     onResetRing: {
                         emitButtonHaptic()
-                        liftState.ring = 0
-                        updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: true)
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            liftState.ring = 0
+                            draftGrade.lift = ColorBoxTrackballMapping.vector(for: liftState, kind: .lift)
+                        }
                     }
                 )
 
@@ -357,13 +365,17 @@ private struct DynamicGradeControlsCard: View {
                     onRingEvent: handleGammaRing,
                     onResetBall: {
                         emitButtonHaptic()
-                        gammaState.ball = .zero
-                        updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: true)
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            gammaState.ball = .zero
+                            draftGrade.gamma = ColorBoxTrackballMapping.vector(for: gammaState, kind: .gamma)
+                        }
                     },
                     onResetRing: {
                         emitButtonHaptic()
-                        gammaState.ring = 0
-                        updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: true)
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            gammaState.ring = 0
+                            draftGrade.gamma = ColorBoxTrackballMapping.vector(for: gammaState, kind: .gamma)
+                        }
                     }
                 )
 
@@ -379,28 +391,35 @@ private struct DynamicGradeControlsCard: View {
                     onRingEvent: handleGainRing,
                     onResetBall: {
                         emitButtonHaptic()
-                        gainState.ball = .zero
-                        updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: true)
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            gainState.ball = .zero
+                            draftGrade.gain = ColorBoxTrackballMapping.vector(for: gainState, kind: .gain)
+                        }
                     },
                     onResetRing: {
                         emitButtonHaptic()
-                        gainState.ring = 0
-                        updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: true)
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            gainState.ring = 0
+                            draftGrade.gain = ColorBoxTrackballMapping.vector(for: gainState, kind: .gain)
+                        }
                     }
                 )
             }
+
         }
         .padding(20)
         .surfacePanelStyle(cornerRadius: 30)
+        .accessibilityValue(Text(accessibilityGradeSummary))
         .accessibilityIdentifier("dynamic-grade-card")
         .sheet(item: $activeEditor) { target in
             NumericGradeEditorSheet(
                 target: target,
                 grade: draftGrade,
                 onSave: { updatedGrade in
-                    draftGrade = updatedGrade
-                    syncSurfaceStates(from: updatedGrade)
-                    pushGradeControlImmediately()
+                    performDiscreteGradeMutation(successHaptic: false) {
+                        draftGrade = updatedGrade
+                        syncSurfaceStates(from: updatedGrade)
+                    }
                 }
             )
         }
@@ -410,6 +429,8 @@ private struct DynamicGradeControlsCard: View {
             }
 
             if newValue != draftGrade {
+                activeTouchCount = 0
+                interactionOrigin = nil
                 draftGrade = newValue
                 syncSurfaceStates(from: newValue)
             }
@@ -433,6 +454,23 @@ private struct DynamicGradeControlsCard: View {
         }
 
         return "Slot \(slot)"
+    }
+
+    private var accessibilityGradeSummary: String {
+        [
+            "Lift \(formatted(draftGrade.lift))",
+            "Gamma \(formatted(draftGrade.gamma))",
+            "Gain \(formatted(draftGrade.gain))",
+            "Saturation \(formatted(draftGrade.saturation))",
+        ].joined(separator: ". ")
+    }
+
+    private func formatted(_ value: Float) -> String {
+        String(format: "%.2f", Double(value))
+    }
+
+    private func formatted(_ vector: ColorBoxRGBVector) -> String {
+        "R \(formatted(vector.red))  G \(formatted(vector.green))  B \(formatted(vector.blue))"
     }
 
     private func handleLiftBall(
@@ -524,6 +562,7 @@ private struct DynamicGradeControlsCard: View {
 
         switch event {
         case .began:
+            beginTouchInteraction()
             ballAnchors[kind] = state.wrappedValue.ball
 
         case let .changed(_, _, translation):
@@ -544,6 +583,7 @@ private struct DynamicGradeControlsCard: View {
         case .ended, .cancelled:
             ballAnchors[kind] = nil
             updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: false)
+            endTouchInteractionIfNeeded()
         }
     }
 
@@ -556,6 +596,7 @@ private struct DynamicGradeControlsCard: View {
     ) {
         switch event {
         case .began:
+            beginTouchInteraction()
             ringAnchors[kind] = state.wrappedValue.ring
 
         case let .changed(start, location, _):
@@ -577,6 +618,7 @@ private struct DynamicGradeControlsCard: View {
         case .ended, .cancelled:
             ringAnchors[kind] = nil
             updateGradeFromSurfaceStates(pushImmediately: true, successHaptic: false)
+            endTouchInteractionIfNeeded()
         }
     }
 
@@ -586,6 +628,7 @@ private struct DynamicGradeControlsCard: View {
     ) {
         switch event {
         case .began:
+            beginTouchInteraction()
             saturationAnchor = draftGrade.saturation
 
         case let .changed(_, _, translation):
@@ -608,10 +651,12 @@ private struct DynamicGradeControlsCard: View {
             }
             saturationAnchor = nil
             pushGradeControlImmediately()
+            endTouchInteractionIfNeeded()
 
         case .cancelled:
             saturationAnchor = nil
             pushGradeControlImmediately()
+            endTouchInteractionIfNeeded()
         }
     }
 
@@ -667,6 +712,59 @@ private struct DynamicGradeControlsCard: View {
         if successHaptic {
             emitSuccessHaptic()
         }
+    }
+
+    private func performDiscreteGradeMutation(
+        successHaptic: Bool,
+        mutation: () -> Void
+    ) {
+        let previous = draftGrade
+        mutation()
+
+        guard previous != draftGrade else {
+            return
+        }
+
+        model.recordCommittedGradeChange(
+            id: device.id,
+            from: previous,
+            to: draftGrade
+        )
+        pushGradeControlImmediately(successHaptic: successHaptic)
+    }
+
+    private func beginTouchInteraction() {
+        if activeTouchCount == 0 {
+            interactionOrigin = draftGrade
+        }
+        activeTouchCount += 1
+    }
+
+    private func endTouchInteractionIfNeeded() {
+        guard activeTouchCount > 0 else {
+            return
+        }
+
+        activeTouchCount -= 1
+
+        guard activeTouchCount == 0 else {
+            return
+        }
+
+        defer {
+            interactionOrigin = nil
+        }
+
+        guard let interactionOrigin,
+              interactionOrigin != draftGrade else {
+            return
+        }
+
+        model.recordCommittedGradeChange(
+            id: device.id,
+            from: interactionOrigin,
+            to: draftGrade
+        )
     }
 
     private func wrappedAngleDelta(_ angle: CGFloat) -> CGFloat {
@@ -743,6 +841,10 @@ private struct SecondaryControlsDrawer: View {
     let falseColorUnsupportedMessage: String
     let closeAction: () -> Void
 
+    @State private var activePanel: DrawerPanel = .workflow
+    @State private var isShowingSnapshotBrowser = false
+    @State private var isShowingLibraryPlaceholder = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -767,76 +869,167 @@ private struct SecondaryControlsDrawer: View {
                 .buttonStyle(.plain)
             }
 
-            DrawerActionGrid(
-                connectAction: {
-                    Task {
-                        await model.connect(to: device.id)
-                    }
-                },
-                refreshAction: {
-                    Task {
-                        await model.refreshDevice(id: device.id)
-                    }
-                },
-                previewAction: {
-                    Task {
-                        await model.refreshPreview(id: device.id)
-                    }
-                },
-                configureAction: {
-                    Task {
-                        await model.configurePipeline(id: device.id)
-                    }
-                },
-                authAction: {
-                    model.promptForAuthentication(deviceID: device.id)
+            Picker("Drawer Panel", selection: $activePanel) {
+                ForEach(DrawerPanel.allCases) { panel in
+                    Text(panel.title)
+                        .tag(panel)
                 }
-            )
+            }
+            .pickerStyle(.segmented)
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Optional Pipeline Controls")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
-
-                Toggle(
-                    "False Color",
-                    isOn: Binding(
-                        get: { device.pipelineState?.falseColorEnabled ?? false },
-                        set: { isEnabled in
+            Group {
+                switch activePanel {
+                case .workflow:
+                    GradeWorkflowBar(
+                        canUndo: model.canUndoSelectedGrade,
+                        canRedo: model.canRedoSelectedGrade,
+                        scratchA: model.scratchSnapshot(for: device.id, slot: .a),
+                        scratchB: model.scratchSnapshot(for: device.id, slot: .b),
+                        onUndo: {
                             Task {
-                                await model.setFalseColor(
+                                await model.undoSelectedGrade()
+                            }
+                        },
+                        onRedo: {
+                            Task {
+                                await model.redoSelectedGrade()
+                            }
+                        },
+                        onSaveSnapshot: {
+                            Task {
+                                await model.saveSnapshot(id: device.id)
+                            }
+                        },
+                        onShowSnapshots: {
+                            isShowingSnapshotBrowser = true
+                        },
+                        onShowLibrary: {
+                            isShowingLibraryPlaceholder = true
+                        },
+                        onRecallScratch: { slot in
+                            Task {
+                                await model.recallScratchSlot(
                                     id: device.id,
-                                    enabled: isEnabled
+                                    slot: slot
+                                )
+                            }
+                        },
+                        onCaptureScratch: { slot in
+                            Task {
+                                await model.captureScratchSlot(
+                                    id: device.id,
+                                    slot: slot
                                 )
                             }
                         }
                     )
-                )
-                .tint(.orange)
-                .foregroundStyle(.white)
-                .disabled(device.supportsFalseColor == false)
-                .accessibilityIdentifier("false-color-toggle")
 
-                if device.supportsFalseColor == false {
-                    Text(falseColorUnsupportedMessage)
-                        .font(.footnote)
-                        .foregroundStyle(Color.white.opacity(0.68))
+                case .presets:
+                    PresetsFeatureView(
+                        model: model,
+                        device: device,
+                        style: .drawer
+                    )
+
+                case .device:
+                    VStack(alignment: .leading, spacing: 18) {
+                        DrawerActionGrid(
+                            connectAction: {
+                                Task {
+                                    await model.connect(to: device.id)
+                                }
+                            },
+                            refreshAction: {
+                                Task {
+                                    await model.refreshDevice(id: device.id)
+                                }
+                            },
+                            previewAction: {
+                                Task {
+                                    await model.refreshPreview(id: device.id)
+                                }
+                            },
+                            configureAction: {
+                                Task {
+                                    await model.configurePipeline(id: device.id)
+                                }
+                            },
+                            authAction: {
+                                model.promptForAuthentication(deviceID: device.id)
+                            }
+                        )
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Optional Pipeline Controls")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+
+                            Toggle(
+                                "False Color",
+                                isOn: Binding(
+                                    get: { device.pipelineState?.falseColorEnabled ?? false },
+                                    set: { isEnabled in
+                                        Task {
+                                            await model.setFalseColor(
+                                                id: device.id,
+                                                enabled: isEnabled
+                                            )
+                                        }
+                                    }
+                                )
+                            )
+                            .tint(.orange)
+                            .foregroundStyle(.white)
+                            .disabled(device.supportsFalseColor == false)
+                            .accessibilityIdentifier("false-color-toggle")
+
+                            if device.supportsFalseColor == false {
+                                Text(falseColorUnsupportedMessage)
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.white.opacity(0.68))
+                            }
+                        }
+                        .padding(16)
+                        .surfacePanelStyle(cornerRadius: 24)
+                    }
                 }
             }
-            .padding(16)
-            .surfacePanelStyle(cornerRadius: 24)
-
-            PresetsFeatureView(
-                model: model,
-                device: device,
-                style: .drawer
-            )
 
             Spacer(minLength: 0)
         }
         .padding(20)
         .frame(maxHeight: .infinity, alignment: .top)
         .surfacePanelStyle(cornerRadius: 30)
+        .sheet(isPresented: $isShowingSnapshotBrowser) {
+            SnapshotBrowserSheet(
+                model: model,
+                device: device
+            )
+        }
+        .sheet(isPresented: $isShowingLibraryPlaceholder) {
+            LibraryPlaceholderSheet(deviceName: device.name)
+        }
+    }
+}
+
+private enum DrawerPanel: String, CaseIterable, Identifiable {
+    case workflow
+    case presets
+    case device
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .workflow:
+            return "Workflow"
+        case .presets:
+            return "Presets"
+        case .device:
+            return "Device"
+        }
     }
 }
 
@@ -1019,6 +1212,9 @@ private struct GradeStateDisplay: View {
         }
         .padding(20)
         .surfacePanelStyle(cornerRadius: 28)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Grade state"))
+        .accessibilityValue(Text(accessibilitySummary))
         .accessibilityIdentifier("grade-state-display")
     }
 
@@ -1028,6 +1224,15 @@ private struct GradeStateDisplay: View {
 
     private func formatted(_ vector: ColorBoxRGBVector) -> String {
         "R \(formatted(vector.red))  G \(formatted(vector.green))  B \(formatted(vector.blue))"
+    }
+
+    private var accessibilitySummary: String {
+        [
+            "Lift \(formatted(grade.lift))",
+            "Gamma \(formatted(grade.gamma))",
+            "Gain \(formatted(grade.gain))",
+            "Saturation \(formatted(grade.saturation))",
+        ].joined(separator: ". ")
     }
 }
 
@@ -1053,8 +1258,12 @@ private struct NumericDisplayRow: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(value))
+        .accessibilityHint(Text("Opens the numeric editor for \(label)."))
         .accessibilityIdentifier(identifier)
-        .accessibilityValue(value)
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -1382,6 +1591,344 @@ private struct SaturationRollerView: View {
         }
         .padding(16)
         .surfacePanelStyle(cornerRadius: 24)
+    }
+}
+
+private struct GradeWorkflowBar: View {
+    let canUndo: Bool
+    let canRedo: Bool
+    let scratchA: StoredGradeSnapshot?
+    let scratchB: StoredGradeSnapshot?
+    let onUndo: () -> Void
+    let onRedo: () -> Void
+    let onSaveSnapshot: () -> Void
+    let onShowSnapshots: () -> Void
+    let onShowLibrary: () -> Void
+    let onRecallScratch: (ABScratchSlot) -> Void
+    let onCaptureScratch: (ABScratchSlot) -> Void
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Workflow")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                workflowButton(
+                    title: "Undo",
+                    systemImage: "arrow.uturn.backward",
+                    identifier: "undo-grade-button",
+                    isEnabled: canUndo,
+                    action: onUndo
+                )
+                .keyboardShortcut("z", modifiers: [.command])
+
+                workflowButton(
+                    title: "Redo",
+                    systemImage: "arrow.uturn.forward",
+                    identifier: "redo-grade-button",
+                    isEnabled: canRedo,
+                    action: onRedo
+                )
+                .keyboardShortcut("Z", modifiers: [.command, .shift])
+
+                workflowButton(
+                    title: "Save Snapshot",
+                    systemImage: "camera.aperture",
+                    identifier: "save-snapshot-button",
+                    isEnabled: true,
+                    action: onSaveSnapshot
+                )
+
+                workflowButton(
+                    title: "Snapshots",
+                    systemImage: "square.stack.3d.up",
+                    identifier: "show-snapshots-button",
+                    isEnabled: true,
+                    action: onShowSnapshots
+                )
+
+                workflowButton(
+                    title: "Library",
+                    systemImage: "books.vertical",
+                    identifier: "show-library-button",
+                    isEnabled: true,
+                    action: onShowLibrary
+                )
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                ScratchSlotCard(
+                    slot: .a,
+                    snapshot: scratchA,
+                    onRecall: { onRecallScratch(.a) },
+                    onCapture: { onCaptureScratch(.a) }
+                )
+
+                ScratchSlotCard(
+                    slot: .b,
+                    snapshot: scratchB,
+                    onRecall: { onRecallScratch(.b) },
+                    onCapture: { onCaptureScratch(.b) }
+                )
+            }
+        }
+        .padding(16)
+        .surfacePanelStyle(cornerRadius: 24)
+    }
+
+    private func workflowButton(
+        title: String,
+        systemImage: String,
+        identifier: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+        }
+        .buttonStyle(.bordered)
+        .tint(.white.opacity(0.14))
+        .foregroundStyle(.white)
+        .disabled(isEnabled == false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(title))
+        .accessibilityIdentifier(identifier)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+private struct ScratchSlotCard: View {
+    let slot: ABScratchSlot
+    let snapshot: StoredGradeSnapshot?
+    let onRecall: () -> Void
+    let onCapture: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Scratch \(slot.displayName)")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Spacer()
+                Text(snapshot == nil ? "Empty" : "Ready")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(snapshot == nil ? Color.white.opacity(0.45) : .green)
+            }
+
+            Text(snapshot?.name ?? "Tap recall after storing a scratch state.")
+                .font(.subheadline)
+                .foregroundStyle(Color.white.opacity(0.72))
+                .lineLimit(2)
+
+            if let snapshot {
+                Text(snapshot.updatedAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Color.white.opacity(0.52))
+            } else {
+                Text("Double-tap store to capture current grade.")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.52))
+            }
+
+            HStack(spacing: 10) {
+                Button(action: onRecall) {
+                    Label("Recall \(slot.displayName)", systemImage: "arrow.clockwise.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .disabled(snapshot == nil)
+                .accessibilityIdentifier("scratch-\(slot.rawValue)-recall")
+
+                DoubleTapActionChip(
+                    title: "Store \(slot.displayName)",
+                    tint: .cyan,
+                    requiresExplicitLabel: true,
+                    identifier: "scratch-\(slot.rawValue)-store",
+                    action: onCapture
+                )
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        }
+    }
+}
+
+private struct SnapshotBrowserSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Bindable var model: TrackGradeAppModel
+    let device: ManagedColorBoxDevice
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("Snapshots are stored on the iPad for quick recall, A/B compare, and show cues.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Snapshots for \(device.name)") {
+                    if model.snapshots(for: device.id).isEmpty {
+                        ContentUnavailableView(
+                            "No Snapshots Yet",
+                            systemImage: "camera.aperture",
+                            description: Text("Save a snapshot from the control surface to capture the current grade and preview frame.")
+                        )
+                    } else {
+                        ForEach(model.snapshots(for: device.id)) { snapshot in
+                            SnapshotRow(
+                                snapshot: snapshot,
+                                onRecall: {
+                                    Task {
+                                        await model.recallSnapshot(id: snapshot.id)
+                                        dismiss()
+                                    }
+                                },
+                                onDelete: {
+                                    Task {
+                                        await model.deleteSnapshot(id: snapshot.id)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Snapshots")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save Current") {
+                        Task {
+                            await model.saveSnapshot(id: device.id)
+                        }
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+private struct SnapshotRow: View {
+    let snapshot: StoredGradeSnapshot
+    let onRecall: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            SnapshotThumbnail(previewData: snapshot.previewFrameData)
+                .frame(width: 96, height: 60)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(snapshot.name)
+                    .font(.headline)
+                Text(snapshot.updatedAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Text(snapshotSummary)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(spacing: 8) {
+                Button("Recall", action: onRecall)
+                    .buttonStyle(.borderedProminent)
+                Button("Delete", role: .destructive, action: onDelete)
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityIdentifier("snapshot-\(snapshot.id.uuidString)")
+    }
+
+    private var snapshotSummary: String {
+        let grade = snapshot.gradeControl
+        return String(
+            format: "L %.2f %.2f %.2f  G %.2f %.2f %.2f  S %.2f",
+            Double(grade.lift.red),
+            Double(grade.lift.green),
+            Double(grade.lift.blue),
+            Double(grade.gain.red),
+            Double(grade.gain.green),
+            Double(grade.gain.blue),
+            Double(grade.saturation)
+        )
+    }
+}
+
+private struct SnapshotThumbnail: View {
+    let previewData: Data?
+
+    var body: some View {
+        Group {
+            if let previewData,
+               let image = UIImage(data: previewData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.secondary.opacity(0.12))
+                    Image(systemName: "photo")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct LibraryPlaceholderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let deviceName: String
+
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView(
+                "Library Browser In Progress",
+                systemImage: "books.vertical",
+                description: Text("The full asset browser is still pending, but this surface is reserved for the v1 read-only library workflow for \(deviceName).")
+            )
+            .navigationTitle("Library")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

@@ -42,6 +42,12 @@ struct TrackGradeUITestFixture {
             gain: ColorBoxRGBVector(red: 1.08, green: 0.97, blue: 1.11),
             saturation: 1.10
         )
+        let snapshotGrade = ColorBoxGradeControlState(
+            lift: ColorBoxRGBVector(red: -0.04, green: 0.01, blue: 0.06),
+            gamma: ColorBoxRGBVector(red: 0.03, green: -0.02, blue: 0.04),
+            gain: ColorBoxRGBVector(red: 0.96, green: 1.05, blue: 1.02),
+            saturation: 0.92
+        )
         let pipelineState = ColorBoxPipelineState(
             bypassEnabled: false,
             falseColorEnabled: false,
@@ -82,7 +88,7 @@ struct TrackGradeUITestFixture {
             deviceName: "Fixture ColorBox",
             name: "Lobby Warm-Up",
             previewFrameData: previewData,
-            gradeControl: grade
+            gradeControl: snapshotGrade
         )
 
         return TrackGradeUITestFixture(

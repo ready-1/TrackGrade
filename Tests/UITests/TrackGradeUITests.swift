@@ -44,6 +44,7 @@ final class TrackGradeUITests: XCTestCase {
         let controlsButton = app.buttons["secondary-controls-button"]
         XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
         controlsButton.tap()
+        selectDrawerPanel(named: "Presets", in: app)
 
         let savePresetButton = app.buttons["save-preset-button"]
         XCTAssertTrue(savePresetButton.waitForExistence(timeout: 5))
@@ -56,6 +57,59 @@ final class TrackGradeUITests: XCTestCase {
 
         XCTAssertTrue(fixtureElement("preset-slot-1", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Offline Save"].exists)
+    }
+
+    func testSnapshotRecallAppliesStoredSnapshotGrade() throws {
+        let app = launchFixtureApp()
+        let gradeStateDisplay = fixtureElement("dynamic-grade-card", in: app)
+
+        XCTAssertTrue(gradeStateDisplay.waitForExistence(timeout: 5))
+        let initialValue = gradeStateDisplay.value as? String
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Workflow", in: app)
+
+        let showSnapshotsButton = app.buttons["show-snapshots-button"]
+        XCTAssertTrue(showSnapshotsButton.waitForExistence(timeout: 5))
+        showSnapshotsButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Snapshots"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Lobby Warm-Up"].exists)
+        app.buttons["Recall"].firstMatch.tap()
+
+        XCTAssertTrue(gradeStateDisplay.waitForExistence(timeout: 5))
+        let valueChanged = NSPredicate(format: "value != %@", initialValue ?? "")
+        let expectation = XCTNSPredicateExpectation(predicate: valueChanged, object: gradeStateDisplay)
+        XCTAssertEqual(XCTWaiter().wait(for: [expectation], timeout: 5), .completed)
+        XCTAssertNotEqual(gradeStateDisplay.value as? String, initialValue)
+    }
+
+    func testSavingSnapshotAddsAnotherSnapshotEntry() throws {
+        let app = launchFixtureApp()
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Workflow", in: app)
+
+        let saveSnapshotButton = app.buttons["save-snapshot-button"]
+        XCTAssertTrue(saveSnapshotButton.waitForExistence(timeout: 5))
+        saveSnapshotButton.tap()
+
+        let showSnapshotsButton = app.buttons["show-snapshots-button"]
+        XCTAssertTrue(showSnapshotsButton.waitForExistence(timeout: 5))
+        showSnapshotsButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Snapshots"].waitForExistence(timeout: 5))
+        let recallButtons = app.buttons.matching(NSPredicate(format: "label == %@", "Recall"))
+        let countExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "count >= 2"),
+            object: recallButtons
+        )
+        XCTAssertEqual(XCTWaiter().wait(for: [countExpectation], timeout: 5), .completed)
+        XCTAssertGreaterThanOrEqual(recallButtons.count, 2)
     }
 
     private func launchFixtureApp() -> XCUIApplication {
@@ -73,6 +127,15 @@ final class TrackGradeUITests: XCTestCase {
         app.descendants(matching: .any)
             .matching(identifier: identifier)
             .firstMatch
+    }
+
+    private func selectDrawerPanel(
+        named title: String,
+        in app: XCUIApplication
+    ) {
+        let panelButton = app.buttons[title]
+        XCTAssertTrue(panelButton.waitForExistence(timeout: 5))
+        panelButton.tap()
     }
 }
 

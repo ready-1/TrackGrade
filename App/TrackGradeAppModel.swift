@@ -62,8 +62,12 @@ final class TrackGradeAppModel {
             return []
         }
 
+        return snapshots(for: selectedDeviceID)
+    }
+
+    func snapshots(for deviceID: UUID) -> [StoredGradeSnapshot] {
         return gradeSnapshots
-            .filter { $0.deviceID == selectedDeviceID && $0.kind == .standard }
+            .filter { $0.deviceID == deviceID && $0.kind == .standard }
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
@@ -809,12 +813,66 @@ final class TrackGradeAppModel {
 
     private func loadUITestFixture() {
         let fixture = TrackGradeUITestFixture.make()
-        knownDevices = fixture.knownDevices
+        do {
+            try seedUITestPersistence(using: fixture)
+            knownDevices = try fetchKnownDevices()
+            gradeSnapshots = try fetchStoredSnapshots()
+        } catch {
+            knownDevices = fixture.knownDevices
+            gradeSnapshots = fixture.snapshotsData
+            errorMessage = "Failed to seed the UI test fixture store: \(error.localizedDescription)"
+        }
         snapshots = fixture.snapshots
         selectedDeviceID = fixture.snapshots.first?.id
         fixturePresetGrades = fixture.presetGrades
-        gradeSnapshots = fixture.snapshotsData
         gradeHistory.removeAll()
+    }
+
+    private func seedUITestPersistence(
+        using fixture: TrackGradeUITestFixture
+    ) throws {
+        guard let modelContext else {
+            return
+        }
+
+        let existingDevices = try modelContext.fetch(FetchDescriptor<StoredColorBoxDevice>())
+        for device in existingDevices {
+            modelContext.delete(device)
+        }
+
+        let existingSnapshots = try modelContext.fetch(FetchDescriptor<StoredGradeSnapshot>())
+        for snapshot in existingSnapshots {
+            modelContext.delete(snapshot)
+        }
+
+        for device in fixture.knownDevices {
+            let record = StoredColorBoxDevice(
+                id: device.id,
+                name: device.name,
+                address: device.address,
+                username: device.username,
+                credentialReference: device.credentialReference,
+                createdAt: device.createdAt
+            )
+            modelContext.insert(record)
+        }
+
+        for snapshot in fixture.snapshotsData {
+            let record = StoredGradeSnapshot(
+                id: snapshot.id,
+                deviceID: snapshot.deviceID,
+                deviceName: snapshot.deviceName,
+                name: snapshot.name,
+                kind: snapshot.kind,
+                createdAt: snapshot.createdAt,
+                updatedAt: snapshot.updatedAt,
+                previewFrameData: snapshot.previewFrameData,
+                gradeControl: snapshot.gradeControl
+            )
+            modelContext.insert(record)
+        }
+
+        try modelContext.save()
     }
 
     private func updateFixtureDevice(
