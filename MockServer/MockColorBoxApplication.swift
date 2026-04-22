@@ -199,6 +199,26 @@ enum MockColorBoxApplication {
             }
         }
 
+        app.get("v2", "1dLutLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
+            try await state.libraryEntries(for: .oneDLUT).map(Self.makeLibraryEntryResponse)
+        }
+
+        app.get("v2", "3dLutLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
+            try await state.libraryEntries(for: .threeDLUT).map(Self.makeLibraryEntryResponse)
+        }
+
+        app.get("v2", "matrixLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
+            try await state.libraryEntries(for: .matrix).map(Self.makeLibraryEntryResponse)
+        }
+
+        app.get("v2", "imageLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
+            try await state.libraryEntries(for: .image).map(Self.makeLibraryEntryResponse)
+        }
+
+        app.get("v2", "overlayLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
+            try await state.libraryEntries(for: .overlay).map(Self.makeLibraryEntryResponse)
+        }
+
         app.post("v2", "saveDynamicLutRequest") { request async throws -> HTTPStatus in
             try await state.saveDynamicLutRequest()
             return .ok
@@ -311,6 +331,17 @@ enum MockColorBoxApplication {
             headers.replaceOrAdd(name: .contentType, value: "application/json")
             return Response(status: .ok, headers: headers, body: .init(data: document))
         }
+    }
+}
+
+private extension MockColorBoxApplication {
+    static func makeLibraryEntryResponse(
+        from entry: MockLibraryEntryState
+    ) -> MockColorBoxLibraryEntry {
+        MockColorBoxLibraryEntry(
+            userName: entry.userName,
+            fileName: entry.fileName
+        )
     }
 }
 

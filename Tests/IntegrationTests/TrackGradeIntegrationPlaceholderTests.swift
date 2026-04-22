@@ -23,6 +23,14 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertEqual(connectedDevice.systemInfo?.productName, "AJA ColorBox")
         XCTAssertEqual(connectedDevice.firmwareInfo?.version, "mock-1.0.0")
 
+        let libraries = try await manager.fetchLibraries(id: deviceID)
+        XCTAssertTrue(
+            libraries.contains(where: { section in
+                section.kind == .threeDLUT
+                    && section.entries.contains(where: { $0.displayName == "Stage Neutral" })
+            })
+        )
+
         let configuredDevice = try await manager.configurePipelineForTrackGrade(id: deviceID)
         XCTAssertEqual(configuredDevice.pipelineState?.dynamicLUTMode, "dynamic")
 

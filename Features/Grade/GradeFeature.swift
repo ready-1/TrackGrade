@@ -911,7 +911,7 @@ private struct SecondaryControlsDrawer: View {
 
     @State private var activePanel: DrawerPanel = .workflow
     @State private var isShowingSnapshotBrowser = false
-    @State private var isShowingLibraryPlaceholder = false
+    @State private var isShowingLibraryBrowser = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -972,7 +972,7 @@ private struct SecondaryControlsDrawer: View {
                             isShowingSnapshotBrowser = true
                         },
                         onShowLibrary: {
-                            isShowingLibraryPlaceholder = true
+                            isShowingLibraryBrowser = true
                         },
                         onRecallScratch: { slot in
                             Task {
@@ -1074,8 +1074,11 @@ private struct SecondaryControlsDrawer: View {
                 device: device
             )
         }
-        .sheet(isPresented: $isShowingLibraryPlaceholder) {
-            LibraryPlaceholderSheet(deviceName: device.name)
+        .sheet(isPresented: $isShowingLibraryBrowser) {
+            LibraryFeatureView(
+                model: model,
+                device: device
+            )
         }
     }
 }
@@ -1972,31 +1975,6 @@ private struct SnapshotThumbnail: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-private struct LibraryPlaceholderSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    let deviceName: String
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                "Library Browser In Progress",
-                systemImage: "books.vertical",
-                description: Text("The full asset browser is still pending, but this surface is reserved for the v1 read-only library workflow for \(deviceName).")
-            )
-            .navigationTitle("Library")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
     }
 }
 

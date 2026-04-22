@@ -32,6 +32,7 @@ struct TrackGradeUITestFixture {
     let knownDevices: [StoredColorBoxDevice]
     let snapshots: [ManagedColorBoxDevice]
     let presetGrades: [UUID: [Int: ColorBoxGradeControlState]]
+    let librarySections: [UUID: [ColorBoxLibrarySection]]
     let snapshotsData: [StoredGradeSnapshot]
 
     static func make() -> TrackGradeUITestFixture {
@@ -120,8 +121,50 @@ struct TrackGradeUITestFixture {
                 deviceBID: [preset.slot: sharedGrade],
                 deviceCID: [preset.slot: sharedGrade],
             ],
+            librarySections: [
+                deviceAID: fixtureLibrarySections(),
+                deviceBID: fixtureLibrarySections(),
+                deviceCID: fixtureLibrarySections(),
+            ],
             snapshotsData: [storedSnapshot]
         )
+    }
+
+    static func fixtureLibrarySections() -> [ColorBoxLibrarySection] {
+        [
+            ColorBoxLibrarySection(
+                kind: .oneDLUT,
+                entries: [
+                    ColorBoxLibraryEntry(kind: .oneDLUT, slot: 1, userName: "709 Clamp", fileName: "709-clamp.cube"),
+                    ColorBoxLibraryEntry(kind: .oneDLUT, slot: 2, userName: "Legalize", fileName: "legalize.cube"),
+                ]
+            ),
+            ColorBoxLibrarySection(
+                kind: .threeDLUT,
+                entries: [
+                    ColorBoxLibraryEntry(kind: .threeDLUT, slot: 1, userName: "Stage Neutral", fileName: "stage-neutral-33.cube"),
+                    ColorBoxLibraryEntry(kind: .threeDLUT, slot: 2, userName: "Warm LED", fileName: "warm-led-33.cube"),
+                ]
+            ),
+            ColorBoxLibrarySection(
+                kind: .matrix,
+                entries: [
+                    ColorBoxLibraryEntry(kind: .matrix, slot: 1, userName: "LED Matrix A", fileName: "led-matrix-a.mtx"),
+                ]
+            ),
+            ColorBoxLibrarySection(
+                kind: .image,
+                entries: [
+                    ColorBoxLibraryEntry(kind: .image, slot: 1, userName: "Framing Guide", fileName: "framing-guide.png"),
+                ]
+            ),
+            ColorBoxLibrarySection(
+                kind: .overlay,
+                entries: [
+                    ColorBoxLibraryEntry(kind: .overlay, slot: 1, userName: "Lower Third", fileName: "lower-third.png"),
+                ]
+            ),
+        ]
     }
 
     private static func makeSnapshot(

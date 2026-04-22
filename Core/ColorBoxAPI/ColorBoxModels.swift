@@ -357,6 +357,100 @@ public struct ColorBoxPresetSummary: Identifiable, Codable, Sendable, Equatable 
     }
 }
 
+public enum ColorBoxLibraryKind: String, CaseIterable, Codable, Identifiable, Sendable {
+    case oneDLUT
+    case threeDLUT
+    case matrix
+    case image
+    case overlay
+
+    public var id: String {
+        rawValue
+    }
+
+    public var title: String {
+        switch self {
+        case .oneDLUT:
+            return "1D LUT"
+        case .threeDLUT:
+            return "3D LUT"
+        case .matrix:
+            return "Matrix"
+        case .image:
+            return "Image"
+        case .overlay:
+            return "Overlay"
+        }
+    }
+
+    public var endpointPath: String {
+        switch self {
+        case .oneDLUT:
+            return "1dLutLibrary"
+        case .threeDLUT:
+            return "3dLutLibrary"
+        case .matrix:
+            return "matrixLibrary"
+        case .image:
+            return "imageLibrary"
+        case .overlay:
+            return "overlayLibrary"
+        }
+    }
+}
+
+public struct ColorBoxLibraryEntry: Identifiable, Codable, Sendable, Equatable {
+    public let kind: ColorBoxLibraryKind
+    public let slot: Int
+    public let userName: String?
+    public let fileName: String?
+
+    public var id: String {
+        "\(kind.rawValue)-\(slot)"
+    }
+
+    public var displayName: String {
+        if let userName, userName.isEmpty == false {
+            return userName
+        }
+
+        if let fileName, fileName.isEmpty == false {
+            return fileName
+        }
+
+        return "\(kind.title) \(slot)"
+    }
+
+    public init(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        userName: String?,
+        fileName: String?
+    ) {
+        self.kind = kind
+        self.slot = slot
+        self.userName = userName
+        self.fileName = fileName
+    }
+}
+
+public struct ColorBoxLibrarySection: Identifiable, Codable, Sendable, Equatable {
+    public let kind: ColorBoxLibraryKind
+    public var entries: [ColorBoxLibraryEntry]
+
+    public var id: ColorBoxLibraryKind {
+        kind
+    }
+
+    public init(
+        kind: ColorBoxLibraryKind,
+        entries: [ColorBoxLibraryEntry]
+    ) {
+        self.kind = kind
+        self.entries = entries
+    }
+}
+
 public struct ColorBoxPresetMutation: Codable, Sendable, Equatable {
     public let slot: Int
     public let name: String

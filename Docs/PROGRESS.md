@@ -51,12 +51,14 @@
 - Settings now includes a more release-ready About section with version, license, repository, and conduct-contact information, and the app bundle metadata now presents itself as `TrackGrade` version `0.1.0`.
 - `Docs/ARCHITECTURE.md`, `Docs/USER-GUIDE.md`, and `Docs/COLOR-SCIENCE.md` now describe the implemented app shell, offline fixture mode, live `/v2` grading path, and current limitations instead of remaining placeholders.
 - Phase 5 first pass is now in place offline: saved devices can be linked as gang peers, the focused grading surface broadcasts grade / bypass / false color / preset recall to those peers, and the fixture-backed UI suite verifies gang bypass mirroring across three seeded devices.
+- The placeholder library sheet has been replaced with a real read-only device library browser backed by the live `/v2` library endpoints, fixture data, and mock-server coverage for 1D LUT, 3D LUT, matrix, image, and overlay assets.
+- `swift test` now verifies mock library reads, and `xcodebuild test` now covers the fixture library browser flow in the iPad UI suite.
 
 ## In-Flight Work
 
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
-- Choosing the next non-hardware polish slice after the first gang implementation, with library browse and broader accessibility still open.
+- Choosing the next non-hardware polish slice after the library browser landed, with broader accessibility, release collateral, and the distinct Before/After workflow control still open.
 
 ## Blockers
 
@@ -70,5 +72,5 @@
 - Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
-- Fill the remaining offline feature gaps that do not need hardware, especially library browse polish and broader accessibility tightening.
+- Fill the remaining offline feature gaps that do not need hardware, especially the distinct Before/After workflow control, broader accessibility tightening, and release-collateral cleanup.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

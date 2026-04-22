@@ -18,12 +18,13 @@ Screenshots coming soon.
 - Device discovery, ColorBox-resident preset save / recall / delete, and local snapshots / scratch slots
 - Focus-device gang broadcast to linked peer devices with sync / drift status
 - Fixed landscape control surface with drawer-based secondary controls
+- Read-only device library browser for 1D LUT, 3D LUT, matrix, image, and overlay slots
 - Mock ColorBox server for local development without hardware
 
 ## Planned Next
 
 - Final live-hardware sensitivity tuning on iPad
-- Additional workflow polish, library tooling, and release packaging
+- Additional workflow polish, library import tooling, and release packaging
 - Later-phase LUT baking / upload and deeper multi-device validation
 
 ## Requirements

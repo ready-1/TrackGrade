@@ -113,7 +113,7 @@ Tap `Controls` to open the slide-over drawer.
 - Save Snapshot
 - open the full snapshots browser
 - A/B scratch slot store and recall
-- placeholder library entry point
+- open the read-only library browser
 
 ### Presets
 
@@ -185,9 +185,21 @@ That seeds a connected fixture device so you can walk through:
 
 The reference firmware used during development does not expose a working false-color API path. TrackGrade therefore treats false color as unsupported on that firmware instead of showing a dead toggle.
 
+## Library Browser
+
+The library sheet lets you inspect the current device asset slots without leaving the grading surface.
+
+- 1D LUT entries
+- 3D LUT entries
+- matrix entries
+- image entries
+- overlay entries
+
+Use `Refresh` in the sheet toolbar to re-read the current device state.
+
 ## Current Limitations
 
-- The asset library browser is still limited.
+- The asset library browser is read-only in this build; import and destructive library actions still depend on a verified live upload path.
 - The current grading path writes directly through `/v2/pipelineStages` rather than uploading baked LUTs.
 - Gang control currently focuses on mirroring a single focus device to linked peers; more advanced gang workflows can still be added later.
 - Final tactile tuning still needs real iPad + ColorBox validation.

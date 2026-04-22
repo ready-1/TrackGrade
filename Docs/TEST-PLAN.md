@@ -22,8 +22,8 @@ Current automated coverage:
 
 - Generated ColorBox client smoke tests
 - Trackball mapping and core grade-control helpers
-- Mock-server integration for connect, preview, bypass, presets, reconnect, and unsupported false color
-- Fixture-backed iPad UI flows for launch, bypass, settings, preset save, snapshot save, snapshot recall, and gang broadcast
+- Mock-server integration for connect, preview, device library reads, bypass, presets, reconnect, and unsupported false color
+- Fixture-backed iPad UI flows for launch, bypass, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library browsing
 
 ## Offline Simulator Validation
 
@@ -35,6 +35,7 @@ Manual simulator checks:
 - Verify saturation sits above the trackballs
 - Verify reset controls remain visible for Lift, Gamma, Gain, and Saturation
 - Open the drawer and confirm the `Workflow`, `Presets`, and `Device` panels switch cleanly
+- Open the library browser and confirm seeded library sections and entries appear
 - Link at least two fixture peers from the device list and confirm bypass mirrors to them
 - Save and recall a snapshot from fixture mode
 - Save a device preset from fixture mode

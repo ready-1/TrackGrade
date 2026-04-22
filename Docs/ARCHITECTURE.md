@@ -44,7 +44,8 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 - `Features/Preview`
   - lightweight preview rendering helper
 - `Features/Library`
-  - still minimal and reserved for later read-only library tooling
+  - read-only device library browser
+  - groups live and fixture library entries into 1D LUT, 3D LUT, matrix, image, and overlay sections
 
 ### Core
 
@@ -160,7 +161,7 @@ This keeps the simulator and UI automation path close to the real app shell inst
 
 - The app currently drives live grade directly through `pipelineStages` instead of baking and uploading `.cube` LUTs.
 - Gang control currently follows a focused-device-plus-linked-peers model; deeper workflow support such as per-device offsets and richer gang management is still future work.
-- The library area is still a limited shell rather than a full asset manager.
+- The library area is currently read-only; import, overwrite, and delete flows remain future work until the live upload path is proven on hardware.
 - The project compiles shared sources in both the app target and the package; a later cleanup can consume the local package product more directly.
 
 ## Testing Strategy

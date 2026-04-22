@@ -508,3 +508,27 @@ Keep one selected focus device in the grading surface and let the saved-device l
 - The existing single-device grading UI could grow into gang support without a full navigation redesign.
 - The current gang model is immediately useful for mirrored control, but it does not yet provide per-device offsets or richer gang management workflows.
 - Offline fixture tests can validate gang mirroring even before the next live multi-ColorBox session.
+
+## 2026-04-21 — Ship Library Management As Read-Only Browse Until Live Upload Semantics Are Trustworthy
+
+### Context
+
+The brief keeps library management in scope for v1, but the live upload path is still unreliable on the reference ColorBox firmware: direct `/v2/upload` probes return success without producing confirmed new library entries. That makes destructive or mutating library UI risky to present as if it were finished.
+
+### Decision
+
+Implement the current library area as a read-only browser backed by the verified `/v2` read endpoints for:
+
+- 1D LUT
+- 3D LUT
+- matrix
+- image
+- overlay
+
+Expose that browser in the workflow drawer and support it fully in fixture mode and the mock server, while explicitly deferring import / overwrite / delete UI until live hardware behavior is trustworthy.
+
+### Consequences
+
+- Operators and contributors can inspect real device assets today without implying that upload flows are production-ready.
+- The mock server and fixture mode now cover a broader slice of the ColorBox surface, improving offline development value.
+- Future library import work can layer on top of the existing browser instead of starting from another placeholder shell.

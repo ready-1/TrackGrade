@@ -10,6 +10,7 @@ actor MockColorBoxState {
     private var presetStore: [Int: ColorBoxPresetSummary]
     private var presetPipelineStore: [Int: ColorBoxPipelineState]
     private var libraryControlValue: MockLibraryControlState
+    private let libraryEntriesByKind: [ColorBoxLibraryKind: [MockLibraryEntryState]]
     private var previewPNGDataValue: Data
     private var lastUploadedLUT: Data
 
@@ -49,6 +50,25 @@ actor MockColorBoxState {
             data: "",
             errorMessage: ""
         )
+        self.libraryEntriesByKind = [
+            .oneDLUT: [
+                MockLibraryEntryState(userName: "709 Clamp", fileName: "709-clamp.cube"),
+                MockLibraryEntryState(userName: "Legalize", fileName: "legalize.cube"),
+            ],
+            .threeDLUT: [
+                MockLibraryEntryState(userName: "Stage Neutral", fileName: "stage-neutral-33.cube"),
+                MockLibraryEntryState(userName: "Warm LED", fileName: "warm-led-33.cube"),
+            ],
+            .matrix: [
+                MockLibraryEntryState(userName: "LED Matrix A", fileName: "led-matrix-a.mtx"),
+            ],
+            .image: [
+                MockLibraryEntryState(userName: "Framing Guide", fileName: "framing-guide.png"),
+            ],
+            .overlay: [
+                MockLibraryEntryState(userName: "Lower Third", fileName: "lower-third.png"),
+            ],
+        ]
         self.previewPNGDataValue = Self.previewPNGData()
         self.lastUploadedLUT = Data()
     }
@@ -179,6 +199,13 @@ actor MockColorBoxState {
                 fileName: "\(preset.name).preset"
             )
         }
+    }
+
+    func libraryEntries(
+        for kind: ColorBoxLibraryKind
+    ) async throws -> [MockLibraryEntryState] {
+        try await applyLatency()
+        return libraryEntriesByKind[kind] ?? []
     }
 
     func libraryControl() async throws -> MockLibraryControlState {

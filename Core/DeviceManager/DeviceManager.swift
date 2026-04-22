@@ -245,6 +245,27 @@ public actor DeviceManager {
         }
     }
 
+    public func fetchLibraries(
+        id: UUID
+    ) async throws -> [ColorBoxLibrarySection] {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let libraries = try await makeClient(for: storedDevice).listLibraries()
+            var updated = storedDevice
+            updated.snapshot.connectionState = .connected
+            updated.snapshot.lastErrorDescription = nil
+            updated.hasConnectedOnce = true
+            devices[id] = updated
+            reconnectTasks[id]?.cancel()
+            reconnectTasks[id] = nil
+            broadcastSnapshots()
+            return libraries
+        } catch {
+            _ = try await handleFailure(id: id, error: error)
+            throw error
+        }
+    }
+
     private func makeClient(for storedDevice: StoredDevice) -> ColorBoxAPIClient {
         ColorBoxAPIClient(
             endpoint: storedDevice.endpoint,

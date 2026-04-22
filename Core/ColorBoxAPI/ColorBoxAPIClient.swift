@@ -158,6 +158,36 @@ public struct ColorBoxAPIClient: Sendable {
         }
     }
 
+    public func listLibraries() async throws -> [ColorBoxLibrarySection] {
+        async let oneDLUTs = listLibrary(kind: .oneDLUT)
+        async let threeDLUTs = listLibrary(kind: .threeDLUT)
+        async let matrices = listLibrary(kind: .matrix)
+        async let images = listLibrary(kind: .image)
+        async let overlays = listLibrary(kind: .overlay)
+
+        return try await [
+            ColorBoxLibrarySection(kind: .oneDLUT, entries: oneDLUTs),
+            ColorBoxLibrarySection(kind: .threeDLUT, entries: threeDLUTs),
+            ColorBoxLibrarySection(kind: .matrix, entries: matrices),
+            ColorBoxLibrarySection(kind: .image, entries: images),
+            ColorBoxLibrarySection(kind: .overlay, entries: overlays),
+        ]
+    }
+
+    public func listLibrary(
+        kind: ColorBoxLibraryKind
+    ) async throws -> [ColorBoxLibraryEntry] {
+        let entries: [V2LibraryEntry] = try await performJSONRequest(path: "v2/\(kind.endpointPath)")
+        return entries.enumerated().map { index, entry in
+            ColorBoxLibraryEntry(
+                kind: kind,
+                slot: index + 1,
+                userName: entry.userName,
+                fileName: entry.fileName
+            )
+        }
+    }
+
     public func savePreset(slot: Int, name: String) async throws -> [ColorBoxPresetSummary] {
         do {
             try await saveDynamicLutRequestV2()

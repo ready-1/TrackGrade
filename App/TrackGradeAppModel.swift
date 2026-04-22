@@ -39,6 +39,7 @@ final class TrackGradeAppModel {
     var discoveredDevices: [DiscoveredColorBoxDevice] = []
     var snapshots: [ManagedColorBoxDevice] = []
     var gradeSnapshots: [StoredGradeSnapshot] = []
+    var librarySectionsByDeviceID: [UUID: [ColorBoxLibrarySection]] = [:]
     var selectedDeviceID: UUID?
     var isShowingAddDeviceSheet = false
     var activeAuthPrompt: AuthenticationPrompt?
@@ -88,6 +89,12 @@ final class TrackGradeAppModel {
         return gradeSnapshots
             .filter { $0.deviceID == deviceID && $0.kind == .standard }
             .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    func librarySections(
+        for deviceID: UUID
+    ) -> [ColorBoxLibrarySection] {
+        librarySectionsByDeviceID[deviceID] ?? []
     }
 
     var canUndoSelectedGrade: Bool {
@@ -295,6 +302,7 @@ final class TrackGradeAppModel {
             try modelContext.save()
             knownDevices = try fetchKnownDevices()
             gradeSnapshots = try fetchStoredSnapshots()
+            librarySectionsByDeviceID[id] = nil
             await deviceManager.removeDevice(id: id)
             gradeHistory[id] = nil
 
@@ -581,6 +589,22 @@ final class TrackGradeAppModel {
             handleAuthenticationPromptIfNeeded(for: snapshot)
         } catch {
             errorMessage = "Failed to refresh the preview frame: \(error.localizedDescription)"
+        }
+    }
+
+    func refreshLibrary(id: UUID) async {
+        if launchConfiguration.usesUITestFixture {
+            if librarySectionsByDeviceID[id] == nil {
+                librarySectionsByDeviceID[id] = TrackGradeUITestFixture.fixtureLibrarySections()
+            }
+            return
+        }
+
+        do {
+            let sections = try await deviceManager.fetchLibraries(id: id)
+            librarySectionsByDeviceID[id] = sections
+        } catch {
+            errorMessage = "Failed to refresh the device library: \(error.localizedDescription)"
         }
     }
 
@@ -944,6 +968,7 @@ final class TrackGradeAppModel {
         snapshots = fixture.snapshots
         selectedDeviceID = fixture.snapshots.first?.id
         fixturePresetGrades = fixture.presetGrades
+        librarySectionsByDeviceID = fixture.librarySections
         gradeHistory.removeAll()
     }
 

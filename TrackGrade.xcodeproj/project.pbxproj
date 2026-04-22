@@ -14,6 +14,7 @@
 		530D388C6345EA01B97ABAE5 /* XcodeProjectSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A6780C1AABDDEC3A2A90702 /* XcodeProjectSmokeTests.swift */; };
 		5AA977163540DCD6DE9061FE /* ConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B6294B91BE0853F9A3EEA7 /* ConnectionState.swift */; };
 		688052382D49724F90EBF3FF /* PreviewFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25A9D3DCFC12BD1C603FFC5 /* PreviewFeature.swift */; };
+		68F0D84C3A9B4A6D8E2F1137 /* LibraryFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E00400E123FC2A110808CFF /* LibraryFeature.swift */; };
 		6E9DAA4266AC8C6BC4D985FE /* SimultaneousTouchGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 057EFA4F2EB71F60D70C649C /* SimultaneousTouchGestureRecognizer.swift */; };
 		6BF5BA10FBAA57D7FAA72966 /* StoredColorBoxDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB117576B1B29427F7C93BF2 /* StoredColorBoxDevice.swift */; };
 		7D16F06428B728C310A1FFB6 /* HapticsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54BA60C6477EBDB48F732865 /* HapticsCoordinator.swift */; };
@@ -510,6 +511,7 @@
 				20191BD5DBB39584F98F3567 /* TrackGradeKeychainStore.swift in Sources */,
 				D06D6F4BD55DDBDD18DFC7C3 /* ConnectFeature.swift in Sources */,
 				8691BBEA6CC3B46DE02A1575 /* GradeFeature.swift in Sources */,
+				68F0D84C3A9B4A6D8E2F1137 /* LibraryFeature.swift in Sources */,
 				C6D990EA781C306118847748 /* SettingsFeature.swift in Sources */,
 				A309AF921D092781CB0D9440 /* PresetsFeature.swift in Sources */,
 				688052382D49724F90EBF3FF /* PreviewFeature.swift in Sources */,

@@ -136,6 +136,27 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertEqual(bypassToggle.value as? String, "1")
     }
 
+    func testLibraryBrowserShowsFixtureSections() throws {
+        let app = launchFixtureApp()
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Workflow", in: app)
+
+        let showLibraryButton = app.buttons["show-library-button"]
+        XCTAssertTrue(showLibraryButton.waitForExistence(timeout: 5))
+        showLibraryButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3D LUT"].exists)
+        XCTAssertTrue(app.staticTexts["Stage Neutral"].waitForExistence(timeout: 5))
+
+        let overlayEntry = app.staticTexts["Lower Third"]
+        scrollToElement(overlayEntry, in: app)
+        XCTAssertTrue(overlayEntry.waitForExistence(timeout: 5))
+    }
+
     private func launchFixtureApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-test-fixture")
@@ -160,6 +181,27 @@ final class TrackGradeUITests: XCTestCase {
         let panelButton = app.buttons[title]
         XCTAssertTrue(panelButton.waitForExistence(timeout: 5))
         panelButton.tap()
+    }
+
+    private func scrollToElement(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        maximumSwipes: Int = 4
+    ) {
+        guard element.exists == false else {
+            return
+        }
+
+        let libraryList = app.tables["library-list"].firstMatch
+        let scrollContainer = libraryList.exists ? libraryList : app.collectionViews.firstMatch
+
+        guard scrollContainer.exists else {
+            return
+        }
+
+        for _ in 0..<maximumSwipes where element.exists == false {
+            scrollContainer.swipeUp()
+        }
     }
 }
 
