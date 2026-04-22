@@ -48,6 +48,7 @@
 - The `-ui-test-fixture` path now seeds SwiftData-backed fixture devices and snapshots instead of relying on in-memory-only snapshot state, so offline snapshot save / recall exercises the same persistence path as the real app.
 - `xcodebuild test` now covers the full offline control-surface path: fixture launch, bypass, settings, preset save, snapshot save, and snapshot recall.
 - `swift test` and `xcodebuild test` both passed again after the offline snapshot workflow and drawer validation refactor.
+- Settings now includes a more release-ready About section with version, license, repository, and conduct-contact information, and the app bundle metadata now presents itself as `TrackGrade` version `0.1.0`.
 
 ## In-Flight Work
 

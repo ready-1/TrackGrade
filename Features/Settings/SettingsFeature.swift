@@ -110,6 +110,26 @@ struct SettingsFeatureView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                Section("About") {
+                    LabeledContent("App", value: "TrackGrade")
+                    LabeledContent("Version", value: appVersion)
+                    LabeledContent("License", value: "Apache License 2.0")
+
+                    Link(
+                        "Project Repository",
+                        destination: URL(string: "https://github.com/ready-1/TrackGrade")!
+                    )
+
+                    Link(
+                        "Code of Conduct Contact",
+                        destination: URL(string: "mailto:info@getready1.com")!
+                    )
+
+                    Text("TrackGrade is not affiliated with or endorsed by AJA Video Systems. AJA and ColorBox are trademarks of AJA Video Systems.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
             .navigationTitle("Settings")
             .toolbar {
@@ -121,6 +141,22 @@ struct SettingsFeatureView: View {
             }
         }
         .presentationDetents([.large])
+    }
+
+    private var appVersion: String {
+        let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+
+        switch (shortVersion, build) {
+        case let (shortVersion?, build?) where shortVersion.isEmpty == false && build.isEmpty == false:
+            return "\(shortVersion) (\(build))"
+        case let (shortVersion?, _):
+            return shortVersion
+        case let (_, build?):
+            return build
+        default:
+            return "Development"
+        }
     }
 
     private func sensitivityRow(
