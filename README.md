@@ -16,6 +16,7 @@ Screenshots coming soon.
 - Saturation roller and live numeric state display
 - Direct LAN communication with AJA ColorBox hardware
 - Device discovery, ColorBox-resident preset save / recall / delete, and local snapshots / scratch slots
+- Distinct `Before / After` compare control alongside persistent ColorBox bypass
 - Focus-device gang broadcast to linked peer devices with sync / drift status
 - Fixed landscape control surface with drawer-based secondary controls
 - Read-only device library browser for 1D LUT, 3D LUT, matrix, image, and overlay slots

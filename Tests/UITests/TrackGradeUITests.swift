@@ -28,6 +28,22 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertEqual(bypassToggle.value as? String, "1")
     }
 
+    func testBeforeAfterCompareRestoresFixtureBypassState() throws {
+        let app = launchFixtureApp()
+        let compareButton = app.buttons["before-after-button"]
+        let bypassToggle = app.switches["bypass-toggle"]
+
+        XCTAssertTrue(compareButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(bypassToggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(bypassToggle.value as? String, "0")
+
+        compareButton.tap()
+        XCTAssertEqual(bypassToggle.value as? String, "1")
+
+        compareButton.tap()
+        XCTAssertEqual(bypassToggle.value as? String, "0")
+    }
+
     func testSettingsSheetLaunchesFromSurface() throws {
         let app = launchFixtureApp()
 

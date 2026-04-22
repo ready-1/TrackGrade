@@ -532,3 +532,24 @@ Expose that browser in the workflow drawer and support it fully in fixture mode 
 - Operators and contributors can inspect real device assets today without implying that upload flows are production-ready.
 - The mock server and fixture mode now cover a broader slice of the ColorBox surface, improving offline development value.
 - Future library import work can layer on top of the existing browser instead of starting from another placeholder shell.
+
+## 2026-04-21 — Keep Before / After As A Temporary Compare Layer On Top Of Bypass
+
+### Context
+
+The brief requires both a persistent bypass control and a separate `Before / After` compare control. The current implementation already had persistent bypass, but compare mode was still missing even though it can be built on the same underlying ColorBox bypass capability.
+
+### Decision
+
+Implement `Before / After` as a reversible compare session:
+
+- capture the current bypass state for the focus device and any linked gang peers
+- temporarily flip those bypass states
+- restore the captured states when compare mode ends
+- disable direct bypass editing while compare mode is active so restore semantics stay predictable
+
+### Consequences
+
+- The app now matches the brief’s distinction between temporary compare and persistent device bypass without requiring a separate device-side API.
+- Gang peers can participate in compare mode using the same captured-state restore path as the focus device.
+- The compare workflow is fully testable in fixture mode, reducing the risk of a hardware-only regression tomorrow.

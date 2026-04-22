@@ -79,6 +79,17 @@ struct GradeFeatureView: View {
 
             Spacer(minLength: 16)
 
+            BeforeAfterCompareButton(
+                isActive: model.isBeforeAfterActive(device.id),
+                statusText: model.beforeAfterStatusText(for: device.id)
+            ) {
+                emitButtonHaptic()
+                Task {
+                    await model.toggleBeforeAfter(id: device.id)
+                }
+            }
+            .accessibilityIdentifier("before-after-button")
+
             HStack(spacing: 12) {
                 Text("Bypass")
                     .font(.subheadline.weight(.semibold))
@@ -101,6 +112,8 @@ struct GradeFeatureView: View {
                 )
                 .labelsHidden()
                 .tint(.orange)
+                .disabled(model.isBeforeAfterActive(device.id))
+                .opacity(model.isBeforeAfterActive(device.id) ? 0.5 : 1)
                 .accessibilityIdentifier("bypass-toggle")
             }
 
@@ -166,6 +179,43 @@ struct GradeFeatureView: View {
 
     private func drawerWidth(for size: CGSize) -> CGFloat {
         min(380, max(320, size.width * 0.4))
+    }
+}
+
+private struct BeforeAfterCompareButton: View {
+    let isActive: Bool
+    let statusText: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Before / After")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.74))
+
+                HStack(spacing: 8) {
+                    Image(systemName: isActive ? "rectangle.on.rectangle.circle.fill" : "rectangle.on.rectangle")
+                        .font(.subheadline.weight(.semibold))
+                    Text(statusText)
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(isActive ? Color.orange.opacity(0.22) : Color.white.opacity(0.1))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(isActive ? Color.orange.opacity(0.55) : Color.white.opacity(0.14))
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Before and After")
+        .accessibilityValue(statusText)
     }
 }
 

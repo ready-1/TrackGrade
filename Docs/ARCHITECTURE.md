@@ -103,7 +103,8 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 2. Touch gestures mutate local draft grade state immediately for responsive UI feedback.
 3. Changes are coalesced and sent through `TrackGradeAppModel.updateGradeControl`.
 4. `DeviceManager` writes the current LGG/S state to `/v2/pipelineStages`.
-5. Undo / redo checkpoints are recorded at interaction boundaries instead of every touch sample.
+5. The distinct `Before / After` compare control temporarily flips bypass, remembers the original device state, and restores it when compare mode ends.
+6. Undo / redo checkpoints are recorded at interaction boundaries instead of every touch sample.
 
 ### 4. Preset Workflow
 

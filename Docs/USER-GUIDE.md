@@ -60,6 +60,7 @@ The grading screen is a fixed landscape layout with no vertical scrolling.
 ### Top Bar
 
 - device name and connection state
+- `Before / After` compare button
 - bypass toggle
 - controls drawer button
 - settings button
@@ -82,6 +83,22 @@ Each grading region exposes clearly visible reset controls:
 - saturation reset
 
 By default, reset actions require a double-tap confirmation.
+
+## Before / After Vs. Bypass
+
+TrackGrade now exposes two separate top-bar controls that both use ColorBox bypass under the hood:
+
+### Before / After
+
+- temporary compare mode
+- flips the current bypass state so you can check the graded image against the ungraded image
+- restores the original bypass state when you tap it again
+
+### Bypass
+
+- persistent device bypass
+- leaves the ColorBox in its current bypass state until you change it again
+- is temporarily locked while `Before / After` compare is active so the restore behavior stays predictable
 
 ## Touch Controls
 

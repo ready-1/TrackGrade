@@ -23,7 +23,7 @@ Current automated coverage:
 - Generated ColorBox client smoke tests
 - Trackball mapping and core grade-control helpers
 - Mock-server integration for connect, preview, device library reads, bypass, presets, reconnect, and unsupported false color
-- Fixture-backed iPad UI flows for launch, bypass, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library browsing
+- Fixture-backed iPad UI flows for launch, bypass, Before / After compare, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library browsing
 
 ## Offline Simulator Validation
 
@@ -32,6 +32,7 @@ Use the `-ui-test-fixture` launch argument on the `TrackGrade` scheme to boot in
 Manual simulator checks:
 
 - Launch in landscape and confirm the grade surface is fixed with no vertical scrolling
+- Toggle `Before / After` and confirm it temporarily flips bypass, then restores the prior state
 - Verify saturation sits above the trackballs
 - Verify reset controls remain visible for Lift, Gamma, Gain, and Saturation
 - Open the drawer and confirm the `Workflow`, `Presets`, and `Device` panels switch cleanly

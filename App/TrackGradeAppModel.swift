@@ -17,6 +17,11 @@ private struct GradeHistoryState {
     var redo: [ColorBoxGradeControlState] = []
 }
 
+private struct BeforeAfterSession {
+    let focusDeviceID: UUID
+    let originalBypassByDeviceID: [UUID: Bool]
+}
+
 enum GangSyncState: Sendable, Equatable {
     case synced
     case drift
@@ -55,6 +60,7 @@ final class TrackGradeAppModel {
     private var suppressedBannerUntil: Date?
     private var fixturePresetGrades: [UUID: [Int: ColorBoxGradeControlState]] = [:]
     private var gradeHistory: [UUID: GradeHistoryState] = [:]
+    private var activeBeforeAfterSession: BeforeAfterSession?
     private let maximumUndoDepth = 50
 
     var selectedSnapshot: ManagedColorBoxDevice? {
@@ -95,6 +101,19 @@ final class TrackGradeAppModel {
         for deviceID: UUID
     ) -> [ColorBoxLibrarySection] {
         librarySectionsByDeviceID[deviceID] ?? []
+    }
+
+    func isBeforeAfterActive(
+        _ deviceID: UUID
+    ) -> Bool {
+        activeBeforeAfterSession?.originalBypassByDeviceID.keys.contains(deviceID) == true
+    }
+
+    func beforeAfterStatusText(
+        for deviceID: UUID
+    ) -> String {
+        let isBypassed = snapshots.first { $0.id == deviceID }?.pipelineState?.bypassEnabled ?? false
+        return isBypassed ? "Showing Before" : "Showing After"
     }
 
     var canUndoSelectedGrade: Bool {
@@ -305,6 +324,9 @@ final class TrackGradeAppModel {
             librarySectionsByDeviceID[id] = nil
             await deviceManager.removeDevice(id: id)
             gradeHistory[id] = nil
+            if activeBeforeAfterSession?.originalBypassByDeviceID.keys.contains(id) == true {
+                activeBeforeAfterSession = nil
+            }
 
             if selectedDeviceID == id {
                 selectedDeviceID = knownDevices.first?.id
@@ -515,6 +537,16 @@ final class TrackGradeAppModel {
             failurePrefix: "Failed to update bypass"
         ) { targetID in
             try await self.deviceManager.setBypass(id: targetID, enabled: enabled)
+        }
+    }
+
+    func toggleBeforeAfter(
+        id: UUID
+    ) async {
+        if isBeforeAfterActive(id) {
+            await restoreBeforeAfter()
+        } else {
+            await activateBeforeAfter(id: id)
         }
     }
 
@@ -1102,6 +1134,141 @@ final class TrackGradeAppModel {
 
         var seen = Set<UUID>()
         return targetIDs.filter { seen.insert($0).inserted }
+    }
+
+    private func activateBeforeAfter(
+        id: UUID
+    ) async {
+        if activeBeforeAfterSession != nil {
+            await restoreBeforeAfter()
+        }
+
+        let targetIDs = broadcastTargetIDs(for: id)
+        let originalBypassByDeviceID = Dictionary(
+            uniqueKeysWithValues: targetIDs.map { targetID in
+                let isBypassed = snapshots.first { $0.id == targetID }?.pipelineState?.bypassEnabled ?? false
+                return (targetID, isBypassed)
+            }
+        )
+        let session = BeforeAfterSession(
+            focusDeviceID: id,
+            originalBypassByDeviceID: originalBypassByDeviceID
+        )
+        let desiredBypassByDeviceID = originalBypassByDeviceID.mapValues { !$0 }
+
+        if launchConfiguration.usesUITestFixture {
+            applyFixtureBypassStates(desiredBypassByDeviceID)
+            activeBeforeAfterSession = session
+            return
+        }
+
+        let successfulIDs = await applyBypassStates(
+            desiredBypassByDeviceID,
+            failurePrefix: "Failed to start Before/After compare"
+        )
+
+        guard successfulIDs.count == desiredBypassByDeviceID.count else {
+            let rollbackStates: [UUID: Bool] = .init(
+                uniqueKeysWithValues: successfulIDs.compactMap { successfulID in
+                    guard let originalBypass = originalBypassByDeviceID[successfulID] else {
+                        return nil
+                    }
+
+                    return (successfulID, originalBypass)
+                }
+            )
+
+            if rollbackStates.isEmpty == false {
+                _ = await applyBypassStates(
+                    rollbackStates,
+                    failurePrefix: "Failed to restore bypass after Before/After error"
+                )
+            }
+            return
+        }
+
+        activeBeforeAfterSession = session
+    }
+
+    private func restoreBeforeAfter() async {
+        guard let session = activeBeforeAfterSession else {
+            return
+        }
+
+        if launchConfiguration.usesUITestFixture {
+            applyFixtureBypassStates(session.originalBypassByDeviceID)
+            activeBeforeAfterSession = nil
+            return
+        }
+
+        let successfulIDs = await applyBypassStates(
+            session.originalBypassByDeviceID,
+            failurePrefix: "Failed to restore Before/After state"
+        )
+
+        guard successfulIDs.count == session.originalBypassByDeviceID.count else {
+            return
+        }
+
+        activeBeforeAfterSession = nil
+    }
+
+    private func applyFixtureBypassStates(
+        _ bypassByDeviceID: [UUID: Bool]
+    ) {
+        for (deviceID, isBypassed) in bypassByDeviceID {
+            updateFixtureDevice(id: deviceID) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: isBypassed,
+                    falseColorEnabled: current?.falseColorEnabled ?? false,
+                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                    gradeControl: current?.gradeControl ?? .identity,
+                    lastRecalledPresetSlot: current?.lastRecalledPresetSlot
+                )
+            }
+        }
+    }
+
+    private func applyBypassStates(
+        _ bypassByDeviceID: [UUID: Bool],
+        failurePrefix: String
+    ) async -> Set<UUID> {
+        var failures: [String] = []
+        var successfulIDs = Set<UUID>()
+
+        await withTaskGroup(of: (UUID, Result<ManagedColorBoxDevice, Error>).self) { group in
+            for (targetID, isBypassed) in bypassByDeviceID {
+                group.addTask {
+                    do {
+                        return (
+                            targetID,
+                            .success(try await self.deviceManager.setBypass(id: targetID, enabled: isBypassed))
+                        )
+                    } catch {
+                        return (targetID, .failure(error))
+                    }
+                }
+            }
+
+            for await (targetID, result) in group {
+                switch result {
+                case let .success(snapshot):
+                    successfulIDs.insert(targetID)
+                    handleAuthenticationPromptIfNeeded(for: snapshot)
+                case let .failure(error):
+                    failures.append(error.localizedDescription)
+                }
+            }
+        }
+
+        if failures.isEmpty == false {
+            errorMessage = failures.count == 1
+                ? "\(failurePrefix): \(failures[0])"
+                : "\(failurePrefix): \(failures.count) devices reported errors."
+        }
+
+        return successfulIDs
     }
 
     private func performManagedDeviceCommand(
