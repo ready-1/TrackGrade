@@ -77,10 +77,11 @@
 - The package-side generated client now targets the live device correctly with a base URL of `http://host/v2` without a trailing slash, eliminating the broken `/v2//...` request shape that had been masking real hardware validation in `swift test`.
 - TrackGrade now includes opt-in reversible live integration tests for grade / bypass / preview round-trips, preset lifecycle, and `3D LUT` library upload / rename / delete against the reference ColorBox, and those checks passed on `2026-04-22`.
 - A follow-up live probe confirmed that TrackGrade can upload a `3D LUT` asset, point `lut3d_1` at a library slot with `dynamic = false`, and read that stage configuration back successfully. The reference test box appears to have no active signal right now, so identical preview hashes for `INPUT` and `OUTPUT` are no longer treated as negative evidence against the uploaded-LUT path; visual confirmation just still needs an active feed.
+- The grading shell now uses a closable overlay device drawer instead of a permanent split view, the main color surface is compressed to a single static landscape page, duplicated device telemetry has been removed from the primary surface, and lower-priority ColorBox metadata now lives in the drawer’s device panel.
+- The device drawer now has a reliable dismiss path for both users and automation, device-action buttons are stacked so labels remain readable on iPad, and the fixture UI suite now covers the revised drawer and gang-selection flow.
 
 ## In-Flight Work
 
-- Folding in fresh iPad usability feedback: the main grading view is still too tall, the always-open device sidebar steals space without a close affordance, and too much non-color telemetry is competing with the actual controls.
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 - Choosing the next non-hardware polish slice after library management, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
@@ -101,10 +102,9 @@
 
 ## Next Steps
 
-- Refactor the iPad shell so the device list can be hidden, the main grading surface fits on one landscape page without scrolling, and nonessential ColorBox metadata moves into drawers instead of the primary surface.
 - Finish the remaining release-prep pass around packaging polish, app-icon work, and any final README cleanup.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
-- Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
+- Validate that the revised static layout and drawer dismissal feel balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.

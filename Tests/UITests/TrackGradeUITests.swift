@@ -10,10 +10,19 @@ final class TrackGradeUITests: XCTestCase {
         let app = launchFixtureApp()
 
         XCTAssertTrue(fixtureElement("dynamic-grade-card", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Control Surface"].exists)
         XCTAssertTrue(app.staticTexts["Saturation"].exists)
         XCTAssertTrue(app.buttons["bypass-toggle"].exists)
         XCTAssertTrue(app.buttons["secondary-controls-button"].exists)
+        XCTAssertTrue(app.buttons["device-sidebar-button"].exists)
+    }
+
+    func testDeviceSidebarCanBeOpenedAndClosedFromSurface() throws {
+        let app = launchFixtureApp()
+
+        openDeviceDrawer(in: app)
+        XCTAssertTrue(fixtureElement("device-sidebar-drawer", in: app).waitForExistence(timeout: 5))
+
+        dismissDeviceDrawer(in: app)
     }
 
     func testBypassToggleMutatesFixtureState() throws {
@@ -203,6 +212,7 @@ final class TrackGradeUITests: XCTestCase {
     func testGangBroadcastsBypassToLinkedPeers() throws {
         let app = launchFixtureApp()
 
+        openDeviceDrawer(in: app)
         let gangBButton = app.buttons["Gang Fixture ColorBox B"]
         let gangCButton = app.buttons["Gang Fixture ColorBox C"]
         XCTAssertTrue(gangBButton.waitForExistence(timeout: 5))
@@ -212,17 +222,21 @@ final class TrackGradeUITests: XCTestCase {
         gangBButton.tap()
         gangCButton.tap()
 
+        dismissDeviceDrawerByTappingOutside(in: app)
+
         let bypassToggle = app.buttons["bypass-toggle"]
         XCTAssertTrue(bypassToggle.waitForExistence(timeout: 5))
         XCTAssertEqual(bypassToggle.value as? String, "Off")
         bypassToggle.tap()
         XCTAssertEqual(bypassToggle.value as? String, "On")
 
+        openDeviceDrawer(in: app)
         let deviceBButton = app.buttons["Fixture ColorBox B"]
         scrollToElement(deviceBButton, in: app)
         deviceBButton.tap()
         XCTAssertEqual(bypassToggle.value as? String, "On")
 
+        openDeviceDrawer(in: app)
         let deviceCButton = app.buttons["Fixture ColorBox C"]
         scrollToElement(deviceCButton, in: app)
         deviceCButton.tap()
@@ -347,10 +361,22 @@ final class TrackGradeUITests: XCTestCase {
             return
         }
 
+        let deviceSidebarList = fixtureElement("device-sidebar-list", in: app)
         let identifiedList = fixtureElement("library-list", in: app)
+        let tables = app.tables.allElementsBoundByIndex
+        let preferredTable = tables.last ?? app.tables.firstMatch
         let collectionViews = app.collectionViews.allElementsBoundByIndex
         let preferredCollectionView = collectionViews.last ?? app.collectionViews.firstMatch
-        let scrollContainer = identifiedList.exists ? identifiedList : preferredCollectionView
+        let scrollContainer: XCUIElement
+        if deviceSidebarList.exists {
+            scrollContainer = deviceSidebarList
+        } else if identifiedList.exists {
+            scrollContainer = identifiedList
+        } else if preferredTable.exists {
+            scrollContainer = preferredTable
+        } else {
+            scrollContainer = preferredCollectionView
+        }
 
         guard scrollContainer.exists else {
             return
@@ -359,6 +385,27 @@ final class TrackGradeUITests: XCTestCase {
         for _ in 0..<maximumSwipes where element.exists == false {
             scrollContainer.swipeUp()
         }
+    }
+
+    private func openDeviceDrawer(in app: XCUIApplication) {
+        let button = app.buttons["device-sidebar-button"]
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+
+        if fixtureElement("device-sidebar-drawer", in: app).exists == false {
+            button.tap()
+        }
+    }
+
+    private func dismissDeviceDrawer(in app: XCUIApplication) {
+        let closeButton = app.buttons["device-sidebar-close-button"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 5))
+        closeButton.tap()
+        XCTAssertFalse(closeButton.waitForExistence(timeout: 1))
+    }
+
+    private func dismissDeviceDrawerByTappingOutside(in app: XCUIApplication) {
+        let outsideCoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
+        outsideCoordinate.tap()
     }
 }
 

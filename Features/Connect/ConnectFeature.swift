@@ -1,17 +1,98 @@
 import SwiftUI
 
+enum ConnectFeatureStyle {
+    case fullScreen
+    case drawer(closeAction: () -> Void)
+
+    var isDrawer: Bool {
+        if case .drawer = self {
+            return true
+        }
+
+        return false
+    }
+
+    var closeAction: (() -> Void)? {
+        switch self {
+        case .fullScreen:
+            return nil
+        case let .drawer(closeAction):
+            return closeAction
+        }
+    }
+}
+
 struct ConnectFeatureView: View {
     @Bindable var model: TrackGradeAppModel
+    let style: ConnectFeatureStyle
+
+    init(
+        model: TrackGradeAppModel,
+        style: ConnectFeatureStyle = .fullScreen
+    ) {
+        self.model = model
+        self.style = style
+    }
 
     var body: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("TrackGrade")
-                        .font(.system(.title2, design: .rounded, weight: .bold))
-                    Text("Touch-first control for AJA ColorBox over LAN.")
+        Group {
+            if style.isDrawer {
+                drawerContent
+            } else {
+                deviceList
+                    .listStyle(.insetGrouped)
+                    .background(Color(uiColor: .systemGroupedBackground))
+            }
+        }
+    }
+
+    private var drawerContent: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Devices")
+                        .font(.title3.weight(.bold))
+                    Text("Choose the active ColorBox or manage discovery.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 12)
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
+            .padding(.bottom, 10)
+
+            Divider()
+                .overlay(Color.secondary.opacity(0.18))
+
+            deviceList
+                .listStyle(.plain)
+        }
+        .accessibilityIdentifier("device-sidebar-drawer")
+    }
+
+    private var deviceList: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("TrackGrade")
+                                .font(.system(.title2, design: .rounded, weight: .bold))
+                            Text("Touch-first control for AJA ColorBox over LAN.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        if let closeAction = style.closeAction {
+                            Button("Done", action: closeAction)
+                                .buttonStyle(.bordered)
+                                .accessibilityIdentifier("device-sidebar-close-button")
+                        }
+                    }
                 }
                 .padding(.vertical, 8)
             }
@@ -21,36 +102,37 @@ struct ConnectFeatureView: View {
                     Text("Device Actions")
                         .font(.headline)
 
-                    HStack(spacing: 10) {
-                        Button {
-                            model.refreshDiscovery()
-                        } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-
-                        Button {
-                            model.isShowingAddDeviceSheet = true
-                        } label: {
-                            Label("Add Device", systemImage: "plus")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-
-                        Button {
-                            Task {
-                                await model.connectSelectedDevice()
+                    VStack(spacing: 10) {
+                        deviceActionButton(
+                            title: "Refresh Discovery",
+                            systemImage: "arrow.clockwise",
+                            tint: .secondary,
+                            action: {
+                                model.refreshDiscovery()
                             }
-                        } label: {
-                            Label("Connect", systemImage: "dot.radiowaves.left.and.right")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(model.selectedDeviceID == nil)
+                        )
+
+                        deviceActionButton(
+                            title: "Add Device",
+                            systemImage: "plus",
+                            tint: .secondary,
+                            action: {
+                                model.isShowingAddDeviceSheet = true
+                            }
+                        )
+
+                        deviceActionButton(
+                            title: "Connect Focused Device",
+                            systemImage: "dot.radiowaves.left.and.right",
+                            tint: .orange,
+                            isProminent: true,
+                            isDisabled: model.selectedDeviceID == nil,
+                            action: {
+                                Task {
+                                    await model.connectSelectedDevice()
+                                }
+                            }
+                        )
                     }
                 }
                 .padding(.vertical, 4)
@@ -181,6 +263,43 @@ struct ConnectFeatureView: View {
             } header: {
                 SidebarSectionHeader(title: "Discovered on LAN")
             }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Color(uiColor: .systemGroupedBackground))
+        .accessibilityIdentifier(style.isDrawer ? "device-sidebar-list" : "device-connect-list")
+    }
+
+    @ViewBuilder
+    private func deviceActionButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        isProminent: Bool = false,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        let label = Label(title, systemImage: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
+
+        if isProminent {
+            Button(action: action) {
+                label
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .controlSize(.large)
+            .disabled(isDisabled)
+        } else {
+            Button(action: action) {
+                label
+            }
+            .buttonStyle(.bordered)
+            .tint(tint)
+            .controlSize(.large)
+            .disabled(isDisabled)
         }
     }
 }

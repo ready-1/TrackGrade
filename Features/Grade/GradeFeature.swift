@@ -4,6 +4,8 @@ import UIKit
 struct GradeFeatureView: View {
     @Bindable var model: TrackGradeAppModel
     let device: ManagedColorBoxDevice
+    let isShowingDeviceSidebar: Bool
+    let toggleDeviceSidebar: () -> Void
 
     @State private var isShowingSettings = false
     @State private var isShowingControlsDrawer = false
@@ -15,7 +17,7 @@ struct GradeFeatureView: View {
                 surfaceBackground
                     .ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 12) {
                     controlBar
                     DynamicGradeControlsCard(
                         model: model,
@@ -24,7 +26,7 @@ struct GradeFeatureView: View {
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .padding(20)
+                .padding(16)
 
                 if isShowingControlsDrawer {
                     Color.black.opacity(0.2)
@@ -71,21 +73,33 @@ struct GradeFeatureView: View {
 
     private var controlBar: some View {
         HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(device.name)
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+            HStack(alignment: .center, spacing: 14) {
+                Button {
+                    emitButtonHaptic()
+                    toggleDeviceSidebar()
+                } label: {
+                    Label(
+                        isShowingDeviceSidebar ? "Hide Devices" : "Devices",
+                        systemImage: "sidebar.leading"
+                    )
+                    .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .tint(Color.black.opacity(0.32))
+                .accessibilityIdentifier("device-sidebar-button")
 
-                HStack(spacing: 8) {
-                    ConnectionStateBadge(state: device.connectionState)
-                    if let gangSummary = model.gangStatusSummary(for: device.id) {
-                        GangStatusBadge(summary: gangSummary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(device.name)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
+
+                    HStack(spacing: 8) {
+                        ConnectionStateBadge(state: device.connectionState)
+                        if let gangSummary = model.gangStatusSummary(for: device.id) {
+                            GangStatusBadge(summary: gangSummary)
+                        }
                     }
-                    Text(device.address)
-                        .font(.callout.monospaced())
-                        .foregroundStyle(Color.white.opacity(0.9))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
                 }
             }
 
@@ -140,7 +154,7 @@ struct GradeFeatureView: View {
             .tint(Color.black.opacity(0.32))
             .accessibilityIdentifier("grade-settings-button")
         }
-        .padding(18)
+        .padding(14)
         .surfacePanelStyle(cornerRadius: 26)
     }
 
@@ -393,103 +407,43 @@ private struct DynamicGradeControlsCard: View {
     }
 
     var body: some View {
-        let telemetryWidth = min(188, max(136, availableSize.width * 0.17))
-        let trackballHeight = min(244, max(188, availableSize.height * 0.3))
+        let trackballHeight = min(188, max(152, availableSize.height * 0.235))
 
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Control Surface")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
-                    Text("Static landscape layout with visible reset controls and compact telemetry.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.white.opacity(0.84))
-                        .accessibilityHidden(true)
-                }
-
-                Spacer(minLength: 12)
-
-                DoubleTapActionChip(
-                    title: "Reset All",
-                    tint: .orange,
-                    requiresExplicitLabel: resetRequiresConfirmation,
-                    identifier: "reset-all-chip"
-                ) {
+        VStack(alignment: .leading, spacing: 14) {
+            GradeStateDisplay(
+                grade: draftGrade,
+                previewFrameData: device.previewFrameData,
+                previewSource: device.pipelineState?.previewSource ?? .output,
+                resetRequiresConfirmation: resetRequiresConfirmation,
+                onEdit: { target in
+                    activeEditor = target
+                },
+                onResetAll: {
                     emitButtonHaptic()
                     performDiscreteGradeMutation(successHaptic: true) {
                         draftGrade = .identity
                         syncSurfaceStates(from: .identity)
                     }
-                }
-            }
-
-            HStack(alignment: .top, spacing: 14) {
-                SurfaceInfoPanel(title: "Device") {
-                    SurfaceMetricRow(label: "Connection", value: device.connectionState.rawValue.capitalized)
-                    SurfaceMetricRow(label: "Address", value: device.address)
-                    SurfaceMetricRow(label: "Product", value: device.systemInfo?.productName ?? "ColorBox")
-                    SurfaceMetricRow(label: "Firmware", value: device.firmwareInfo?.version ?? "Unavailable")
-                    SurfaceMetricRow(label: "Serial", value: device.systemInfo?.serialNumber ?? "Unavailable")
-                }
-                .frame(width: telemetryWidth)
-
-                GradeStateDisplay(
-                    grade: draftGrade,
-                    previewFrameData: device.previewFrameData,
-                    previewSource: device.pipelineState?.previewSource ?? .output,
-                    onEdit: { target in
-                        activeEditor = target
-                    },
-                    onTogglePreviewSource: {
-                        let currentSource = device.pipelineState?.previewSource ?? .output
-                        let nextSource: ColorBoxPreviewSource = currentSource == .output ? .input : .output
-                        Task {
-                            await model.setPreviewSource(
-                                id: device.id,
-                                source: nextSource
-                            )
-                        }
-                    },
-                    onRefreshPreview: {
-                        Task {
-                            await model.refreshPreview(id: device.id)
-                        }
-                    },
-                    onShowPreviewOverlay: {
-                        isShowingPreviewOverlay = true
+                },
+                onTogglePreviewSource: {
+                    let currentSource = device.pipelineState?.previewSource ?? .output
+                    let nextSource: ColorBoxPreviewSource = currentSource == .output ? .input : .output
+                    Task {
+                        await model.setPreviewSource(
+                            id: device.id,
+                            source: nextSource
+                        )
                     }
-                )
-                .frame(maxWidth: .infinity)
-
-                SurfaceInfoPanel(title: "Pipeline") {
-                    SurfaceMetricRow(
-                        label: "3D LUT Node",
-                        value: device.pipelineState?.dynamicLUTMode.capitalized ?? "Unknown"
-                    )
-                    SurfaceMetricRow(
-                        label: "Preview",
-                        value: "\(device.previewByteCount) B"
-                    )
-                    SurfaceMetricRow(
-                        label: "Preview Tap",
-                        value: (device.pipelineState?.previewSource ?? .output).displayName
-                    )
-                    SurfaceMetricRow(
-                        label: "False Color",
-                        value: falseColorStatus
-                    )
-                    SurfaceMetricRow(
-                        label: "Last Preset",
-                        value: lastPresetValue
-                    )
-                    SurfaceMetricRow(
-                        label: "Bypass",
-                        value: (device.pipelineState?.bypassEnabled ?? false) ? "On" : "Off"
-                    )
+                },
+                onRefreshPreview: {
+                    Task {
+                        await model.refreshPreview(id: device.id)
+                    }
+                },
+                onShowPreviewOverlay: {
+                    isShowingPreviewOverlay = true
                 }
-                .frame(width: telemetryWidth)
-            }
+            )
 
             SaturationRollerView(
                 value: Double(draftGrade.saturation),
@@ -582,10 +536,9 @@ private struct DynamicGradeControlsCard: View {
                     }
                 )
             }
-
         }
-        .padding(20)
-        .surfacePanelStyle(cornerRadius: 30)
+        .padding(16)
+        .surfacePanelStyle(cornerRadius: 28)
         .accessibilityValue(Text(accessibilityGradeSummary))
         .accessibilityIdentifier("dynamic-grade-card")
         .sheet(item: $activeEditor) { target in
@@ -627,22 +580,6 @@ private struct DynamicGradeControlsCard: View {
         .task(id: previewAutoRefreshTaskID) {
             await runPreviewAutoRefreshLoop()
         }
-    }
-
-    private var falseColorStatus: String {
-        if device.supportsFalseColor == false {
-            return "Unsupported"
-        }
-
-        return (device.pipelineState?.falseColorEnabled ?? false) ? "On" : "Off"
-    }
-
-    private var lastPresetValue: String {
-        guard let slot = device.pipelineState?.lastRecalledPresetSlot else {
-            return "—"
-        }
-
-        return "Slot \(slot)"
     }
 
     private var accessibilityGradeSummary: String {
@@ -1173,6 +1110,37 @@ private struct SecondaryControlsDrawer: View {
                             }
                         )
 
+                        SurfaceInfoPanel(title: "Focused Device") {
+                            SurfaceMetricRow(label: "Connection", value: device.connectionState.rawValue.capitalized)
+                            SurfaceMetricRow(label: "Address", value: device.address)
+                            SurfaceMetricRow(label: "Product", value: device.systemInfo?.productName ?? "ColorBox")
+                            SurfaceMetricRow(label: "Firmware", value: device.firmwareInfo?.version ?? "Unavailable")
+                            SurfaceMetricRow(label: "Serial", value: device.systemInfo?.serialNumber ?? "Unavailable")
+                        }
+
+                        SurfaceInfoPanel(title: "Pipeline") {
+                            SurfaceMetricRow(
+                                label: "3D LUT Node",
+                                value: device.pipelineState?.dynamicLUTMode.capitalized ?? "Unknown"
+                            )
+                            SurfaceMetricRow(
+                                label: "Preview Tap",
+                                value: (device.pipelineState?.previewSource ?? .output).displayName
+                            )
+                            SurfaceMetricRow(
+                                label: "Last Preset",
+                                value: lastPresetValue
+                            )
+                            SurfaceMetricRow(
+                                label: "False Color",
+                                value: falseColorStatus
+                            )
+                            SurfaceMetricRow(
+                                label: "Bypass",
+                                value: (device.pipelineState?.bypassEnabled ?? false) ? "On" : "Off"
+                            )
+                        }
+
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Optional Pipeline Controls")
                                 .font(.headline.weight(.semibold))
@@ -1226,6 +1194,22 @@ private struct SecondaryControlsDrawer: View {
                 device: device
             )
         }
+    }
+
+    private var falseColorStatus: String {
+        if device.supportsFalseColor == false {
+            return "Unsupported"
+        }
+
+        return (device.pipelineState?.falseColorEnabled ?? false) ? "On" : "Off"
+    }
+
+    private var lastPresetValue: String {
+        guard let slot = device.pipelineState?.lastRecalledPresetSlot else {
+            return "—"
+        }
+
+        return "Slot \(slot)"
     }
 }
 
@@ -1383,17 +1367,38 @@ private struct GradeStateDisplay: View {
     let grade: ColorBoxGradeControlState
     let previewFrameData: Data?
     let previewSource: ColorBoxPreviewSource
+    let resetRequiresConfirmation: Bool
     let onEdit: (GradeEditorTarget) -> Void
+    let onResetAll: () -> Void
     let onTogglePreviewSource: () -> Void
     let onRefreshPreview: () -> Void
     let onShowPreviewOverlay: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 20) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("LGG / Saturation")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Grade")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+
+                        Text("Tap a row for numeric entry.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.white.opacity(0.78))
+                            .accessibilityHidden(true)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    DoubleTapActionChip(
+                        title: "Reset All",
+                        tint: .orange,
+                        requiresExplicitLabel: resetRequiresConfirmation,
+                        identifier: "reset-all-chip",
+                        action: onResetAll
+                    )
+                }
 
                 NumericDisplayRow(
                     label: "Lift",
@@ -1422,11 +1427,6 @@ private struct GradeStateDisplay: View {
                     identifier: "sat-state-row",
                     action: { onEdit(.saturation) }
                 )
-
-                Text("Tap any row to edit values numerically.")
-                    .font(.footnote)
-                    .foregroundStyle(Color.white.opacity(0.84))
-                    .accessibilityHidden(true)
             }
 
             Spacer(minLength: 0)
@@ -1438,10 +1438,10 @@ private struct GradeStateDisplay: View {
                 refreshAction: onRefreshPreview,
                 enlargeAction: onShowPreviewOverlay
             )
-            .frame(width: 140, height: 92)
+            .frame(width: 136, height: 88)
         }
-        .padding(20)
-        .surfacePanelStyle(cornerRadius: 28)
+        .padding(16)
+        .surfacePanelStyle(cornerRadius: 24)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Grade state"))
         .accessibilityValue(Text(accessibilitySummary))
@@ -1476,23 +1476,23 @@ private struct NumericDisplayRow: View {
         Button(action: action) {
             HStack {
                 Text(label)
-                    .font(.body.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                     .accessibilityHidden(true)
 
                 Spacer()
 
                 Text(value)
-                    .font(.body.monospaced())
+                    .font(.subheadline.monospaced())
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.trailing)
                     .minimumScaleFactor(0.75)
                     .accessibilityHidden(true)
             }
-            .padding(.vertical, 14)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
-        .frame(minHeight: 48)
+        .frame(minHeight: 40)
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(label))
@@ -1640,10 +1640,10 @@ private struct TrackballClusterView: View {
     let onResetRing: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(title)
-                    .font(.headline.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                 Spacer()
                 Text("B \(ballSensitivity, specifier: "%.2fx")  R \(ringSensitivity, specifier: "%.2fx")")
@@ -1705,7 +1705,7 @@ private struct TrackballClusterView: View {
                 )
             }
         }
-        .padding(16)
+        .padding(14)
         .surfacePanelStyle(cornerRadius: 24)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1834,18 +1834,26 @@ private struct SaturationRollerView: View {
     let onReset: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Saturation")
-                    .font(.headline.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
                 Spacer()
                 Text("\(sensitivity, specifier: "%.2fx")")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(Color.white.opacity(0.6))
                 Text(String(format: "%.2f", value))
-                    .font(.body.monospacedDigit())
+                    .font(.subheadline.monospacedDigit())
                     .foregroundStyle(.white)
+
+                DoubleTapActionChip(
+                    title: "Reset",
+                    tint: .yellow,
+                    requiresExplicitLabel: true,
+                    identifier: "saturation-reset-chip",
+                    action: onReset
+                )
             }
 
             GeometryReader { proxy in
@@ -1884,7 +1892,7 @@ private struct SaturationRollerView: View {
                 }
                 .contentShape(Rectangle())
             }
-            .frame(height: 84)
+            .frame(height: 68)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Saturation roller"))
             .accessibilityIdentifier("saturation-roller")
@@ -1894,20 +1902,12 @@ private struct SaturationRollerView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(Color.white.opacity(0.6))
                 Spacer()
-                DoubleTapActionChip(
-                    title: "Reset To 1.00",
-                    tint: .yellow,
-                    requiresExplicitLabel: true,
-                    identifier: "saturation-reset-chip",
-                    action: onReset
-                )
-                Spacer()
                 Text("2.00")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(Color.white.opacity(0.6))
             }
         }
-        .padding(16)
+        .padding(14)
         .surfacePanelStyle(cornerRadius: 24)
     }
 }
@@ -2235,11 +2235,11 @@ private struct DoubleTapActionChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.callout.weight(.semibold))
+                .font(.footnote.weight(.semibold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .frame(minHeight: 44)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(minHeight: 36)
                 .background(
                     Capsule(style: .continuous)
                         .fill(tint.opacity(0.32))

@@ -4,37 +4,67 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var appModel = TrackGradeAppModel()
+    @State private var isShowingDeviceSidebar = false
 
     var body: some View {
         GeometryReader { proxy in
-            HStack(spacing: 0) {
-                ConnectFeatureView(model: appModel)
-                    .frame(width: sidebarWidth(for: proxy.size))
-                    .background(Color(uiColor: .systemGroupedBackground))
-
-                Rectangle()
-                    .fill(Color.white.opacity(0.08))
-                    .frame(width: 1)
-
+            ZStack(alignment: .leading) {
                 Group {
                     if let selectedSnapshot = appModel.selectedSnapshot {
                         GradeFeatureView(
                             model: appModel,
-                            device: selectedSnapshot
+                            device: selectedSnapshot,
+                            isShowingDeviceSidebar: isShowingDeviceSidebar,
+                            toggleDeviceSidebar: {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                    isShowingDeviceSidebar.toggle()
+                                }
+                            }
                         )
                     } else {
-                        ContentUnavailableView(
-                            "TrackGrade",
-                            systemImage: "dial.medium",
-                            description: Text("Add an AJA ColorBox by IP or select a discovered device to begin.")
-                        )
+                        ConnectFeatureView(model: appModel, style: .fullScreen)
+                            .background(Color(uiColor: .systemGroupedBackground))
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if appModel.selectedSnapshot != nil, isShowingDeviceSidebar {
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                isShowingDeviceSidebar = false
+                            }
+                        }
+
+                    ConnectFeatureView(
+                        model: appModel,
+                        style: .drawer(
+                            closeAction: {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                    isShowingDeviceSidebar = false
+                                }
+                            }
+                        )
+                    )
+                    .frame(width: sidebarWidth(for: proxy.size))
+                    .background(Color(uiColor: .systemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                    .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
+                    .padding(.leading, 16)
+                    .padding(.vertical, 16)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                }
             }
+            .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isShowingDeviceSidebar)
         }
         .task {
             await appModel.start(modelContext: modelContext)
+        }
+        .onChange(of: appModel.selectedDeviceID) { _, newValue in
+            _ = newValue
+            isShowingDeviceSidebar = false
         }
         .sheet(isPresented: addDeviceSheetBinding) {
             AddDeviceSheet(model: appModel)
@@ -107,7 +137,7 @@ struct ContentView: View {
     }
 
     private func sidebarWidth(for size: CGSize) -> CGFloat {
-        min(340, max(300, size.width * 0.28))
+        min(360, max(316, size.width * 0.28))
     }
 }
 
