@@ -80,6 +80,7 @@
 
 ## In-Flight Work
 
+- Folding in fresh iPad usability feedback: the main grading view is still too tall, the always-open device sidebar steals space without a close affordance, and too much non-color telemetry is competing with the actual controls.
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 - Choosing the next non-hardware polish slice after library management, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
@@ -100,6 +101,7 @@
 
 ## Next Steps
 
+- Refactor the iPad shell so the device list can be hidden, the main grading surface fits on one landscape page without scrolling, and nonessential ColorBox metadata moves into drawers instead of the primary surface.
 - Finish the remaining release-prep pass around packaging polish, app-icon work, and any final README cleanup.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.

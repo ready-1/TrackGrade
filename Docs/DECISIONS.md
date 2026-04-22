@@ -709,3 +709,24 @@ The repo already had strong mock coverage, but live hardware verification still 
 - The package build and the app build no longer diverge silently on generated-client URL behavior.
 - Future firmware or network regressions can be caught with a single repeatable command before spending scarce iPad validation time.
 - Visual proof for upload-based grading still depends on the reference box having an active signal; identical preview hashes on an idle box should not be treated as proof that the uploaded LUT path is ineffective.
+
+## 2026-04-22 — Favor A Control-First Single-Screen Grade Surface Over Persistent Device Telemetry
+
+### Context
+
+Hands-on iPad testing showed that the grading UI is still too information-heavy: the always-open left sidebar has no clear close affordance, the main surface is tall enough that the operator cannot reliably reach the trackballs without scrolling, and duplicated device metadata such as connection details and address are consuming space that should belong to the color controls.
+
+### Decision
+
+Bias the iPad shell toward a control-first landscape surface:
+
+- make the device sidebar collapsible instead of permanently consuming horizontal space
+- require the main grade surface to fit on one page without vertical scrolling
+- compress or remove duplicated telemetry from the main view
+- move low-priority ColorBox metadata such as product, serial, firmware, and address into the drawer or sidebar instead of the primary grading surface
+
+### Consequences
+
+- The main UI will prioritize LGG / saturation state and touch controls over infrastructure details.
+- Secondary device-management actions remain available, but no longer justify permanent space on the grading surface.
+- Layout refactors should be judged primarily by whether the trackballs and core state fit comfortably on a single iPad landscape screen.
