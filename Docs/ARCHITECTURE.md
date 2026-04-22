@@ -44,8 +44,9 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 - `Features/Preview`
   - lightweight preview rendering helper
 - `Features/Library`
-  - read-only device library browser
-  - groups live and fixture library entries into 1D LUT, 3D LUT, matrix, image, and overlay sections
+  - slot-aware device library manager
+  - groups live and fixture library entries into 1D LUT, 3D LUT, matrix, image, overlay, and AMF sections
+  - supports import, replace, rename, and delete flows for supported device library kinds
 
 ### Core
 
@@ -62,7 +63,8 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 - `Core/Haptics`
   - central haptic helpers for button and control-surface feedback
 - `Core/Persistence`
-  - package-side persistence placeholders
+  - lightweight shared persistence value types used by tests and core-facing flows
+  - authoritative app persistence remains SwiftData-backed in `App/`
 
 ### UIKit
 
@@ -177,7 +179,8 @@ This keeps the simulator and UI automation path close to the real app shell inst
 
 - The app currently drives live grade directly through `pipelineStages` instead of routing live iPad gestures through the baked `.cube` upload path, because the reference firmware’s `/v2/upload` materialization semantics are still unresolved.
 - Gang control currently follows a focused-device-plus-linked-peers model; deeper workflow support such as per-device offsets and richer gang management is still future work.
-- The library area is currently read-only; import, overwrite, and delete flows remain future work until the live upload path is proven on hardware.
+- Single-file device library management is live-verified for 1D LUT, 3D LUT, matrix, image, and overlay assets.
+- AMF import is wired through the committed `/v2/uploadMultiple` contract and validated against the mock server, but successful hardware verification is still pending because the reference box is not currently reachable from this host.
 - The project compiles shared sources in both the app target and the package; a later cleanup can consume the local package product more directly.
 
 ## Testing Strategy
