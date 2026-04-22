@@ -103,6 +103,22 @@ Implement the first app shell around a SwiftData `StoredColorBoxDevice` model an
 - The app can re-register devices into `DeviceManager` on launch using the same stable device UUIDs.
 - Later persistence work can extend the same durability pattern to presets, snapshots, and other Phase 4 state.
 
+## 2026-04-21 — Use A Real Storyboard Launch Screen For The App Target
+
+### Context
+
+Phase 6 calls for a proper launch screen, and the earlier placeholder `UILaunchScreen` metadata in `Info.plist` was not sufficient release polish for the app target.
+
+### Decision
+
+Add `App/LaunchScreen.storyboard` and point `UILaunchStoryboardName` at it, using a minimal branded landscape-safe launch screen instead of relying on generated placeholder metadata.
+
+### Consequences
+
+- The app target now has an explicit launch resource that is appropriate for release packaging and future TestFlight work.
+- The app no longer depends on experimental or placeholder launch metadata to satisfy UIKit expectations.
+- Any remaining simulator-side launch warning observed during UI tests should be treated as coming from Xcode’s generated UI-test runner app, not from the TrackGrade application bundle itself.
+
 ## 2026-04-21 — Publish the Mock Server Over Bonjour With Provisional ColorBox-Oriented TXT Keys
 
 ### Context

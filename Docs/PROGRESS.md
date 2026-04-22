@@ -39,7 +39,7 @@
 - TrackGrade now includes an offline `-ui-test-fixture` launch mode that seeds an in-memory ColorBox device, enabling app-level verification without direct hardware access.
 - `TrackGrade.xcodeproj` now contains a real `TrackGradeUITests` target, and `xcodebuild test` covers fixture-backed launch, bypass toggle, settings-sheet launch, and preset-save flows on the iPad simulator.
 - `Docs/PHASE-2-TESTING.md` now records the offline fixture path, simulator command, and the remaining manual checklist for simultaneous multi-touch and hardware feel validation.
-- `App/Info.plist` now includes placeholder `UILaunchScreen` metadata so the iPad app shell stays ahead of the simulator launch-screen requirement.
+- TrackGrade now ships with a real `LaunchScreen.storyboard`, replacing the earlier placeholder launch metadata and covering the release brief’s launch-screen requirement for the app target.
 - The grading screen has now been refactored into a fixed landscape surface with no vertical scroll: compact device and pipeline telemetry flank a top-center LGG / Saturation state window, saturation sits above the trackballs, reset controls remain visible, and presets / secondary actions live in a slide-over drawer.
 - The offline fixture-backed UI suite was updated for the drawer flow and now explicitly rotates the simulator to landscape before assertions, keeping the automated checks aligned with the app’s landscape-only product shape.
 - A manual simulator sanity check confirmed the new static grading surface composes correctly in fixture mode without needing live ColorBox hardware.
@@ -70,10 +70,10 @@
 
 ## Next Steps
 
-- Finish the remaining release-prep pass around launch / packaging polish and any final README cleanup.
+- Finish the remaining release-prep pass around packaging polish, app-icon work, and any final README cleanup.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
-- Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and launch / packaging polish.
+- Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.
