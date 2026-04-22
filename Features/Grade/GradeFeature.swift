@@ -22,7 +22,10 @@ struct GradeFeatureView: View {
                     DynamicGradeControlsCard(
                         model: model,
                         device: device,
-                        availableSize: proxy.size
+                        availableSize: proxy.size,
+                        onShowPreviewOverlay: {
+                            model.showPreviewOverlay(for: device.id)
+                        }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
@@ -68,6 +71,25 @@ struct GradeFeatureView: View {
                     )
                 }
             )
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { model.isShowingPreviewOverlay(for: device.id) },
+                set: { isPresented in
+                    if isPresented == false {
+                        model.hidePreviewOverlay()
+                    }
+                }
+            )
+        ) {
+            EnlargedPreviewOverlay(
+                imageData: device.previewFrameData,
+                source: device.pipelineState?.previewSource ?? .output,
+                onDismiss: {
+                    model.hidePreviewOverlay()
+                }
+            )
+            .presentationBackground(.clear)
         }
     }
 
@@ -382,6 +404,7 @@ private struct DynamicGradeControlsCard: View {
     @Bindable var model: TrackGradeAppModel
     let device: ManagedColorBoxDevice
     let availableSize: CGSize
+    let onShowPreviewOverlay: () -> Void
 
     @State private var draftGrade: ColorBoxGradeControlState
     @State private var liftState: ColorBoxTrackballState
@@ -391,7 +414,6 @@ private struct DynamicGradeControlsCard: View {
     @State private var activeEditor: GradeEditorTarget?
     @State private var activeTouchCount = 0
     @State private var interactionOrigin: ColorBoxGradeControlState?
-    @State private var isShowingPreviewOverlay = false
 
     @State private var ballAnchors: [TrackballSurfaceKind: ColorBoxControlPoint] = [:]
     @State private var ringAnchors: [TrackballSurfaceKind: Float] = [:]
@@ -411,11 +433,13 @@ private struct DynamicGradeControlsCard: View {
     init(
         model: TrackGradeAppModel,
         device: ManagedColorBoxDevice,
-        availableSize: CGSize
+        availableSize: CGSize,
+        onShowPreviewOverlay: @escaping () -> Void
     ) {
         self.model = model
         self.device = device
         self.availableSize = availableSize
+        self.onShowPreviewOverlay = onShowPreviewOverlay
 
         let initialGrade = device.pipelineState?.gradeControl ?? .identity
         _draftGrade = State(initialValue: initialGrade)
@@ -449,9 +473,7 @@ private struct DynamicGradeControlsCard: View {
                             await model.refreshPreview(id: device.id)
                         }
                     },
-                    onShowPreviewOverlay: {
-                        isShowingPreviewOverlay = true
-                    }
+                    onShowPreviewOverlay: onShowPreviewOverlay
                 )
                 .frame(width: sidePanelWidth)
 
@@ -592,15 +614,6 @@ private struct DynamicGradeControlsCard: View {
                         draftGrade = updatedGrade
                         syncSurfaceStates(from: updatedGrade)
                     }
-                }
-            )
-        }
-        .sheet(isPresented: $isShowingPreviewOverlay) {
-            EnlargedPreviewOverlay(
-                imageData: device.previewFrameData,
-                source: device.pipelineState?.previewSource ?? .output,
-                onDismiss: {
-                    isShowingPreviewOverlay = false
                 }
             )
         }
@@ -1534,7 +1547,6 @@ private struct CompactPreviewPanel: View {
         }
         .padding(10)
         .contentShape(Rectangle())
-        .onTapGesture(perform: onTogglePreviewSource)
         .surfacePanelStyle(cornerRadius: 16)
         .accessibilityIdentifier("grade-preview-thumbnail")
     }
@@ -1731,30 +1743,20 @@ private struct PreviewThumbnail: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Group {
-                if let imageData,
-                   let image = UIImage(data: imageData) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
-                        Image(systemName: "photo")
-                            .foregroundStyle(.white.opacity(0.75))
-                    }
-                }
+            Button(action: toggleAction) {
+                previewContent
             }
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .onTapGesture(perform: toggleAction)
+            .buttonStyle(.plain)
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.45)
                     .onEnded { _ in
                         enlargeAction()
                     }
             )
+            .accessibilityLabel("Preview thumbnail")
+            .accessibilityValue("\(source.displayName) source")
+            .accessibilityHint("Tap to toggle between input and output preview. Touch and hold to enlarge. Use the refresh button to fetch a new frame.")
+            .accessibilityIdentifier("grade-preview-thumbnail")
 
             Text("\(source.displayName) Preview")
                 .font(.caption.monospaced().weight(.semibold))
@@ -1767,43 +1769,60 @@ private struct PreviewThumbnail: View {
                 .accessibilityHidden(true)
                 .accessibilityIdentifier("preview-source-label")
 
-            VStack {
-                HStack {
-                    Spacer()
-
-                    Button(action: enlargeAction) {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .font(.caption.weight(.bold))
-                            .frame(width: 34, height: 34)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Color.black.opacity(0.62), in: Circle())
-                    .padding(.top, 6)
-                    .accessibilityIdentifier("expand-preview-button")
-
-                    Button(action: refreshAction) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.caption.weight(.bold))
-                            .frame(width: 34, height: 34)
-                    }
-                    .buttonStyle(.plain)
-                    .background(Color.black.opacity(0.62), in: Circle())
-                    .padding(6)
-                    .accessibilityIdentifier("refresh-preview-button")
-                }
-
+            HStack(spacing: 6) {
                 Spacer()
+
+                Button(action: enlargeAction) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.caption.weight(.bold))
+                        .frame(width: 34, height: 34)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .background(Color.black.opacity(0.62), in: Circle())
+                .accessibilityIdentifier("expand-preview-button")
+
+                Button(action: refreshAction) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption.weight(.bold))
+                        .frame(width: 34, height: 34)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .background(Color.black.opacity(0.62), in: Circle())
+                .accessibilityIdentifier("refresh-preview-button")
             }
+            .padding(.top, 6)
+            .padding(.trailing, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            .zIndex(1)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Preview thumbnail")
-        .accessibilityValue("\(source.displayName) source")
-        .accessibilityHint("Tap to toggle between input and output preview. Touch and hold to enlarge. Use the refresh button to fetch a new frame.")
-        .accessibilityIdentifier("grade-preview-thumbnail")
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
+        Group {
+            if let imageData,
+               let image = UIImage(data: imageData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.white.opacity(0.08))
+                    Image(systemName: "photo")
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -1813,35 +1832,57 @@ private struct EnlargedPreviewOverlay: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            Color.black.opacity(0.82)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onDismiss)
+
             VStack(alignment: .leading, spacing: 16) {
-                Text("Preview overlay active")
-                    .font(.caption)
-                    .foregroundStyle(.clear)
-                    .accessibilityIdentifier("expanded-preview-visible")
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("\(source.displayName) Preview")
+                            .font(.title3.monospaced().weight(.semibold))
+                            .foregroundStyle(.white)
+
+                        Text("Preview overlay active")
+                            .font(.caption)
+                            .foregroundStyle(.clear)
+                            .accessibilityIdentifier("expanded-preview-visible")
+                    }
+
+                    Spacer()
+
+                    Button("Done", action: onDismiss)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.white.opacity(0.12))
+                        .foregroundStyle(.white)
+                        .accessibilityIdentifier("expanded-preview-done-button")
+                }
 
                 PreviewFeatureView(
                     imageData: imageData,
                     byteCount: imageData?.count ?? 0
                 )
-                .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 360)
+                .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 420)
 
-                Text("Tap the preview thumbnail to switch between input and output. This sheet stays focused on the current preview source.")
+                Text("Tap the thumbnail on the main surface to switch between input and output. This overlay keeps the current source visible while you inspect the frame.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.68))
             }
-            .padding(20)
-            .navigationTitle("\(source.displayName) Preview")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: onDismiss)
-                        .accessibilityIdentifier("expanded-preview-done-button")
-                }
-            }
+            .padding(24)
+            .frame(maxWidth: 780)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(Color(red: 0.1, green: 0.105, blue: 0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+            )
+            .padding(32)
         }
         .accessibilityIdentifier("expanded-preview-overlay")
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 }
 

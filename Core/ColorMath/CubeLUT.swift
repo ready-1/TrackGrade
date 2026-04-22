@@ -25,6 +25,24 @@ public struct CubeLUT: Equatable, Sendable {
         values.count
     }
 
+    public func dynamicColorBoxPayload(
+        target: String = "3DL1"
+    ) -> Data {
+        precondition(target.utf8.count == 4, "Dynamic ColorBox LUT targets must be four ASCII characters.")
+
+        var payload = Data()
+        payload.reserveCapacity(4 + (values.count * 6))
+        payload.append(contentsOf: target.utf8)
+
+        for value in values {
+            payload.append(Self.dynamicPayloadData(for: value.x))
+            payload.append(Self.dynamicPayloadData(for: value.y))
+            payload.append(Self.dynamicPayloadData(for: value.z))
+        }
+
+        return payload
+    }
+
     public func serialize() -> String {
         let formatter = CubeLUTNumberFormatter.shared
         let header = [
@@ -130,6 +148,14 @@ public struct CubeLUT: Equatable, Sendable {
         }
 
         return SIMD3<Float>(x, y, z)
+    }
+
+    private static func dynamicPayloadData(
+        for value: Float
+    ) -> Data {
+        let clamped = min(max(value, 0), 1)
+        let scaled = UInt16((clamped * 65535).rounded())
+        return withUnsafeBytes(of: scaled.littleEndian) { Data($0) }
     }
 }
 

@@ -85,27 +85,28 @@
 - The compact-surface pass now presents direct Lift / Gamma / Gain control-state values (X / Y / Bias) instead of derived RGB telemetry in the center display, removes more duplicated information from the primary surface, and makes Ball / Bias / Saturation reset affordances explicit on the control layer.
 - The full simulator suite passed again after hardening the library delete UI test path for the current iOS simulator menu presentation behavior, so the compact-surface pass is now verified end-to-end.
 - The opt-in live integration tests now preflight `http://<host>/v2/buildInfo` with a short timeout and skip quickly when the reference ColorBox is unreachable, preventing long hangs when the network path is down.
+- A hardware debugging pass against the older working `colobox-control` prototype showed that real-time grade changes on ColorBox are driven by a baked dynamic-LUT payload sent over `ws://<host>:5000`, not by `PUT /v2/pipelineStages` alone.
+- TrackGrade now bakes the current Lift / Gamma / Gain / Saturation state into a `33^3` LUT, uploads it over the ColorBox dynamic-LUT WebSocket transport for real hosts, and still mirrors the same values into `pipelineStages` for device readback, preset-save compatibility, and app synchronization.
+- The new live dynamic-grade path is verified on the reference ColorBox: `TRACKGRADE_LIVE_COLORBOX_HOST=172.29.14.51 swift test --filter TrackGradeIntegrationTests/testLiveColorBoxRoundTripsGradeBypassAndPreview` passed on `2026-04-22`, and the mock-backed integration suite now asserts that grade writes produce a dynamic-LUT upload.
+- The full Xcode simulator suite passed again after the transport fix; one preview-overlay UI test remains intentionally skipped because the current iOS simulator build is flaky for that interaction even though the feature remains available in the app for manual verification.
 
 ## In-Flight Work
 
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 - Choosing the next non-hardware polish slice after library management, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
-- Deciding how far to wire the bake/upload path into the live app shell now that library-import semantics are verified, while still keeping the shipping grading path conservative.
 - Using the restored production network window to finish as much live hardware validation as possible beyond the now-confirmed preset timing fix.
 - Using the restored production network window to finish the remaining iPad-only touch validation and any extra contract probing now that repeatable live backend tests exist in the repo.
 - Finishing the release-facing accessibility and documentation pass now that preview controls, diagnostics export, notices, and preset workflow polish are in place.
-- Re-running live hardware probes for `/v2/uploadMultiple` once the reference ColorBox is reachable again, because the box timed out during the first AMF verification pass after the feature was implemented.
+- Re-running live hardware probes for `/v2/uploadMultiple` and any remaining library paths while the reference ColorBox is reachable again.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
 - True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
 - The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
-- The reference ColorBox at `172.29.14.51` timed out again during the latest live-validation pass on 2026-04-22, so additional live API verification is currently blocked by host-to-device reachability rather than by a known TrackGrade code failure.
-- The baked dynamic-LUT upload queue is still only mock-validated for live grading behavior, so the app continues to use the hardware-verified `pipelineStages` route for the control surface even though library asset import semantics are now verified on-device.
 - Visual confirmation of a library-selected uploaded LUT still needs an active signal on the reference ColorBox, because the current test box appears to be idle and therefore produces identical `INPUT` / `OUTPUT` preview hashes.
-- Live AMF verification is still pending because the reference ColorBox timed out during the first `/v2/uploadMultiple` probe after the feature landed.
+- Live AMF verification is still pending because `/v2/uploadMultiple` has not yet been re-probed successfully against the current reachable reference box.
 
 ## Next Steps
 
@@ -113,14 +114,13 @@
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the revised static layout and drawer dismissal feel balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Validate that the new control-state center window and explicit reset labels read clearly at normal iPad operating distance without reintroducing visual clutter.
+- Re-test the corrected live grade path on the iPad against bars and the downstream scope now that TrackGrade is driving the dynamic-LUT transport instead of relying on `pipelineStages` alone.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
 - Finish the remaining release-collateral cleanup now that `NOTICES.md`, diagnostics export, and in-app notices are in place.
 - Re-run the manual hardware checklist with attention to preset-save timing, now that the app includes a one-second settle before `saveDynamicLutRequest`.
 - Re-run the new opt-in live integration tests whenever the reference firmware or network environment changes so hardware regressions are caught before manual iPad time.
-- Retry live hardware validation once this Mac can again reach `http://172.29.14.51/v2/buildInfo`, then use that window for the remaining AMF and live-device confirmation work.
 - Extend the passing accessibility audit work into broader VoiceOver / Dynamic Type / contrast verification beyond the current hit-region pass.
-- Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before a live grading workflow based on uploads is fully understood.
 - Validate AMF import against the real ColorBox as soon as the reference box is reachable again, using the committed official ACES sample package.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

@@ -206,11 +206,33 @@ public actor DeviceManager {
     @discardableResult
     public func updateGradeControl(
         id: UUID,
-        gradeControl: ColorBoxGradeControlState
+        gradeControl: ColorBoxGradeControlState,
+        transferFunction: TransferFunction = .rec709SDR
     ) async throws -> ManagedColorBoxDevice {
         do {
             let storedDevice = try requireDevice(id: id)
-            let pipelineState = try await makeClient(for: storedDevice).updateGradeControl(gradeControl)
+            let client = makeClient(for: storedDevice)
+
+            if storedDevice.snapshot.pipelineState?.dynamicLUTMode != "dynamic" {
+                _ = try await client.configureDynamicLUTNode()
+            }
+
+            let cubeText = gradeControl.bakeLUT(
+                transferFunction: transferFunction,
+                size: 33
+            ).serialize()
+            let uploadQueue = dynamicLUTUploadQueue(
+                for: id,
+                storedDevice: storedDevice
+            )
+            _ = await uploadQueue.enqueue(cubeText: cubeText)
+            await uploadQueue.flush()
+
+            if let error = await uploadQueue.lastError() {
+                throw error
+            }
+
+            let pipelineState = try await client.updateGradeControl(gradeControl)
             return try await updatePipelineState(id: id, pipelineState: pipelineState)
         } catch {
             return try await handleFailure(id: id, error: error)
@@ -225,6 +247,13 @@ public actor DeviceManager {
     ) async throws -> ManagedColorBoxDevice {
         do {
             let storedDevice = try requireDevice(id: id)
+            let uploadQueue = dynamicLUTUploadQueues[id]
+            await uploadQueue?.flush()
+
+            if let error = await uploadQueue?.lastError() {
+                throw error
+            }
+
             let presets = try await makeClient(for: storedDevice).savePreset(slot: slot, name: name)
             return try updatePresets(id: id, presets: presets)
         } catch {

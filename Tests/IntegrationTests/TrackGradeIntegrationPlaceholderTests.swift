@@ -60,6 +60,9 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertEqual(gradeDevice.pipelineState?.dynamicLUTMode, "dynamic")
         XCTAssertEqual(gradeDevice.pipelineState?.gradeControl.saturation ?? 0, 1.25, accuracy: 0.0001)
         XCTAssertEqual(gradeDevice.pipelineState?.gradeControl.lift.red ?? 0, 0.5, accuracy: 0.0001)
+        let state = try XCTUnwrap(MockColorBoxApplication.state(from: application))
+        let uploadCount = await state.dynamicLUTUploadCount()
+        XCTAssertEqual(uploadCount, 1)
 
         let savedPresetDevice = try await manager.savePreset(
             id: deviceID,

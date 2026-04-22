@@ -9,10 +9,12 @@
 - The document declares an API key security scheme named `app_id` carried in the `X-API-KEY` header.
 - TrackGrade now uses the generated `/v2` client for connect-time reads plus pipeline-node configuration and bypass writes, with the older handwritten endpoints retained as fallback compatibility paths.
 - Package-side generated-client validation must use a server URL shaped like `http://host/v2` without a trailing slash; using `http://host/v2/` produces broken `/v2//...` requests on real hardware.
+- Live grading no longer relies on `PUT /v2/pipelineStages` alone: real hosts now receive a baked dynamic-LUT payload over `ws://<host>:5000`, with `pipelineStages` updated afterward for state synchronization and preset compatibility.
+- A live reversible integration run verified this transport on `2026-04-22` against `172.29.14.51`: grade, bypass, and preview round-trips all passed after the transport switch.
 
 ## Remaining Integration Decision
 
-- Decide whether the mock-validated baked dynamic-LUT upload path should remain internal until a live grading workflow based on uploads is intentionally adopted.
+- Re-probe `POST /v2/uploadMultiple` on live hardware so AMF import reaches the same verification level as the rest of the shipping contract.
 
 ## Live Endpoint Surface
 
@@ -29,6 +31,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Routing / bypass state | `GET` / `PUT` | `/v2/routing` | Contains `pipelineBypassButton` and `pipelineBypassUser` |
 | Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, library entry, `colorCorrector`, and `procAmp` |
 | Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
+| Live dynamic grade ingest | WebSocket send | `ws://<host>:5000` | Binary payload with `3DL1` target header followed by 16-bit little-endian RGB cube data; this is the real-time image-affecting grade transport on the reference box |
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
 | 1D LUT library | `GET` | `/v2/1dLutLibrary` | Returns the 1D LUT slot array |
 | 3D LUT library | `GET` | `/v2/3dLutLibrary` | Returns the 3D LUT slot array |
@@ -47,7 +50,8 @@ The following endpoints are the real hardware routes currently relevant to Track
 - The real pipeline model is represented as `PipelineStages` and `Routing`, not `pipeline/state` plus dedicated bypass / false-color endpoints.
 - Preview fetches are JSON objects with base64 image payloads, not raw image bytes from `/preview/frame`.
 - Presets are exposed as a library array and are controlled through `GET/PUT /v2/libraryControl`, not `GET/POST/DELETE /presets/*`.
-- Dynamic LUT replacement appears to involve `POST /v2/upload` and related library / stage selection state, not a direct `PUT /pipeline/aja/nodes/3dlut/dynamic`.
+- Real-time dynamic grade replacement on the reference ColorBox uses the legacy WebSocket ingest on port `5000`, not `PUT /v2/pipelineStages` alone.
+- TrackGrade still uses the older `PUT /pipeline/aja/nodes/3dlut/dynamic` route only as a localhost/mock compatibility path because the mock server does not emulate the binary WebSocket ingest.
 
 ## TrackGrade Mappings In Code
 
@@ -62,7 +66,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Preset list read | `GET /v2/systemPresetLibrary` |
 | Preview fetch | `GET /v2/preview` |
 | Configure node 4 dynamic | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` |
-| Update Lift / Gamma / Gain / Saturation | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` with `lut3d_1.colorCorrector` and `procAmp.sat` |
+| Update Lift / Gamma / Gain / Saturation | Bake `33^3` LUT from current control state, send binary payload to `ws://<host>:5000` on real hosts, then `GET /v2/pipelineStages` + `PUT /v2/pipelineStages` with mirrored `lut3d_1.colorCorrector` and `procAmp.sat` values |
 | Bypass toggle | `GET /v2/routing` then `PUT /v2/routing` |
 | Preview source toggle | `GET /v2/routing` then `PUT /v2/routing` with `previewTap = INPUT/OUTPUT`, then `GET /v2/preview` |
 | Preset save | Wait ~1 second after the most recent direct `pipelineStages` grade write, then `POST /v2/saveDynamicLutRequest`, then `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
@@ -72,7 +76,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Device library import / replace | Single-file kinds use `POST /v2/upload`; AMF uses `POST /v2/uploadMultiple` with repeated `file` parts plus `selection`, then refresh the corresponding `/v2/*Library` endpoint |
 | Device library rename | `PUT /v2/libraryControl` with `SetUserName`, then refresh the corresponding `/v2/*Library` endpoint |
 | Device library delete | `PUT /v2/libraryControl` with `DeleteEntry`, then refresh the corresponding `/v2/*Library` endpoint |
-| Dynamic LUT upload queue | Mock-verified via `PUT /pipeline/aja/nodes/3dlut/dynamic` with `X-TrackGrade-Sequence`; retained as an offline / compatibility path while the shipping live grading route remains `pipelineStages` |
+| Dynamic LUT upload queue | Real hosts: WebSocket payload send to `ws://<host>:5000`; localhost/mock hosts: compatibility `PUT /pipeline/aja/nodes/3dlut/dynamic` with `X-TrackGrade-Sequence` |
 | False color toggle | Disabled in the app on firmware `3.0.0.24`; no live `/v2` mapping found |
 
 ## Verified Live Preset Semantics
@@ -115,13 +119,16 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - That same probe did not yield visual proof of effect, but the reference test box now appears to have no active signal, so identical `INPUT` and `OUTPUT` preview hashes are treated as an environment caveat rather than evidence that the uploaded LUT path is ineffective.
 - `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24`, returns `200`, and remains part of the reliable MVP preset-save workflow for dynamic grade persistence.
 - The repo does now contain a working bake-and-queue path for `.cube` uploads against the mock server, including per-device last-write-wins coalescing and monotonic debug sequence IDs.
-- TrackGrade still does not use `/v2/upload` as the live grading path; the shipping control surface continues to write grade changes through `PUT /v2/pipelineStages` until a baked-upload grading workflow is intentionally adopted and verified end to end.
+- TrackGrade does not use `POST /v2/upload` as the real-time grading path. Real-time grading now uses the ColorBox dynamic-LUT WebSocket ingest on port `5000`, while `/v2/upload` remains the library asset import contract.
 
 ## Dynamic Grade Control Status
 
-- Direct writes to `lut3d_1.colorCorrector` and `lut3d_1.procAmp.sat` through `PUT /v2/pipelineStages` are live-verified on the reference hardware.
-- A sanity check changed Lift and saturation on the real ColorBox, read the new values back successfully, and restored the original stage values cleanly.
-- This is now the primary MVP grading path for TrackGrade.
+- The original `PUT /v2/pipelineStages` path is still valuable for stage readback and preset-related synchronization, but real iPad hardware testing showed that it is not sufficient by itself to change the live image on the reference ColorBox.
+- TrackGrade now treats the live grading path as two coordinated writes:
+  - bake and send the dynamic LUT payload over `ws://<host>:5000`
+  - mirror the same Lift / Gamma / Gain / Saturation values into `PUT /v2/pipelineStages`
+- This combined path is now live-verified on the reference hardware through the reversible integration test suite.
+- The mock server continues to emulate the dynamic payload path with the earlier HTTP compatibility endpoint so offline tests can assert upload sequencing without standing up the binary ingest service.
 
 ## Preset Save Requirement For Dynamic Grade
 

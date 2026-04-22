@@ -339,7 +339,7 @@ enum MockColorBoxApplication {
             return try await state.configureDynamicLUTNode(mode: update.mode)
         }
 
-        app.put("pipeline", "aja", "nodes", "3dlut", "dynamic") { request async throws -> ColorBoxDynamicLUTUploadResponse in
+        app.on(.PUT, "pipeline", "aja", "nodes", "3dlut", "dynamic", body: .collect(maxSize: "4mb")) { request async throws -> ColorBoxDynamicLUTUploadResponse in
             let uploadData = request.body.data.flatMap { buffer in
                 buffer.getData(at: buffer.readerIndex, length: buffer.readableBytes)
             } ?? Data()

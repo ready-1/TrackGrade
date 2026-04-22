@@ -47,6 +47,7 @@ final class TrackGradeAppModel {
     var presetThumbnails: [StoredDevicePresetThumbnail] = []
     var librarySectionsByDeviceID: [UUID: [ColorBoxLibrarySection]] = [:]
     var selectedDeviceID: UUID?
+    var previewOverlayDeviceID: UUID?
     var isShowingAddDeviceSheet = false
     var activeAuthPrompt: AuthenticationPrompt?
     var errorMessage: String?
@@ -84,6 +85,22 @@ final class TrackGradeAppModel {
         for deviceID: UUID
     ) -> TransferFunction {
         knownDevices.first { $0.id == deviceID }?.workingTransferFunction ?? .rec709SDR
+    }
+
+    func isShowingPreviewOverlay(
+        for deviceID: UUID
+    ) -> Bool {
+        previewOverlayDeviceID == deviceID
+    }
+
+    func showPreviewOverlay(
+        for deviceID: UUID
+    ) {
+        previewOverlayDeviceID = deviceID
+    }
+
+    func hidePreviewOverlay() {
+        previewOverlayDeviceID = nil
     }
 
     var selectedDeviceSnapshots: [StoredGradeSnapshot] {
@@ -755,7 +772,8 @@ final class TrackGradeAppModel {
         ) { targetID in
             try await self.deviceManager.updateGradeControl(
                 id: targetID,
-                gradeControl: gradeControl
+                gradeControl: gradeControl,
+                transferFunction: self.workingTransferFunction(for: targetID)
             )
         }
     }

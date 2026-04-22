@@ -217,6 +217,34 @@ final class ColorMathTests: XCTestCase {
         XCTAssertEqual(parsed.serialize(), cube.serialize())
     }
 
+    func testCubeLUTDynamicColorBoxPayloadUsesExpectedHeaderAndQuantization() {
+        let cube = CubeLUT(
+            title: "Payload",
+            size: 2,
+            values: [
+                SIMD3<Float>(0, 0.5, 1),
+                SIMD3<Float>(0.25, 0.75, 1),
+                SIMD3<Float>(1, 0.5, 0.25),
+                SIMD3<Float>(0.125, 0.625, 0.875),
+                SIMD3<Float>(0.9, 0.1, 0.2),
+                SIMD3<Float>(0.3, 0.4, 0.5),
+                SIMD3<Float>(0.6, 0.7, 0.8),
+                SIMD3<Float>(1, 1, 1),
+            ]
+        )
+
+        let payload = cube.dynamicColorBoxPayload()
+        XCTAssertEqual(String(decoding: payload.prefix(4), as: UTF8.self), "3DL1")
+        XCTAssertEqual(payload.count, 4 + (cube.entryCount * 6))
+
+        let firstRed = payload.dropFirst(4).prefix(2)
+        let firstGreen = payload.dropFirst(6).prefix(2)
+        let firstBlue = payload.dropFirst(8).prefix(2)
+        XCTAssertEqual(firstRed.map { $0 }, [0x00, 0x00])
+        XCTAssertEqual(firstGreen.map { $0 }, [0x00, 0x80])
+        XCTAssertEqual(firstBlue.map { $0 }, [0xFF, 0xFF])
+    }
+
     func testCubeLUTParseRejectsMissingSize() {
         XCTAssertThrowsError(
             try CubeLUT.parse(

@@ -71,14 +71,25 @@ public struct ColorBoxAPIClient: Sendable {
         cubeText: String,
         sequenceID: Int
     ) async throws -> ColorBoxDynamicLUTUploadResponse {
-        var request = try makeRequest(
-            path: "pipeline/aja/nodes/3dlut/dynamic",
-            method: "PUT",
-            body: Data(cubeText.utf8),
-            contentType: "text/plain"
+        if usesLegacyHTTPDynamicLUTUploadTransport {
+            var request = try makeRequest(
+                path: "pipeline/aja/nodes/3dlut/dynamic",
+                method: "PUT",
+                body: Data(cubeText.utf8),
+                contentType: "text/plain"
+            )
+            request.setValue(String(sequenceID), forHTTPHeaderField: "X-TrackGrade-Sequence")
+            return try await perform(request: request)
+        }
+
+        let cube = try CubeLUT.parse(cubeText)
+        let payload = cube.dynamicColorBoxPayload()
+        try await performDynamicLUTWebSocketUpload(payload)
+        return ColorBoxDynamicLUTUploadResponse(
+            accepted: true,
+            byteCount: payload.count,
+            sequenceID: String(sequenceID)
         )
-        request.setValue(String(sequenceID), forHTTPHeaderField: "X-TrackGrade-Sequence")
-        return try await perform(request: request)
     }
 
     public func updateGradeControl(
@@ -702,6 +713,65 @@ public struct ColorBoxAPIClient: Sendable {
         }
 
         return host != "127.0.0.1" && host != "localhost"
+    }
+
+    private var usesLegacyHTTPDynamicLUTUploadTransport: Bool {
+        guard let host = endpoint.baseURL.host?.lowercased() else {
+            return false
+        }
+
+        return host == "127.0.0.1" || host == "localhost"
+    }
+
+    private func performDynamicLUTWebSocketUpload(
+        _ payload: Data
+    ) async throws {
+        guard let url = dynamicLUTWebSocketURL else {
+            throw ColorBoxAPIError.invalidEndpoint(endpoint.baseURL.absoluteString)
+        }
+
+        let webSocketTask = urlSession.webSocketTask(with: url)
+        webSocketTask.resume()
+
+        do {
+            try await withDynamicLUTUploadTimeout {
+                try await webSocketTask.send(.data(payload))
+            }
+        } catch {
+            webSocketTask.cancel(with: .goingAway, reason: nil)
+            throw error
+        }
+
+        webSocketTask.cancel(with: .normalClosure, reason: nil)
+    }
+
+    private var dynamicLUTWebSocketURL: URL? {
+        guard let host = endpoint.baseURL.host else {
+            return nil
+        }
+
+        var components = URLComponents()
+        components.scheme = endpoint.baseURL.scheme == "https" ? "wss" : "ws"
+        components.host = host
+        components.port = 5000
+        return components.url
+    }
+
+    private func withDynamicLUTUploadTimeout(
+        operation: @escaping @Sendable () async throws -> Void
+    ) async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(endpoint.timeout * 1_000_000_000))
+                throw URLError(.timedOut)
+            }
+
+            _ = try await group.next()
+            group.cancelAll()
+        }
     }
 
     private static func previewSource(
