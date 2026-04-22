@@ -55,6 +55,7 @@
 - `swift test` now verifies mock library reads, and `xcodebuild test` now covers the fixture library browser flow in the iPad UI suite.
 - The grading top bar now includes a distinct `Before / After` compare control that temporarily flips bypass and restores the original state when compare mode ends, keeping it separate from the persistent ColorBox bypass toggle required by the brief.
 - `xcodebuild test` now includes a fixture-backed Before / After regression that proves compare mode flips bypass on and then restores the original state cleanly.
+- The README now includes a real simulator screenshot captured from fixture mode, replacing the earlier screenshot placeholder and giving the public repo a truthful visual of the current grading surface.
 
 ## In-Flight Work
 
@@ -69,7 +70,7 @@
 
 ## Next Steps
 
-- Finish the release-prep doc pass: `Docs/TEST-PLAN.md`, `NOTICES.md`, and README status alignment.
+- Finish the remaining release-prep pass around launch / packaging polish and any final README cleanup.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.

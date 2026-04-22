@@ -8,7 +8,9 @@ TrackGrade is in active development, with the current build focused on a working
 
 ## Screenshots
 
-Screenshots coming soon.
+Current grading surface in simulator fixture mode:
+
+![TrackGrade grading surface](Docs/Screenshots/grade-surface-fixture.png)
 
 ## Features
 
