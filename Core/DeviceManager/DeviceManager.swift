@@ -14,6 +14,7 @@ public actor DeviceManager {
     }
 
     private var devices: [UUID: StoredDevice] = [:]
+    private var dynamicLUTUploadQueues: [UUID: DynamicLUTUploadQueue] = [:]
     private var reconnectTasks: [UUID: Task<Void, Never>] = [:]
     private var snapshotSubscribers: [UUID: SnapshotSubscriber] = [:]
     private let urlSession: URLSession
@@ -41,6 +42,7 @@ public actor DeviceManager {
             name: name,
             address: address
         )
+        dynamicLUTUploadQueues[id] = nil
         devices[id] = StoredDevice(
             snapshot: snapshot,
             endpoint: endpoint,
@@ -54,6 +56,7 @@ public actor DeviceManager {
     public func removeDevice(id: UUID) {
         reconnectTasks[id]?.cancel()
         reconnectTasks[id] = nil
+        dynamicLUTUploadQueues[id] = nil
         devices[id] = nil
         broadcastSnapshots()
     }
@@ -266,12 +269,59 @@ public actor DeviceManager {
         }
     }
 
+    @discardableResult
+    public func enqueueDynamicLUTUpload(
+        id: UUID,
+        cubeText: String
+    ) async throws -> Int {
+        let storedDevice = try requireDevice(id: id)
+        let uploadQueue = dynamicLUTUploadQueue(
+            for: id,
+            storedDevice: storedDevice
+        )
+        return await uploadQueue.enqueue(cubeText: cubeText)
+    }
+
+    public func flushDynamicLUTUploads(
+        id: UUID
+    ) async throws {
+        let storedDevice = try requireDevice(id: id)
+        let uploadQueue = dynamicLUTUploadQueue(
+            for: id,
+            storedDevice: storedDevice
+        )
+        await uploadQueue.flush()
+
+        if let error = await uploadQueue.lastError() {
+            throw error
+        }
+    }
+
     private func makeClient(for storedDevice: StoredDevice) -> ColorBoxAPIClient {
         ColorBoxAPIClient(
             endpoint: storedDevice.endpoint,
             credentials: storedDevice.credentials,
             urlSession: urlSession
         )
+    }
+
+    private func dynamicLUTUploadQueue(
+        for id: UUID,
+        storedDevice: StoredDevice
+    ) -> DynamicLUTUploadQueue {
+        if let existingQueue = dynamicLUTUploadQueues[id] {
+            return existingQueue
+        }
+
+        let client = makeClient(for: storedDevice)
+        let queue = DynamicLUTUploadQueue { cubeText, sequenceID in
+            try await client.uploadDynamicLUT(
+                cubeText: cubeText,
+                sequenceID: sequenceID
+            )
+        }
+        dynamicLUTUploadQueues[id] = queue
+        return queue
     }
 
     private func updateConnectionState(

@@ -55,9 +55,10 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 - `Core/DeviceManager`
   - actor-isolated connection pool
   - reconnect handling, per-device refresh, command execution
+  - per-device dynamic LUT upload queue with last-write-wins coalescing
 - `Core/ColorMath`
-  - currently lightweight model types and transfer-function enums
-  - intended landing zone for fuller CDL and LUT baking work
+  - `CDLValues`, `GradeState`, `TransferFunction`, `CubeLUT`, and `LUTBaker`
+  - converts control-surface state into CDL values, bakes `33^3` LUTs, and serializes `.cube` payloads
 - `Core/Haptics`
   - central haptic helpers for button and control-surface feedback
 - `Core/Persistence`
@@ -105,6 +106,19 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 4. `DeviceManager` writes the current LGG/S state to `/v2/pipelineStages`.
 5. The distinct `Before / After` compare control temporarily flips bypass, remembers the original device state, and restores it when compare mode ends.
 6. Undo / redo checkpoints are recorded at interaction boundaries instead of every touch sample.
+
+### 3a. Dynamic LUT Bake And Upload Path
+
+The repo now also contains the Phase 3 bake/upload path even though it is not yet the default live grading route:
+
+1. `ColorBoxGradeControlState` converts to `GradeState`
+2. `GradeState` converts to `CDLValues`
+3. `LUTBaker` emits a `CubeLUT`
+4. `CubeLUT.serialize()` produces `.cube` text
+5. `DeviceManager` enqueues that payload into a per-device `DynamicLUTUploadQueue`
+6. the queue keeps only the newest pending payload while one upload is in flight
+
+This keeps the UI-side architecture ready for the brief’s intended dynamic-LUT workflow without forcing the unresolved live firmware upload path into the shipping hardware route prematurely.
 
 ### 4. Preset Workflow
 
@@ -160,7 +174,7 @@ This keeps the simulator and UI automation path close to the real app shell inst
 
 ## Current Architectural Constraints
 
-- The app currently drives live grade directly through `pipelineStages` instead of baking and uploading `.cube` LUTs.
+- The app currently drives live grade directly through `pipelineStages` instead of routing live iPad gestures through the baked `.cube` upload path, because the reference firmware’s `/v2/upload` materialization semantics are still unresolved.
 - Gang control currently follows a focused-device-plus-linked-peers model; deeper workflow support such as per-device offsets and richer gang management is still future work.
 - The library area is currently read-only; import, overwrite, and delete flows remain future work until the live upload path is proven on hardware.
 - The project compiles shared sources in both the app target and the package; a later cleanup can consume the local package product more directly.

@@ -56,17 +56,24 @@
 - The grading top bar now includes a distinct `Before / After` compare control that temporarily flips bypass and restores the original state when compare mode ends, keeping it separate from the persistent ColorBox bypass toggle required by the brief.
 - `xcodebuild test` now includes a fixture-backed Before / After regression that proves compare mode flips bypass on and then restores the original state cleanly.
 - The README now includes a real simulator screenshot captured from fixture mode, replacing the earlier screenshot placeholder and giving the public repo a truthful visual of the current grading surface.
+- Phase 3 core work is now implemented in `Core/ColorMath`: `CDLValues`, `TransferFunction`, `CubeLUT`, and `LUTBaker` cover linear-light CDL math, Rec.709 SDR / HLG transfer functions, `.cube` serialization, and `33^3` LUT baking.
+- `DeviceManager` now includes a per-device last-write-wins `DynamicLUTUploadQueue`, giving TrackGrade the coalescing upload behavior required by the brief without blocking the UI on every intermediate touch sample.
+- Mock-backed integration coverage now verifies both a full identity LUT upload and aggressive queue coalescing, proving that the newest LUT wins when uploads arrive faster than the device ingest path can drain them.
+- `Core/ColorMath` automated line coverage is now `92.71%`, clearing the brief’s `>= 90%` Phase 3 target for the color-math module.
+- The release-only `LUTBakerPerformanceTests` timing check passed locally with a `33^3` identity bake completing well under the brief’s `< 16 ms` threshold.
 
 ## In-Flight Work
 
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
-- Choosing the next non-hardware polish slice after the library browser and Before / After workflow landed, with broader accessibility and release collateral still open.
+- Choosing the next non-hardware polish slice after the library browser, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
+- Deciding how far to wire the bake/upload path into the live app shell before hardware is back, given that real firmware `3.0.0.24` still exposes unresolved `/v2/upload` persistence semantics.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
 - True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
+- The current reference ColorBox firmware still does not provide a fully understood live dynamic-LUT upload materialization path, so the app continues to use the hardware-verified `pipelineStages` grading route while the bake/upload queue is validated against the mock.
 
 ## Next Steps
 
@@ -76,4 +83,5 @@
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
+- Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before the live hardware upload path is fully understood.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

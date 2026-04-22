@@ -13,6 +13,8 @@ actor MockColorBoxState {
     private let libraryEntriesByKind: [ColorBoxLibraryKind: [MockLibraryEntryState]]
     private var previewPNGDataValue: Data
     private var lastUploadedLUT: Data
+    private var lastUploadedSequenceIDValue: String?
+    private var dynamicLUTUploadCountValue: Int
 
     init(configuration: MockColorBoxConfiguration) {
         self.configuration = configuration
@@ -71,6 +73,8 @@ actor MockColorBoxState {
         ]
         self.previewPNGDataValue = Self.previewPNGData()
         self.lastUploadedLUT = Data()
+        self.lastUploadedSequenceIDValue = nil
+        self.dynamicLUTUploadCountValue = 0
     }
 
     func systemInfo() async throws -> ColorBoxSystemInfo {
@@ -106,6 +110,8 @@ actor MockColorBoxState {
     ) async throws -> ColorBoxDynamicLUTUploadResponse {
         try await applyLatency()
         lastUploadedLUT = data
+        lastUploadedSequenceIDValue = sequenceID
+        dynamicLUTUploadCountValue += 1
         return ColorBoxDynamicLUTUploadResponse(
             accepted: true,
             byteCount: data.count,
@@ -274,6 +280,18 @@ actor MockColorBoxState {
     func previewImageData() async throws -> Data {
         try await applyLatency()
         return previewPNGDataValue
+    }
+
+    func lastUploadedLUTText() -> String? {
+        String(data: lastUploadedLUT, encoding: .utf8)
+    }
+
+    func lastUploadedSequenceID() -> String? {
+        lastUploadedSequenceIDValue
+    }
+
+    func dynamicLUTUploadCount() -> Int {
+        dynamicLUTUploadCountValue
     }
 
     private func applyLatency() async throws {

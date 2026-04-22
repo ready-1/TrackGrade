@@ -59,6 +59,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Preset save | `POST /v2/saveDynamicLutRequest`, then `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
 | Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
+| Dynamic LUT upload queue | Mock-verified via `PUT /pipeline/aja/nodes/3dlut/dynamic` with `X-TrackGrade-Sequence`; retained as an offline / compatibility path while live `/v2/upload` semantics remain unresolved |
 | False color toggle | Disabled in the app on firmware `3.0.0.24`; no live `/v2` mapping found |
 
 ## Verified Live Preset Semantics
@@ -85,6 +86,7 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - Those successful responses did not produce visible entries in `GET /v2/3dLutLibrary` on the reference hardware, so upload persistence semantics remain unresolved.
 - `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24`, returns `200`, and is part of the reliable MVP preset-save workflow for dynamic grade persistence.
 - TrackGrade should not claim live LUT import parity until this mismatch is understood.
+- The repo does now contain a working bake-and-queue path for `.cube` uploads against the mock server, including per-device last-write-wins coalescing and monotonic debug sequence IDs.
 
 ## Dynamic Grade Control Status
 

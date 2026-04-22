@@ -18,12 +18,35 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
   test
 ```
 
+Phase 3 acceptance evidence is collected with:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --enable-code-coverage
+xcrun llvm-cov report \
+  .build/arm64-apple-macosx/debug/TrackGradeCorePackageTests.xctest/Contents/MacOS/TrackGradeCorePackageTests \
+  -instr-profile .build/arm64-apple-macosx/debug/codecov/default.profdata \
+  -ignore-filename-regex='^(/Users/bob/dev/TrackGrade/.build|/Applications/Xcode)' \
+  Core/ColorMath/CDL.swift \
+  Core/ColorMath/TransferFunction.swift \
+  Core/ColorMath/CubeLUT.swift \
+  Core/ColorMath/LUTBaker.swift
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  swift test -c release --filter LUTBakerPerformanceTests/testReleaseBakeCompletesUnderSixteenMilliseconds
+```
+
 Current automated coverage:
 
 - Generated ColorBox client smoke tests
 - Trackball mapping and core grade-control helpers
+- Color math coverage for CDL application, transfer functions, `.cube` parsing / serialization, LUT baking, and helper conversions
 - Mock-server integration for connect, preview, device library reads, bypass, presets, reconnect, and unsupported false color
+- Mock-server integration for identity LUT upload and last-write-wins queue coalescing
 - Fixture-backed iPad UI flows for launch, bypass, Before / After compare, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library browsing
+
+Current measured Phase 3 acceptance evidence:
+
+- `Core/ColorMath` line coverage: `92.71%`
+- release-mode `33^3` LUT bake timing check: passed under the `< 16 ms` target
 
 ## Offline Simulator Validation
 
@@ -40,6 +63,7 @@ Manual simulator checks:
 - Link at least two fixture peers from the device list and confirm bypass mirrors to them
 - Save and recall a snapshot from fixture mode
 - Save a device preset from fixture mode
+- If the bake/upload path is exposed in a later build, verify that the newest pending LUT wins under rapid repeated grade changes
 
 ## Manual Hardware Validation
 
@@ -50,6 +74,7 @@ These checks still require a real iPad and the reference ColorBox.
 - Connect to the reference ColorBox and confirm the app reads device identity, preview, and pipeline state
 - Confirm bypass toggles live on the device
 - Confirm Lift / Gamma / Gain / Saturation changes round-trip without drift after refresh
+- Once the real upload path is re-enabled, confirm finger-up results in the final baked LUT matching the visible UI state on-device
 
 ### Touch Surface
 

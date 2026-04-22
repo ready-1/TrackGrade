@@ -219,6 +219,22 @@ Implement device-native preset save / rename / recall / delete using:
 - `MockColorBox` must preserve the same `libraryControl` action flow so integration tests cover the real contract shape.
 - False color is now the only unresolved Phase 1 control-path mismatch from the original guessed routes.
 
+## 2026-04-21 — Land the Full Color-Math Core and Queue LUT Uploads Per Device While Keeping Live Grading on `pipelineStages`
+
+### Context
+
+The brief’s Phase 3 requires real CDL math, transfer functions, `.cube` baking, and a last-write-wins dynamic LUT upload queue. At the same time, the current reference ColorBox firmware (`3.0.0.24`) still exposes unresolved `/v2/upload` persistence semantics, while direct `pipelineStages` grading is already live-verified and reliable on hardware.
+
+### Decision
+
+Implement the full color-math core now in `Core/ColorMath` and add a per-device `DynamicLUTUploadQueue` in `Core/DeviceManager`, but keep the live app shell on the proven `pipelineStages` grading path until the real hardware upload route is better understood.
+
+### Consequences
+
+- TrackGrade now has the offline and mock-verified infrastructure required to bake and coalesce dynamic LUT uploads without blocking the UI.
+- The brief’s Phase 3 acceptance work can be substantially completed offline, including color-math coverage and queue behavior verification.
+- The shipping hardware path remains conservative and trustworthy: live grading still uses the direct `pipelineStages` route on the reference ColorBox until a later hardware session confirms the dynamic upload path end to end.
+
 ## 2026-04-21 — Defer Authentication UX Work For The Reference ColorBox
 
 ### Context

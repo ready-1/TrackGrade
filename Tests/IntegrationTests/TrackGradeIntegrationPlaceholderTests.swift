@@ -172,10 +172,89 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertEqual(updatedDevice?.pipelineState?.falseColorEnabled, false)
     }
 
+    func testManagerUploadsIdentityLUTToMockColorBox() async throws {
+        let application = try await makeApplication(port: 18084)
+        defer {
+            Task {
+                try? await application.asyncShutdown()
+            }
+        }
+
+        let manager = DeviceManager(retryPolicy: .testing)
+        let deviceID = try await manager.registerDevice(
+            name: "Upload Mock",
+            address: "http://127.0.0.1:18084"
+        )
+
+        let cubeText = LUTBaker.bake(
+            cdl: .identity,
+            transferFunction: .rec709SDR,
+            size: 5,
+            title: "Identity"
+        ).serialize()
+
+        let sequenceID = try await manager.enqueueDynamicLUTUpload(
+            id: deviceID,
+            cubeText: cubeText
+        )
+        XCTAssertEqual(sequenceID, 1)
+
+        try await manager.flushDynamicLUTUploads(id: deviceID)
+
+        let state = try XCTUnwrap(MockColorBoxApplication.state(from: application))
+        let uploadedText = await state.lastUploadedLUTText()
+        let uploadedSequenceID = await state.lastUploadedSequenceID()
+        let uploadedCount = await state.dynamicLUTUploadCount()
+
+        XCTAssertEqual(uploadedText, cubeText)
+        XCTAssertEqual(uploadedSequenceID, "1")
+        XCTAssertEqual(uploadedCount, 1)
+    }
+
+    func testDynamicLUTUploadQueueCoalescesRapidUpdates() async throws {
+        let application = try await makeApplication(
+            port: 18085,
+            latencyMilliseconds: 10
+        )
+        defer {
+            Task {
+                try? await application.asyncShutdown()
+            }
+        }
+
+        let manager = DeviceManager(retryPolicy: .testing)
+        let deviceID = try await manager.registerDevice(
+            name: "Queued Upload Mock",
+            address: "http://127.0.0.1:18085"
+        )
+
+        for index in 0 ..< 1000 {
+            _ = try await manager.enqueueDynamicLUTUpload(
+                id: deviceID,
+                cubeText: Self.simpleCubeText(
+                    title: "LUT \(index)",
+                    value: Float(index) / 1000
+                )
+            )
+        }
+
+        try await manager.flushDynamicLUTUploads(id: deviceID)
+
+        let state = try XCTUnwrap(MockColorBoxApplication.state(from: application))
+        let uploadedText = await state.lastUploadedLUTText()
+        let uploadedSequenceID = await state.lastUploadedSequenceID()
+        let uploadedCount = await state.dynamicLUTUploadCount()
+
+        XCTAssertEqual(uploadedSequenceID, "1000")
+        XCTAssertTrue(uploadedText?.contains("TITLE \"LUT 999\"") == true)
+        XCTAssertLessThan(uploadedCount, 1000)
+    }
+
     private func makeApplication(
         port: Int,
         password: String? = nil,
-        supportsFalseColor: Bool = true
+        supportsFalseColor: Bool = true,
+        latencyMilliseconds: UInt64 = 0
     ) async throws -> Application {
         let application = try await Application.make(.testing)
         application.http.server.configuration.hostname = "127.0.0.1"
@@ -190,7 +269,7 @@ final class TrackGradeIntegrationTests: XCTestCase {
                 username: password == nil ? nil : "admin",
                 password: password,
                 supportsFalseColor: supportsFalseColor,
-                latencyMilliseconds: 0,
+                latencyMilliseconds: latencyMilliseconds,
                 firmwareVersion: "mock-1.0.0",
                 firmwareBuild: "build-1",
                 openAPIDocument: nil
@@ -199,5 +278,26 @@ final class TrackGradeIntegrationTests: XCTestCase {
 
         try await application.startup()
         return application
+    }
+
+    private static func simpleCubeText(
+        title: String,
+        value: Float
+    ) -> String {
+        let formatted = String(format: "%.6f", value)
+        return [
+            "TITLE \"\(title)\"",
+            "LUT_3D_SIZE 2",
+            "DOMAIN_MIN 0.000000 0.000000 0.000000",
+            "DOMAIN_MAX 1.000000 1.000000 1.000000",
+            "0.000000 0.000000 0.000000",
+            "\(formatted) 0.000000 0.000000",
+            "0.000000 \(formatted) 0.000000",
+            "\(formatted) \(formatted) 0.000000",
+            "0.000000 0.000000 \(formatted)",
+            "\(formatted) 0.000000 \(formatted)",
+            "0.000000 \(formatted) \(formatted)",
+            "\(formatted) \(formatted) \(formatted)",
+        ].joined(separator: "\n") + "\n"
     }
 }

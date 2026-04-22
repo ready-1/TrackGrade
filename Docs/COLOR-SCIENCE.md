@@ -2,15 +2,19 @@
 
 ## Current State
 
-TrackGrade's current shipping path is intentionally narrower than the original long-term brief. On the reference ColorBox firmware used during development, the app currently drives grading by writing directly to the device's `lut3d_1.colorCorrector` and `procAmp.sat` fields through `PUT /v2/pipelineStages`.
+TrackGrade now has two color-processing layers in the repo:
 
-That means:
+1. A real hardware-backed MVP path that writes Lift / Gamma / Gain and saturation directly to `lut3d_1.colorCorrector` and `procAmp.sat` through `PUT /v2/pipelineStages`
+2. A full offline and mock-verified Phase 3 color-math path that converts TrackGrade control state into ASC-CDL values, bakes a `.cube` LUT, and queues last-write-wins dynamic LUT uploads per device
+
+That means the app is already usable on the reference ColorBox today, while the fuller bake/upload path exists in durable code and tests even though the live firmware upload semantics are still unresolved.
+
+For the current build:
 
 - live Lift / Gamma / Gain and saturation control is real and hardware-verified
 - device-native preset save is real and hardware-verified
-- LUT baking and `.cube` upload are not the active MVP path in this build
-
-The `Core/ColorMath` module remains the landing zone for fuller CDL math and LUT baking, but today it primarily contains the shared grade model types and transfer-function enum scaffolding.
+- LUT baking and queued upload are implemented in `Core/ColorMath` and `Core/DeviceManager`
+- the app shell still defaults to the hardware-verified direct-device path instead of switching live grading over to `/v2/upload`
 
 ## Grade Representation
 
@@ -29,6 +33,13 @@ Identity is:
 - saturation = `1.0`
 
 This mirrors the way the current ColorBox `/v2/pipelineStages` surface represents the live grade controls that TrackGrade is writing.
+
+`GradeState` in `Core/ColorMath/CDL.swift` is the bridge from that interactive control model into formal CDL values:
+
+- Lift becomes CDL `Offset`
+- Gamma becomes CDL `Power`
+- Gain becomes CDL `Slope`
+- saturation maps directly to CDL saturation with a hard clamp of `0.0 ... 2.0`
 
 ## Trackball Mapping
 
@@ -76,22 +87,78 @@ Neutral values:
 - Gain channels clamp to `0.0 ... 2.0`
 - Saturation is adjusted around `1.0`
 
-These are interaction-space guardrails for the current direct-device path. They are not yet presented as a formal ASC-CDL implementation.
+These interaction-space controls are also converted into CDL space through `GradeState.toCDL()`:
+
+- Lift ring maps to luminance offset in `[-0.2, 0.2]`
+- Lift ball adds chromatic offset with scale `0.1`
+- Gamma ring maps exponentially to power in `[0.2, 5.0]`
+- Gamma ball adds per-channel power bias with scale `0.2`
+- Gain ring maps piecewise to slope in `[0.0, 4.0]`
+- Gain ball adds per-channel slope bias with scale `0.2`
 
 ## Transfer Functions
 
-`TransferFunction.swift` currently defines:
+`TransferFunction.swift` defines:
 
 - `Rec.709 SDR`
 - `Rec.709 HLG`
 
-The enum is in place so the app and future baking path can share a durable vocabulary, but the current MVP does not yet:
+These are real encode / decode implementations, not placeholders:
 
-- linearize samples
-- apply CDL in linear light
-- re-encode into a baked LUT
+- `toLinear(_:)` clamps code values into `0 ... 1` and linearizes them
+- `fromLinear(_:)` clamps linear-light values into `0 ... 1` and re-encodes them
 
-That fuller path remains future work.
+The CDL bake path uses these transfer functions as:
+
+1. input code-value sample
+2. linearize
+3. apply CDL `Slope / Offset / Power`
+4. apply saturation in linear light using Rec.709 luma weights
+5. re-encode
+6. clamp and emit to `.cube`
+
+Current automated tests cover round-trip accuracy across the sample ramp for both transfer functions.
+
+## CDL Implementation
+
+`CDLValues` now implements the brief’s intended processing shape:
+
+- `(linear * slope) + offset`
+- clamp to `0 ... 1`
+- apply inverse power exponent `1 / power`
+- compute Rec.709 luma using weights `0.2126 / 0.7152 / 0.0722`
+- apply saturation around that luma
+- clamp result back into `0 ... 1`
+
+Current tests cover:
+
+- identity behavior
+- inverse-power and saturation application in linear light
+- power and saturation clamping
+- helper conversions from `ColorBoxGradeControlState`
+
+## LUT Baking And Serialization
+
+`LUTBaker` now produces real Iridas `.cube` output:
+
+- default size: `33`
+- domain: `0 ... 1`
+- entry order: red-inner, green-middle, blue-outer
+- default title: `TrackGrade <timestamp>`
+
+`CubeLUT` handles:
+
+- durable in-memory representation
+- `.cube` serialization
+- parsing back from serialized text
+- parse error reporting for missing size, invalid headers, invalid rows, and unexpected entry counts
+
+Current tests cover:
+
+- identity-corner preservation
+- serialization round-trip symmetry
+- parser failure cases
+- default timestamp title generation
 
 ## Device Pipeline Mapping
 
@@ -104,6 +171,15 @@ The live grade path currently writes:
 
 TrackGrade first ensures that the 3D LUT stage is configured for dynamic mode, then keeps writing the grade state back through `/v2/pipelineStages`.
 
+In parallel, `DeviceManager` now also exposes a `DynamicLUTUploadQueue` for per-device queued `.cube` uploads:
+
+- one in-flight upload per device
+- newest pending upload replaces older pending uploads
+- `flush()` waits until the queue is drained
+- each upload carries a monotonic `X-TrackGrade-Sequence` header for debugging
+
+This matches the brief’s last-write-wins upload model even though the live hardware route is not yet the active grading path.
+
 ## Preset Persistence Implication
 
 On the reference firmware, device-native preset persistence of the current dynamic grade requires:
@@ -114,30 +190,30 @@ On the reference firmware, device-native preset persistence of the current dynam
 
 Without the `saveDynamicLutRequest` step, recalling a preset can return identity/default values instead of the current dynamic grade.
 
-## Planned LUT Path
+## Live Upload Status
 
-The long-term brief still calls for:
+The remaining gap is not the math or queueing code. It is the real firmware upload behavior:
 
-- formal ASC-CDL math
-- transfer-function-aware linear processing
-- baking a `33^3` LUT
-- serializing `.cube`
-- uploading the result to the ColorBox dynamic LUT slot
+- the reference ColorBox accepts `POST /v2/upload`
+- the device web UI uses the same route
+- successful uploads on firmware `3.0.0.24` still do not materialize predictably in `GET /v2/3dLutLibrary`
 
-That path is not the active implementation today because the reference firmware already exposes a reliable direct-grade control path and the live `/v2/upload` library materialization behavior remains unresolved on the tested device.
+Because of that unresolved device behavior, TrackGrade currently keeps the shipping hardware path on the already verified `pipelineStages` route while retaining the bake/upload path for offline and mock-backed validation.
 
 ## Testing Expectations
 
 Current automated coverage includes:
 
-- identity model defaults
-- trackball mapping round trips
-- clamping behavior
-- integration tests proving the mock and the app can round-trip live grade values through the device-facing API surface
+- transfer-function round trips
+- out-of-range clamping
+- identity CDL behavior
+- linear-light power and saturation application
+- control-state-to-CDL conversion
+- `.cube` serialization and parser failures
+- identity LUT bake correctness
+- mock-backed dynamic LUT upload and queue coalescing
 
-The fuller color-math phase should eventually expand this with:
+Current measured acceptance evidence:
 
-- ASC-CDL vector tests
-- transfer-function tests
-- LUT bake correctness tests
-- performance timing checks for bake + serialization
+- `Core/ColorMath` line coverage: `92.71%`
+- release-mode `33^3` identity bake timing check: passed under the brief’s `< 16 ms` target on the development Mac

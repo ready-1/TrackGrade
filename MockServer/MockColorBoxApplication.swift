@@ -332,6 +332,12 @@ enum MockColorBoxApplication {
             return Response(status: .ok, headers: headers, body: .init(data: document))
         }
     }
+
+    static func state(
+        from app: Application
+    ) -> MockColorBoxState? {
+        app.storage[MockColorBoxStateKey.self]
+    }
 }
 
 private extension MockColorBoxApplication {
