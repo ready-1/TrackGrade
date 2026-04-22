@@ -670,3 +670,23 @@ Treat `/v2/upload` as a trustworthy live contract for ColorBox library asset man
 - The library feature can move beyond read-only browsing without inventing another transport path.
 - Docs and tests should distinguish between verified asset-library uploads and the separate question of whether live grading should be driven by baked LUT uploads.
 - The app remains conservative where it matters most for the MVP: operators still grade through the direct, hardware-verified `pipelineStages` control path.
+
+## 2026-04-22 — Show All 16 Device Library Slots And Enable Safe In-App Asset Management
+
+### Context
+
+The live ColorBox contract is now trustworthy enough to mutate library assets from TrackGrade: `POST /v2/upload` creates visible entries on firmware `3.0.0.24`, and `PUT /v2/libraryControl` supports rename and delete for those assets. The earlier read-only browser no longer matched the verified hardware behavior or the brief’s v1 library-management scope.
+
+### Decision
+
+Render every supported device library as a padded 16-slot section in the app and expose mutation actions where the contract is known-good:
+
+- 1D LUT, 3D LUT, matrix, image, and overlay entries support import / replace via `/v2/upload`
+- populated entries support rename and delete via `/v2/libraryControl`
+- AMF appears in the same 16-slot management view, but import stays deferred because the device uses a separate `/v2/uploadMultiple` multi-file path
+
+### Consequences
+
+- Operators now see the same slot-oriented mental model in TrackGrade that they see on the device.
+- The mock server and fixture mode must pad library sections the same way and support library mutation flows so offline development remains credible.
+- The library feature now satisfies the user-approved v1 import / write scope for the supported single-file asset kinds without forcing TrackGrade to guess at AMF multi-file semantics.

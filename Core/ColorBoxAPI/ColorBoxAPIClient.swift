@@ -180,6 +180,7 @@ public struct ColorBoxAPIClient: Sendable {
         async let matrices = listLibrary(kind: .matrix)
         async let images = listLibrary(kind: .image)
         async let overlays = listLibrary(kind: .overlay)
+        async let amfs = listLibrary(kind: .amf)
 
         return try await [
             ColorBoxLibrarySection(kind: .oneDLUT, entries: oneDLUTs),
@@ -187,14 +188,16 @@ public struct ColorBoxAPIClient: Sendable {
             ColorBoxLibrarySection(kind: .matrix, entries: matrices),
             ColorBoxLibrarySection(kind: .image, entries: images),
             ColorBoxLibrarySection(kind: .overlay, entries: overlays),
+            ColorBoxLibrarySection(kind: .amf, entries: amfs),
         ]
+        .map { $0.padded() }
     }
 
     public func listLibrary(
         kind: ColorBoxLibraryKind
     ) async throws -> [ColorBoxLibraryEntry] {
         let entries: [V2LibraryEntry] = try await performJSONRequest(path: "v2/\(kind.endpointPath)")
-        return entries.enumerated().map { index, entry in
+        let mappedEntries = entries.enumerated().map { index, entry in
             ColorBoxLibraryEntry(
                 kind: kind,
                 slot: index + 1,
@@ -202,6 +205,59 @@ public struct ColorBoxAPIClient: Sendable {
                 fileName: entry.fileName
             )
         }
+        return ColorBoxLibrarySection(
+            kind: kind,
+            entries: mappedEntries
+        ).padded().entries
+    }
+
+    public func uploadLibraryEntry(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        fileName: String,
+        data: Data
+    ) async throws -> [ColorBoxLibraryEntry] {
+        guard let uploadKind = kind.uploadKind else {
+            throw ColorBoxAPIError.unsupportedFeature(
+                "\(kind.title) import is not exposed through the single-file `/v2/upload` contract."
+            )
+        }
+
+        try await performMultipartUploadRequest(
+            path: "v2/upload",
+            fileName: fileName,
+            data: data,
+            uploadKind: uploadKind,
+            entry: slot
+        )
+
+        return try await listLibrary(kind: kind)
+    }
+
+    public func renameLibraryEntry(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        name: String
+    ) async throws -> [ColorBoxLibraryEntry] {
+        try await performLibraryActionV2(
+            library: kind.libraryControlName,
+            entry: slot,
+            action: "SetUserName",
+            data: name
+        )
+        return try await listLibrary(kind: kind)
+    }
+
+    public func deleteLibraryEntry(
+        kind: ColorBoxLibraryKind,
+        slot: Int
+    ) async throws -> [ColorBoxLibraryEntry] {
+        try await performLibraryActionV2(
+            library: kind.libraryControlName,
+            entry: slot,
+            action: "DeleteEntry"
+        )
+        return try await listLibrary(kind: kind)
     }
 
     public func savePreset(slot: Int, name: String) async throws -> [ColorBoxPresetSummary] {
@@ -726,6 +782,31 @@ public struct ColorBoxAPIClient: Sendable {
         try validate(response: response, data: data)
     }
 
+    private func performMultipartUploadRequest(
+        path: String,
+        fileName: String,
+        data: Data,
+        uploadKind: String,
+        entry: Int
+    ) async throws {
+        let boundary = "TrackGradeBoundary-\(UUID().uuidString)"
+        let body = multipartBody(
+            boundary: boundary,
+            fileName: fileName,
+            fileData: data,
+            uploadKind: uploadKind,
+            entry: entry
+        )
+        let request = try makeRequest(
+            path: path,
+            method: "POST",
+            body: body,
+            contentType: "multipart/form-data; boundary=\(boundary)"
+        )
+        let (responseData, response) = try await urlSession.data(for: request)
+        try validate(response: response, data: responseData)
+    }
+
     private func perform<Response: Decodable>(
         request: URLRequest
     ) async throws -> Response {
@@ -780,6 +861,38 @@ public struct ColorBoxAPIClient: Sendable {
         }
 
         return request
+    }
+
+    private func multipartBody(
+        boundary: String,
+        fileName: String,
+        fileData: Data,
+        uploadKind: String,
+        entry: Int
+    ) -> Data {
+        var body = Data()
+        let lineBreak = "\r\n"
+
+        func append(_ string: String) {
+            body.append(Data(string.utf8))
+        }
+
+        append("--\(boundary)\(lineBreak)")
+        append("Content-Disposition: form-data; name=\"kind\"\(lineBreak)\(lineBreak)")
+        append("\(uploadKind)\(lineBreak)")
+
+        append("--\(boundary)\(lineBreak)")
+        append("Content-Disposition: form-data; name=\"entry\"\(lineBreak)\(lineBreak)")
+        append("\(entry)\(lineBreak)")
+
+        append("--\(boundary)\(lineBreak)")
+        append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\(lineBreak)")
+        append("Content-Type: application/octet-stream\(lineBreak)\(lineBreak)")
+        body.append(fileData)
+        append(lineBreak)
+        append("--\(boundary)--\(lineBreak)")
+
+        return body
     }
 }
 

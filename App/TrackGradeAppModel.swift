@@ -107,7 +107,14 @@ final class TrackGradeAppModel {
     func librarySections(
         for deviceID: UUID
     ) -> [ColorBoxLibrarySection] {
-        librarySectionsByDeviceID[deviceID] ?? []
+        guard let storedSections = librarySectionsByDeviceID[deviceID] else {
+            return []
+        }
+
+        let sectionsByKind = Dictionary(uniqueKeysWithValues: storedSections.map { ($0.kind, $0) })
+        return ColorBoxLibraryKind.allCases.map { kind in
+            (sectionsByKind[kind] ?? ColorBoxLibrarySection(kind: kind, entries: [])).padded()
+        }
     }
 
     func presetThumbnailData(
@@ -804,6 +811,120 @@ final class TrackGradeAppModel {
         }
     }
 
+    func importLibraryAsset(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        from fileURL: URL
+    ) async {
+        guard kind.supportsImport else {
+            errorMessage = "\(kind.title) import is not available in this build."
+            return
+        }
+
+        do {
+            let fileName = fileURL.lastPathComponent.isEmpty
+                ? "Imported-\(kind.id)"
+                : fileURL.lastPathComponent
+            let didAccessSecurityScopedResource = fileURL.startAccessingSecurityScopedResource()
+            defer {
+                if didAccessSecurityScopedResource {
+                    fileURL.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            let data = try await Task.detached(priority: .userInitiated) {
+                try Data(contentsOf: fileURL)
+            }.value
+
+            if launchConfiguration.usesUITestFixture {
+                updateFixtureLibraryEntry(
+                    deviceID: id,
+                    kind: kind,
+                    slot: slot,
+                    userName: fileURL.deletingPathExtension().lastPathComponent,
+                    fileName: fileName
+                )
+                return
+            }
+
+            let sections = try await deviceManager.uploadLibraryEntry(
+                id: id,
+                kind: kind,
+                slot: slot,
+                fileName: fileName,
+                data: data
+            )
+            librarySectionsByDeviceID[id] = sections
+        } catch {
+            errorMessage = "Failed to import the \(kind.title) asset: \(error.localizedDescription)"
+        }
+    }
+
+    func renameLibraryEntry(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        name: String
+    ) async {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedName.isEmpty == false else {
+            errorMessage = "A library name is required."
+            return
+        }
+
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureLibraryEntry(
+                deviceID: id,
+                kind: kind,
+                slot: slot,
+                userName: trimmedName,
+                fileName: nil
+            )
+            return
+        }
+
+        do {
+            let sections = try await deviceManager.renameLibraryEntry(
+                id: id,
+                kind: kind,
+                slot: slot,
+                name: trimmedName
+            )
+            librarySectionsByDeviceID[id] = sections
+        } catch {
+            errorMessage = "Failed to rename the \(kind.title) asset: \(error.localizedDescription)"
+        }
+    }
+
+    func deleteLibraryEntry(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int
+    ) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureLibraryEntry(
+                deviceID: id,
+                kind: kind,
+                slot: slot,
+                userName: "",
+                fileName: ""
+            )
+            return
+        }
+
+        do {
+            let sections = try await deviceManager.deleteLibraryEntry(
+                id: id,
+                kind: kind,
+                slot: slot
+            )
+            librarySectionsByDeviceID[id] = sections
+        } catch {
+            errorMessage = "Failed to delete the \(kind.title) asset: \(error.localizedDescription)"
+        }
+    }
+
     func savePreset(
         id: UUID,
         slot: Int,
@@ -1342,6 +1463,45 @@ final class TrackGradeAppModel {
         for id in ids {
             updateFixtureDevice(id: id, mutate: mutate)
         }
+    }
+
+    private func updateFixtureLibraryEntry(
+        deviceID: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        userName: String?,
+        fileName: String?
+    ) {
+        var sections = librarySectionsByDeviceID[deviceID] ?? TrackGradeUITestFixture.fixtureLibrarySections()
+        let sectionIndex: Int
+
+        if let existingIndex = sections.firstIndex(where: { $0.kind == kind }) {
+            sectionIndex = existingIndex
+        } else {
+            sections.append(ColorBoxLibrarySection(kind: kind, entries: []).padded())
+            sectionIndex = sections.indices.last ?? 0
+        }
+
+        var section = sections[sectionIndex].padded()
+        guard let entryIndex = section.entries.firstIndex(where: { $0.slot == slot }) else {
+            return
+        }
+
+        let currentEntry = section.entries[entryIndex]
+        let trimmedUserName = userName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFileName = fileName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        section.entries[entryIndex] = ColorBoxLibraryEntry(
+            kind: kind,
+            slot: slot,
+            userName: trimmedUserName == nil
+                ? currentEntry.userName
+                : (trimmedUserName?.isEmpty == false ? trimmedUserName : nil),
+            fileName: trimmedFileName == nil
+                ? currentEntry.fileName
+                : (trimmedFileName?.isEmpty == false ? trimmedFileName : nil)
+        )
+        sections[sectionIndex] = section
+        librarySectionsByDeviceID[deviceID] = sections
     }
 
     private func handleAuthenticationPromptIfNeeded(

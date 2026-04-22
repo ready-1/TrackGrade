@@ -30,6 +30,14 @@ final class TrackGradeIntegrationTests: XCTestCase {
                     && section.entries.contains(where: { $0.displayName == "Stage Neutral" })
             })
         )
+        XCTAssertEqual(
+            libraries.first(where: { $0.kind == .threeDLUT })?.entries.count,
+            16
+        )
+        XCTAssertEqual(
+            libraries.first(where: { $0.kind == .amf })?.entries.count,
+            16
+        )
 
         let configuredDevice = try await manager.configurePipelineForTrackGrade(id: deviceID)
         XCTAssertEqual(configuredDevice.pipelineState?.dynamicLUTMode, "dynamic")
@@ -256,6 +264,73 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertEqual(uploadedSequenceID, "1000")
         XCTAssertTrue(uploadedText?.contains("TITLE \"LUT 999\"") == true)
         XCTAssertLessThan(uploadedCount, 1000)
+    }
+
+    func testManagerUploadsRenamesAndDeletesLibraryAssetsOnMockColorBox() async throws {
+        let application = try await makeApplication(port: 18086)
+        defer {
+            Task {
+                try? await application.asyncShutdown()
+            }
+        }
+
+        let manager = DeviceManager(retryPolicy: .testing)
+        let deviceID = try await manager.registerDevice(
+            name: "Library Mock",
+            address: "http://127.0.0.1:18086"
+        )
+
+        let initialLibraries = try await manager.fetchLibraries(id: deviceID)
+        let initialThreeDLUTSection = try XCTUnwrap(
+            initialLibraries.first(where: { $0.kind == .threeDLUT })
+        )
+        XCTAssertTrue(
+            try XCTUnwrap(initialThreeDLUTSection.entries.first(where: { $0.slot == 3 })).isEmpty
+        )
+
+        let uploadedLibraries = try await manager.uploadLibraryEntry(
+            id: deviceID,
+            kind: .threeDLUT,
+            slot: 3,
+            fileName: "VenueCue.cube",
+            data: Data(Self.simpleCubeText(title: "VenueCue", value: 0.42).utf8)
+        )
+        let uploadedEntry = try XCTUnwrap(
+            uploadedLibraries
+                .first(where: { $0.kind == .threeDLUT })?
+                .entries
+                .first(where: { $0.slot == 3 })
+        )
+        XCTAssertEqual(uploadedEntry.fileName, "VenueCue.cube")
+        XCTAssertEqual(uploadedEntry.userName, "VenueCue")
+
+        let renamedLibraries = try await manager.renameLibraryEntry(
+            id: deviceID,
+            kind: .threeDLUT,
+            slot: 3,
+            name: "Venue Cue"
+        )
+        let renamedEntry = try XCTUnwrap(
+            renamedLibraries
+                .first(where: { $0.kind == .threeDLUT })?
+                .entries
+                .first(where: { $0.slot == 3 })
+        )
+        XCTAssertEqual(renamedEntry.userName, "Venue Cue")
+        XCTAssertEqual(renamedEntry.fileName, "VenueCue.cube")
+
+        let deletedLibraries = try await manager.deleteLibraryEntry(
+            id: deviceID,
+            kind: .threeDLUT,
+            slot: 3
+        )
+        let deletedEntry = try XCTUnwrap(
+            deletedLibraries
+                .first(where: { $0.kind == .threeDLUT })?
+                .entries
+                .first(where: { $0.slot == 3 })
+        )
+        XCTAssertTrue(deletedEntry.isEmpty)
     }
 
     private func makeApplication(

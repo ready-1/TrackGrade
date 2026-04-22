@@ -243,9 +243,51 @@ final class TrackGradeUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
         XCTAssertTrue(fixtureElement("library-list", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["3D LUT"].exists)
-        XCTAssertTrue(app.staticTexts["Stage Neutral"].waitForExistence(timeout: 5))
-        XCTAssertTrue(fixtureElement("library-read-only-note", in: app).exists)
+        XCTAssertTrue(fixtureElement("library-management-note", in: app).exists)
+
+        let threeDLUTSection = fixtureElement("library-section-threeDLUT", in: app)
+        scrollToElement(threeDLUTSection, in: app)
+        XCTAssertTrue(threeDLUTSection.waitForExistence(timeout: 5))
+    }
+
+    func testLibraryBrowserShowsImportButtonForEmptyFixtureSlot() throws {
+        let app = launchFixtureApp()
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Workflow", in: app)
+
+        let showLibraryButton = app.buttons["show-library-button"]
+        XCTAssertTrue(showLibraryButton.waitForExistence(timeout: 5))
+        showLibraryButton.tap()
+
+        let importButton = fixtureElement("library-import-threeDLUT-3", in: app)
+        scrollToElement(importButton, in: app)
+        XCTAssertTrue(importButton.waitForExistence(timeout: 5))
+    }
+
+    func testDeletingFixtureLibraryEntryClearsTheSlot() throws {
+        let app = launchFixtureApp()
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Workflow", in: app)
+
+        let showLibraryButton = app.buttons["show-library-button"]
+        XCTAssertTrue(showLibraryButton.waitForExistence(timeout: 5))
+        showLibraryButton.tap()
+
+        let actionsButton = fixtureElement("library-actions-threeDLUT-1", in: app)
+        scrollToElement(actionsButton, in: app)
+        XCTAssertTrue(actionsButton.waitForExistence(timeout: 5))
+        actionsButton.tap()
+        app.buttons["Delete"].tap()
+        app.buttons["Delete"].tap()
+
+        let importButton = fixtureElement("library-import-threeDLUT-1", in: app)
+        XCTAssertTrue(importButton.waitForExistence(timeout: 5))
     }
 
     func testFixtureControlSurfacePassesAccessibilityAudit() throws {

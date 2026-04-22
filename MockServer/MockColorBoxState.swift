@@ -11,7 +11,7 @@ actor MockColorBoxState {
     private var presetStore: [Int: ColorBoxPresetSummary]
     private var presetPipelineStore: [Int: ColorBoxPipelineState]
     private var libraryControlValue: MockLibraryControlState
-    private let libraryEntriesByKind: [ColorBoxLibraryKind: [MockLibraryEntryState]]
+    private var libraryEntriesByKind: [ColorBoxLibraryKind: [MockLibraryEntryState]]
     private var previewPNGDataValue: Data
     private var lastUploadedLUT: Data
     private var lastUploadedSequenceIDValue: String?
@@ -71,6 +71,9 @@ actor MockColorBoxState {
             ],
             .overlay: [
                 MockLibraryEntryState(userName: "Lower Third", fileName: "lower-third.png"),
+            ],
+            .amf: [
+                MockLibraryEntryState(userName: "Venue Wall", fileName: "venue-wall.amf"),
             ],
         ]
         self.previewPNGDataValue = Self.previewPNGData()
@@ -236,7 +239,7 @@ actor MockColorBoxState {
         for kind: ColorBoxLibraryKind
     ) async throws -> [MockLibraryEntryState] {
         try await applyLatency()
-        return libraryEntriesByKind[kind] ?? []
+        return paddedLibraryEntries(for: kind)
     }
 
     func libraryControl() async throws -> MockLibraryControlState {
@@ -259,48 +262,97 @@ actor MockColorBoxState {
             errorMessage: ""
         )
 
-        guard library == "systemPreset" else {
+        if library == "systemPreset" {
+            switch action {
+            case "StoreEntry":
+                let existingName = presetStore[entry]?.name ?? "Preset \(entry)"
+                presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: existingName)
+                let storedGradeControl = pipelineStateValue.dynamicLUTMode == "dynamic"
+                    ? persistedDynamicGradeValue
+                    : pipelineStateValue.gradeControl
+                presetPipelineStore[entry] = ColorBoxPipelineState(
+                    bypassEnabled: pipelineStateValue.bypassEnabled,
+                    falseColorEnabled: pipelineStateValue.falseColorEnabled,
+                    previewSource: previewSourceValue,
+                    dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
+                    gradeControl: storedGradeControl,
+                    lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
+                )
+            case "SetUserName":
+                let normalizedName = data.trimmingCharacters(in: .whitespacesAndNewlines)
+                let resolvedName = normalizedName.isEmpty ? "Preset \(entry)" : normalizedName
+                presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: resolvedName)
+            case "RecallEntry":
+                guard let storedState = presetPipelineStore[entry] else {
+                    libraryControlValue = libraryControlValue.withError("Preset \(entry) does not exist in the mock server.")
+                    return
+                }
+                pipelineStateValue = ColorBoxPipelineState(
+                    bypassEnabled: storedState.bypassEnabled,
+                    falseColorEnabled: storedState.falseColorEnabled,
+                    previewSource: previewSourceValue,
+                    dynamicLUTMode: storedState.dynamicLUTMode,
+                    gradeControl: storedState.gradeControl,
+                    lastRecalledPresetSlot: entry
+                )
+            case "DeleteEntry":
+                presetStore.removeValue(forKey: entry)
+                presetPipelineStore.removeValue(forKey: entry)
+            default:
+                libraryControlValue = libraryControlValue.withError("Unsupported library control action in mock server.")
+            }
+            return
+        }
+
+        guard let kind = libraryKind(forLibraryControlName: library) else {
             libraryControlValue = libraryControlValue.withError("Unsupported library in mock server.")
             return
         }
 
         switch action {
-        case "StoreEntry":
-            let existingName = presetStore[entry]?.name ?? "Preset \(entry)"
-            presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: existingName)
-            let storedGradeControl = pipelineStateValue.dynamicLUTMode == "dynamic"
-                ? persistedDynamicGradeValue
-                : pipelineStateValue.gradeControl
-            presetPipelineStore[entry] = ColorBoxPipelineState(
-                bypassEnabled: pipelineStateValue.bypassEnabled,
-                falseColorEnabled: pipelineStateValue.falseColorEnabled,
-                previewSource: previewSourceValue,
-                dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
-                gradeControl: storedGradeControl,
-                lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
-            )
         case "SetUserName":
-            let normalizedName = data.trimmingCharacters(in: .whitespacesAndNewlines)
-            let resolvedName = normalizedName.isEmpty ? "Preset \(entry)" : normalizedName
-            presetStore[entry] = ColorBoxPresetSummary(slot: entry, name: resolvedName)
-        case "RecallEntry":
-            guard let storedState = presetPipelineStore[entry] else {
-                libraryControlValue = libraryControlValue.withError("Preset \(entry) does not exist in the mock server.")
-                return
+            updateLibraryEntry(
+                kind: kind,
+                slot: entry
+            ) { current in
+                let normalizedName = data.trimmingCharacters(in: .whitespacesAndNewlines)
+                let resolvedName = normalizedName.isEmpty
+                    ? current.fileName.map { Self.defaultUserName(from: $0) } ?? "\(kind.title) \(entry)"
+                    : normalizedName
+                return MockLibraryEntryState(
+                    userName: resolvedName,
+                    fileName: current.fileName
+                )
             }
-            pipelineStateValue = ColorBoxPipelineState(
-                bypassEnabled: storedState.bypassEnabled,
-                falseColorEnabled: storedState.falseColorEnabled,
-                previewSource: previewSourceValue,
-                dynamicLUTMode: storedState.dynamicLUTMode,
-                gradeControl: storedState.gradeControl,
-                lastRecalledPresetSlot: entry
-            )
         case "DeleteEntry":
-            presetStore.removeValue(forKey: entry)
-            presetPipelineStore.removeValue(forKey: entry)
+            updateLibraryEntry(
+                kind: kind,
+                slot: entry
+            ) { _ in
+                MockLibraryEntryState(userName: nil, fileName: nil)
+            }
         default:
             libraryControlValue = libraryControlValue.withError("Unsupported library control action in mock server.")
+        }
+    }
+
+    func storeLibraryUpload(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        fileName: String,
+        data: Data
+    ) async throws {
+        try await applyLatency()
+        _ = data
+        let resolvedUserName = Self.defaultUserName(from: fileName)
+        updateLibraryEntry(
+            kind: kind,
+            slot: slot
+        ) { _ in
+            MockLibraryEntryState(
+                userName: resolvedUserName,
+                fileName: fileName
+            )
         }
     }
 
@@ -331,6 +383,56 @@ actor MockColorBoxState {
 
     private static func previewPNGData() -> Data {
         Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sW8h6sAAAAASUVORK5CYII=") ?? Data()
+    }
+
+    private func paddedLibraryEntries(
+        for kind: ColorBoxLibraryKind,
+        slotCount: Int = 16
+    ) -> [MockLibraryEntryState] {
+        let existing = libraryEntriesByKind[kind] ?? []
+        if existing.count >= slotCount {
+            return Array(existing.prefix(slotCount))
+        }
+
+        return existing + Array(
+            repeating: MockLibraryEntryState(userName: nil, fileName: nil),
+            count: slotCount - existing.count
+        )
+    }
+
+    private func updateLibraryEntry(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        mutate: (MockLibraryEntryState) -> MockLibraryEntryState
+    ) {
+        guard slot > 0 else {
+            return
+        }
+
+        var entries = paddedLibraryEntries(for: kind)
+        let index = slot - 1
+        guard entries.indices.contains(index) else {
+            return
+        }
+
+        entries[index] = mutate(entries[index])
+        libraryEntriesByKind[kind] = entries
+    }
+
+    private func libraryKind(
+        forLibraryControlName library: String
+    ) -> ColorBoxLibraryKind? {
+        ColorBoxLibraryKind.allCases.first {
+            $0.libraryControlName.caseInsensitiveCompare(library) == .orderedSame
+        }
+    }
+
+    private static func defaultUserName(
+        from fileName: String
+    ) -> String {
+        let url = URL(fileURLWithPath: fileName)
+        let stem = url.deletingPathExtension().lastPathComponent
+        return stem.isEmpty ? fileName : stem
     }
 }
 

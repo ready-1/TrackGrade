@@ -223,9 +223,40 @@ enum MockColorBoxApplication {
             try await state.libraryEntries(for: .overlay).map(Self.makeLibraryEntryResponse)
         }
 
+        app.get("v2", "amfLibrary") { request async throws -> [MockColorBoxLibraryEntry] in
+            try await state.libraryEntries(for: .amf).map(Self.makeLibraryEntryResponse)
+        }
+
         app.post("v2", "saveDynamicLutRequest") { request async throws -> HTTPStatus in
             try await state.saveDynamicLutRequest()
             return .ok
+        }
+
+        app.post("v2", "upload") { request async throws -> Response in
+            let payload = try request.content.decode(MockColorBoxUploadRequest.self)
+            guard let kind = ColorBoxLibraryKind(uploadKind: payload.kind) else {
+                throw Abort(.badRequest, reason: "Unsupported upload kind \(payload.kind).")
+            }
+            guard kind.supportsImport else {
+                throw Abort(.badRequest, reason: "\(kind.title) import is not supported through /v2/upload in the mock server.")
+            }
+            guard let entry = payload.entry else {
+                throw Abort(.badRequest, reason: "Upload entry is required.")
+            }
+
+            try await state.storeLibraryUpload(
+                kind: kind,
+                slot: entry,
+                fileName: payload.file.filename,
+                data: payload.file.data.getData(
+                    at: payload.file.data.readerIndex,
+                    length: payload.file.data.readableBytes
+                ) ?? Data()
+            )
+
+            var headers = HTTPHeaders()
+            headers.replaceOrAdd(name: .contentType, value: "text/plain; charset=utf-8")
+            return Response(status: .ok, headers: headers, body: .init(string: "uploaded"))
         }
 
         app.get("v2", "libraryControl") { request async throws -> MockColorBoxLibraryControl in
@@ -373,6 +404,12 @@ private struct MockColorBoxBasicAuthMiddleware: AsyncMiddleware {
 
         return try await next.respond(to: request)
     }
+}
+
+private struct MockColorBoxUploadRequest: Content {
+    var file: File
+    var kind: String
+    var entry: Int?
 }
 
 extension ColorBoxSystemInfo: Content {}

@@ -139,7 +139,7 @@ Tap `Controls` to open the slide-over drawer.
 - Save Snapshot
 - open the full snapshots browser
 - A/B scratch slot store and recall
-- open the read-only library browser
+- open the library management browser
 
 ### Presets
 
@@ -219,19 +219,18 @@ The reference firmware used during development does not expose a working false-c
 
 ## Library Browser
 
-The library sheet lets you inspect the current device asset slots without leaving the grading surface.
+The library sheet lets you manage the current device asset slots without leaving the grading surface.
 
-- 1D LUT entries
-- 3D LUT entries
-- matrix entries
-- image entries
-- overlay entries
+- every surfaced library renders as a fixed 16-slot section
+- 1D LUT, 3D LUT, matrix, image, and overlay entries support import or replace into a chosen slot
+- populated entries support rename and delete
+- AMF entries are visible in the same browser, but AMF import is still deferred because the device uses a separate multi-file upload path
 
 Use `Refresh` in the sheet toolbar to re-read the current device state.
 
 ## Current Limitations
 
-- The current app build still presents the library area conservatively even though the underlying live upload / rename / delete contract is now verified on the reference ColorBox.
 - The current grading path writes directly through `/v2/pipelineStages` rather than uploading baked LUTs.
+- AMF import is still deferred while TrackGrade stays conservative around the device’s separate multi-file upload path.
 - Gang control currently focuses on mirroring a single focus device to linked peers; more advanced gang workflows can still be added later.
 - Final tactile tuning still needs real iPad + ColorBox validation.

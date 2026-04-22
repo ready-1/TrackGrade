@@ -409,6 +409,7 @@ public enum ColorBoxLibraryKind: String, CaseIterable, Codable, Identifiable, Se
     case matrix
     case image
     case overlay
+    case amf
 
     public var id: String {
         rawValue
@@ -426,6 +427,8 @@ public enum ColorBoxLibraryKind: String, CaseIterable, Codable, Identifiable, Se
             return "Image"
         case .overlay:
             return "Overlay"
+        case .amf:
+            return "AMF"
         }
     }
 
@@ -441,6 +444,65 @@ public enum ColorBoxLibraryKind: String, CaseIterable, Codable, Identifiable, Se
             return "imageLibrary"
         case .overlay:
             return "overlayLibrary"
+        case .amf:
+            return "amfLibrary"
+        }
+    }
+
+    public var libraryControlName: String {
+        switch self {
+        case .oneDLUT:
+            return "1D LUT"
+        case .threeDLUT:
+            return "3D LUT"
+        case .matrix:
+            return "Matrix"
+        case .image:
+            return "Image"
+        case .overlay:
+            return "Overlay"
+        case .amf:
+            return "AMF"
+        }
+    }
+
+    public var uploadKind: String? {
+        switch self {
+        case .oneDLUT:
+            return "lut_1d"
+        case .threeDLUT:
+            return "lut_3d"
+        case .matrix:
+            return "matrix"
+        case .image:
+            return "image"
+        case .overlay:
+            return "overlay"
+        case .amf:
+            return nil
+        }
+    }
+
+    public var supportsImport: Bool {
+        uploadKind != nil
+    }
+
+    public init?(uploadKind: String) {
+        switch uploadKind.lowercased() {
+        case "lut_1d":
+            self = .oneDLUT
+        case "lut_3d":
+            self = .threeDLUT
+        case "matrix":
+            self = .matrix
+        case "image":
+            self = .image
+        case "overlay":
+            self = .overlay
+        case "amf":
+            self = .amf
+        default:
+            return nil
         }
     }
 }
@@ -453,6 +515,12 @@ public struct ColorBoxLibraryEntry: Identifiable, Codable, Sendable, Equatable {
 
     public var id: String {
         "\(kind.rawValue)-\(slot)"
+    }
+
+    public var isEmpty: Bool {
+        let trimmedUserName = userName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFileName = fileName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmedUserName?.isEmpty ?? true) && (trimmedFileName?.isEmpty ?? true)
     }
 
     public var displayName: String {
@@ -478,6 +546,18 @@ public struct ColorBoxLibraryEntry: Identifiable, Codable, Sendable, Equatable {
         self.userName = userName
         self.fileName = fileName
     }
+
+    public static func empty(
+        kind: ColorBoxLibraryKind,
+        slot: Int
+    ) -> ColorBoxLibraryEntry {
+        ColorBoxLibraryEntry(
+            kind: kind,
+            slot: slot,
+            userName: nil,
+            fileName: nil
+        )
+    }
 }
 
 public struct ColorBoxLibrarySection: Identifiable, Codable, Sendable, Equatable {
@@ -494,6 +574,18 @@ public struct ColorBoxLibrarySection: Identifiable, Codable, Sendable, Equatable
     ) {
         self.kind = kind
         self.entries = entries
+    }
+
+    public func padded(slotCount: Int = 16) -> ColorBoxLibrarySection {
+        let entriesBySlot = Dictionary(uniqueKeysWithValues: entries.map { ($0.slot, $0) })
+        let paddedEntries = (1 ... slotCount).map { slot in
+            entriesBySlot[slot] ?? .empty(kind: kind, slot: slot)
+        }
+
+        return ColorBoxLibrarySection(
+            kind: kind,
+            entries: paddedEntries
+        )
     }
 }
 

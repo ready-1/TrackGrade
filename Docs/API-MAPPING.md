@@ -11,7 +11,7 @@
 
 ## TODO
 
-- Decide how much of the now-verified library import / rename / delete flow should be exposed in the first public hardware-facing UI.
+- Decide whether AMF multi-file import through the device’s separate upload path is worth implementing for the first public release.
 - Decide whether the mock-validated baked dynamic-LUT upload path should remain internal until a live grading workflow based on uploads is intentionally adopted.
 
 ## Live Endpoint Surface
@@ -30,6 +30,12 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, library entry, `colorCorrector`, and `procAmp` |
 | Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
+| 1D LUT library | `GET` | `/v2/1dLutLibrary` | Returns the 1D LUT slot array |
+| 3D LUT library | `GET` | `/v2/3dLutLibrary` | Returns the 3D LUT slot array |
+| Matrix library | `GET` | `/v2/mtxLibrary` | Returns the matrix slot array |
+| Image library | `GET` | `/v2/imgLibrary` | Returns the image slot array |
+| Overlay library | `GET` | `/v2/overlayLibrary` | Returns the overlay slot array |
+| AMF library | `GET` | `/v2/amfLibrary` | Returns the AMF slot array |
 | Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
 | LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d`; route verified live for library import semantics |
 | Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Live route verified; required before preset store when the current dynamic grade should survive recall |
@@ -61,6 +67,10 @@ These are the concrete mappings currently implemented in the codebase:
 | Preset save | Wait ~1 second after the most recent direct `pipelineStages` grade write, then `POST /v2/saveDynamicLutRequest`, then `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
 | Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
+| Device library read | `GET` the corresponding `/v2/*Library` endpoint, then pad the returned entries to a 16-slot UI model |
+| Device library import / replace | `POST /v2/upload` multipart form with `kind`, `entry`, and `file`, then refresh the corresponding `/v2/*Library` endpoint |
+| Device library rename | `PUT /v2/libraryControl` with `SetUserName`, then refresh the corresponding `/v2/*Library` endpoint |
+| Device library delete | `PUT /v2/libraryControl` with `DeleteEntry`, then refresh the corresponding `/v2/*Library` endpoint |
 | Dynamic LUT upload queue | Mock-verified via `PUT /pipeline/aja/nodes/3dlut/dynamic` with `X-TrackGrade-Sequence`; retained as an offline / compatibility path while the shipping live grading route remains `pipelineStages` |
 | False color toggle | Disabled in the app on firmware `3.0.0.24`; no live `/v2` mapping found |
 
@@ -87,10 +97,13 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 
 - The shipped device web UI posts library imports to `POST /v2/upload` with multipart fields `file`, `kind`, and `entry`.
 - Live hardware verification on `172.29.14.51` confirmed that `POST /v2/upload` with `kind=lut_3d` and `entry=<slot>` does materialize a new `GET /v2/3dLutLibrary` entry on firmware `3.0.0.24`.
+- A second live pass confirmed that the multipart file part can be sent with `Content-Type: application/octet-stream`, matching the way TrackGrade now constructs uploads in-app.
 - The same live pass also confirmed that `PUT /v2/libraryControl` with `library: "3D LUT"` supports:
   - `SetUserName` to rename the uploaded asset
   - `DeleteEntry` to remove it from the library
-- A successful cleanup probe uploaded an identity `.cube` file to slot 2, renamed it to `TrackGrade Probe`, verified the renamed slot in `GET /v2/3dLutLibrary`, and then deleted it cleanly.
+- A successful cleanup probe uploaded an identity `.cube` file to slot 4, renamed it to `TrackGrade Live Probe`, verified the renamed slot in `GET /v2/3dLutLibrary`, and then deleted it cleanly.
+- The app now uses the same live-verified upload / rename / delete contract for 1D LUT, 3D LUT, matrix, image, and overlay libraries.
+- `GET /v2/amfLibrary` is also now part of TrackGrade’s surfaced library browser, but AMF import remains deferred because the device uses a separate multi-file upload contract.
 - `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24`, returns `200`, and remains part of the reliable MVP preset-save workflow for dynamic grade persistence.
 - The repo does now contain a working bake-and-queue path for `.cube` uploads against the mock server, including per-device last-write-wins coalescing and monotonic debug sequence IDs.
 - TrackGrade still does not use `/v2/upload` as the live grading path; the shipping control surface continues to write grade changes through `PUT /v2/pipelineStages` until a baked-upload grading workflow is intentionally adopted and verified end to end.

@@ -311,6 +311,81 @@ public actor DeviceManager {
         }
     }
 
+    public func uploadLibraryEntry(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        fileName: String,
+        data: Data
+    ) async throws -> [ColorBoxLibrarySection] {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let client = makeClient(for: storedDevice)
+            _ = try await client.uploadLibraryEntry(
+                kind: kind,
+                slot: slot,
+                fileName: fileName,
+                data: data
+            )
+            return try await refreshLibrariesAfterMutation(
+                id: id,
+                storedDevice: storedDevice,
+                client: client
+            )
+        } catch {
+            _ = try await handleFailure(id: id, error: error)
+            throw error
+        }
+    }
+
+    public func renameLibraryEntry(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        name: String
+    ) async throws -> [ColorBoxLibrarySection] {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let client = makeClient(for: storedDevice)
+            _ = try await client.renameLibraryEntry(
+                kind: kind,
+                slot: slot,
+                name: name
+            )
+            return try await refreshLibrariesAfterMutation(
+                id: id,
+                storedDevice: storedDevice,
+                client: client
+            )
+        } catch {
+            _ = try await handleFailure(id: id, error: error)
+            throw error
+        }
+    }
+
+    public func deleteLibraryEntry(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int
+    ) async throws -> [ColorBoxLibrarySection] {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let client = makeClient(for: storedDevice)
+            _ = try await client.deleteLibraryEntry(
+                kind: kind,
+                slot: slot
+            )
+            return try await refreshLibrariesAfterMutation(
+                id: id,
+                storedDevice: storedDevice,
+                client: client
+            )
+        } catch {
+            _ = try await handleFailure(id: id, error: error)
+            throw error
+        }
+    }
+
     @discardableResult
     public func enqueueDynamicLUTUpload(
         id: UUID,
@@ -345,6 +420,23 @@ public actor DeviceManager {
             credentials: storedDevice.credentials,
             urlSession: urlSession
         )
+    }
+
+    private func refreshLibrariesAfterMutation(
+        id: UUID,
+        storedDevice: StoredDevice,
+        client: ColorBoxAPIClient
+    ) async throws -> [ColorBoxLibrarySection] {
+        let libraries = try await client.listLibraries()
+        var updated = storedDevice
+        updated.snapshot.connectionState = .connected
+        updated.snapshot.lastErrorDescription = nil
+        updated.hasConnectedOnce = true
+        devices[id] = updated
+        reconnectTasks[id]?.cancel()
+        reconnectTasks[id] = nil
+        broadcastSnapshots()
+        return libraries
     }
 
     private func dynamicLUTUploadQueue(

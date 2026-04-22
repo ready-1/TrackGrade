@@ -39,9 +39,9 @@ Current automated coverage:
 - Generated ColorBox client smoke tests
 - Trackball mapping and core grade-control helpers
 - Color math coverage for CDL application, transfer functions, `.cube` parsing / serialization, LUT baking, and helper conversions
-- Mock-server integration for connect, preview, device library reads, bypass, presets, reconnect, and unsupported false color
+- Mock-server integration for connect, preview, device library reads and mutations, bypass, presets, reconnect, and unsupported false color
 - Mock-server integration for identity LUT upload and last-write-wins queue coalescing
-- Fixture-backed iPad UI flows for launch, bypass, Before / After compare, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library browsing
+- Fixture-backed iPad UI flows for launch, bypass, Before / After compare, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library management
 - Fixture-backed iPad UI flows for preview source toggle and enlarged preview presentation
 - Fixture-backed hit-region accessibility audit for the static control surface
 
@@ -63,7 +63,9 @@ Manual simulator checks:
 - Tap the preview thumbnail and confirm it flips between `Output` and `Input`
 - Use the expand preview control and confirm the enlarged preview sheet opens and closes cleanly
 - Open the drawer and confirm the `Workflow`, `Presets`, and `Device` panels switch cleanly
-- Open the library browser and confirm seeded library sections and entries appear
+- Open the library browser and confirm seeded 16-slot library sections and entries appear
+- Confirm an empty supported library slot exposes an `Import` action
+- Delete a seeded fixture library entry and confirm the slot returns to an empty importable state
 - Link at least two fixture peers from the device list and confirm bypass mirrors to them
 - Save and recall a snapshot from fixture mode
 - Save a device preset from fixture mode
@@ -94,7 +96,7 @@ These checks still require a real iPad and the reference ColorBox.
 - Recall the saved preset on the hardware and confirm the grade state restores correctly
 - Delete a preset and confirm it disappears from the device library
 - Verify local snapshots and scratch slots do not interfere with device-native preset behavior
-- Import a test `3D LUT` into an empty slot, confirm it appears in the library, rename it, and then delete it cleanly
+- Import a test asset into an empty 1D LUT, 3D LUT, matrix, image, or overlay slot, confirm it appears in the library, rename it, and then delete it cleanly
 
 ### Gang Validation
 

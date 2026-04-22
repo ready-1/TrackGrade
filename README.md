@@ -23,14 +23,14 @@ Current grading surface in simulator fixture mode:
 - Focus-device gang broadcast to linked peer devices with sync / drift status
 - Per-device working color space selection for `Rec.709 SDR` and `Rec.709 HLG`
 - Fixed landscape control surface with drawer-based secondary controls
-- Device library browser for 1D LUT, 3D LUT, matrix, image, and overlay slots
+- Device library management for 1D LUT, 3D LUT, matrix, image, overlay, and AMF slots, with import / replace / rename / delete where the live contract is verified
 - Mock ColorBox server for local development without hardware
 - Phase 3 color-math core with CDL, transfer functions, `.cube` baking, and a queued dynamic-LUT upload path validated against the mock
 
 ## Planned Next
 
 - Final live-hardware sensitivity tuning on iPad
-- Additional workflow polish, library import/write tooling, and release packaging
+- Additional workflow polish, AMF multi-file import if it proves worthwhile, and release packaging
 - Final live verification of a grading workflow based on baked LUT uploads if TrackGrade ever moves beyond the current `pipelineStages` grading path
 - Deeper multi-device validation on real ColorBox peers
 

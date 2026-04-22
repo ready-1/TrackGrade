@@ -161,32 +161,38 @@ struct TrackGradeUITestFixture {
                     ColorBoxLibraryEntry(kind: .oneDLUT, slot: 1, userName: "709 Clamp", fileName: "709-clamp.cube"),
                     ColorBoxLibraryEntry(kind: .oneDLUT, slot: 2, userName: "Legalize", fileName: "legalize.cube"),
                 ]
-            ),
+            ).padded(),
             ColorBoxLibrarySection(
                 kind: .threeDLUT,
                 entries: [
                     ColorBoxLibraryEntry(kind: .threeDLUT, slot: 1, userName: "Stage Neutral", fileName: "stage-neutral-33.cube"),
                     ColorBoxLibraryEntry(kind: .threeDLUT, slot: 2, userName: "Warm LED", fileName: "warm-led-33.cube"),
                 ]
-            ),
+            ).padded(),
             ColorBoxLibrarySection(
                 kind: .matrix,
                 entries: [
                     ColorBoxLibraryEntry(kind: .matrix, slot: 1, userName: "LED Matrix A", fileName: "led-matrix-a.mtx"),
                 ]
-            ),
+            ).padded(),
             ColorBoxLibrarySection(
                 kind: .image,
                 entries: [
                     ColorBoxLibraryEntry(kind: .image, slot: 1, userName: "Framing Guide", fileName: "framing-guide.png"),
                 ]
-            ),
+            ).padded(),
             ColorBoxLibrarySection(
                 kind: .overlay,
                 entries: [
                     ColorBoxLibraryEntry(kind: .overlay, slot: 1, userName: "Lower Third", fileName: "lower-third.png"),
                 ]
-            ),
+            ).padded(),
+            ColorBoxLibrarySection(
+                kind: .amf,
+                entries: [
+                    ColorBoxLibraryEntry(kind: .amf, slot: 1, userName: "Venue Wall", fileName: "venue-wall.amf"),
+                ]
+            ).padded(),
         ]
     }
 
