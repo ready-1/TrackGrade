@@ -68,6 +68,14 @@ final class TrackGradeIntegrationTests: XCTestCase {
 
         let previewDevice = try await manager.refreshPreview(id: deviceID)
         XCTAssertGreaterThan(previewDevice.previewByteCount, 0)
+        XCTAssertEqual(previewDevice.pipelineState?.previewSource, .output)
+
+        let inputPreviewDevice = try await manager.setPreviewSource(
+            id: deviceID,
+            source: .input
+        )
+        XCTAssertEqual(inputPreviewDevice.pipelineState?.previewSource, .input)
+        XCTAssertGreaterThan(inputPreviewDevice.previewByteCount, 0)
 
         let deletedPresetDevice = try await manager.deletePreset(id: deviceID, slot: 3)
         XCTAssertFalse(deletedPresetDevice.presets.contains { $0.slot == 3 })

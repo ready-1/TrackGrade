@@ -131,6 +131,22 @@ public struct ColorBoxAPIClient: Sendable {
         }
     }
 
+    public func setPreviewSource(
+        _ source: ColorBoxPreviewSource
+    ) async throws -> ColorBoxPipelineState {
+        var currentRouting: V2Routing = try await performJSONRequest(path: "v2/routing")
+        currentRouting.previewTap = source.rawValue
+
+        let body = try JSONEncoder().encode(currentRouting)
+        try await performNoContentRequest(
+            path: "v2/routing",
+            method: "PUT",
+            body: body
+        )
+
+        return try await fetchPipelineStateV2()
+    }
+
     public func setFalseColor(_ enabled: Bool) async throws -> ColorBoxPipelineState {
         let body = try JSONEncoder().encode(ColorBoxBooleanToggle(enabled: enabled))
         do {
@@ -225,6 +241,7 @@ public struct ColorBoxAPIClient: Sendable {
             pipelineState = ColorBoxPipelineState(
                 bypassEnabled: pipelineState.bypassEnabled,
                 falseColorEnabled: pipelineState.falseColorEnabled,
+                previewSource: pipelineState.previewSource,
                 dynamicLUTMode: pipelineState.dynamicLUTMode,
                 gradeControl: pipelineState.gradeControl,
                 lastRecalledPresetSlot: slot
@@ -361,6 +378,7 @@ public struct ColorBoxAPIClient: Sendable {
 
     private func fetchPipelineStateV2() async throws -> ColorBoxPipelineState {
         let bypassEnabled: Bool
+        let previewSource: ColorBoxPreviewSource
         let dynamicMode: String
         let resolvedGradeControl: ColorBoxGradeControlState
 
@@ -373,6 +391,7 @@ public struct ColorBoxAPIClient: Sendable {
         let routing = try (try await routingOutput).ok.body.json
         let stages = try (try await stagesOutput).ok.body.json
         bypassEnabled = routing.pipelineBypassUser ?? routing.pipelineBypassButton ?? false
+        previewSource = Self.previewSource(from: routing.previewTap?.rawValue)
         dynamicMode = dynamicLUTMode(from: stages.lut3d1)
         resolvedGradeControl = gradeControl(from: stages.lut3d1)
         #else
@@ -382,6 +401,7 @@ public struct ColorBoxAPIClient: Sendable {
         let resolvedRouting = try await routing
         let resolvedStages = try await stages
         bypassEnabled = resolvedRouting.pipelineBypassUser ?? resolvedRouting.pipelineBypassButton ?? false
+        previewSource = Self.previewSource(from: resolvedRouting.previewTap)
         dynamicMode = dynamicLUTMode(from: resolvedStages.lut3d1)
         resolvedGradeControl = gradeControl(from: resolvedStages.lut3d1)
         #endif
@@ -389,6 +409,7 @@ public struct ColorBoxAPIClient: Sendable {
         return ColorBoxPipelineState(
             bypassEnabled: bypassEnabled,
             falseColorEnabled: false,
+            previewSource: previewSource,
             dynamicLUTMode: dynamicMode,
             gradeControl: resolvedGradeControl
         )
@@ -578,6 +599,17 @@ public struct ColorBoxAPIClient: Sendable {
         }
 
         return host != "127.0.0.1" && host != "localhost"
+    }
+
+    private static func previewSource(
+        from rawValue: String?
+    ) -> ColorBoxPreviewSource {
+        guard let rawValue,
+              let source = ColorBoxPreviewSource(rawValue: rawValue.uppercased()) else {
+            return .output
+        }
+
+        return source
     }
 
     private func normalizedHostName(from candidate: String?) -> String {

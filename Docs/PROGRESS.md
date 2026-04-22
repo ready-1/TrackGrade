@@ -66,20 +66,27 @@
 - Device-native presets now have a more complete operator workflow: TrackGrade keeps a durable local thumbnail cache per device slot, shows preset thumbnails in the drawer, confirms recall before applying it, and exposes long-press rename / overwrite actions instead of only save / delete buttons.
 - Settings now exports a shareable diagnostics report for the focused device, exposes in-app open-source notices, and the repo now includes a top-level `NOTICES.md`.
 - Live hardware validation on firmware `3.0.0.24` found that `POST /v2/saveDynamicLutRequest` needs about one second of settle time after direct `PUT /v2/pipelineStages` grade changes before a preset save reliably captures the new state; TrackGrade now applies that delay on non-local hosts before saving a device-native preset.
+- Preview controls are now closer to the brief: TrackGrade maps the thumbnail source toggle onto live `PUT /v2/routing` `previewTap` updates, supports preview auto-refresh from Settings, and opens an enlarged medium-sheet preview from the control surface while preserving the compact static main layout.
+- The mock server and fixture mode now mirror preview source state, and automated coverage now verifies both preview source toggling and the enlarged preview presentation path.
+- The fixture-backed static control surface now passes the focused `.hitRegion` accessibility audit, and the saved-device list accessibility contract was tightened so UI coverage can interact with real row-level device actions reliably.
+- Live hardware verification on `172.29.14.51` confirmed that `POST /v2/upload` now materializes `3D LUT` library entries on firmware `3.0.0.24`, and that `SetUserName` plus `DeleteEntry` work against `library: "3D LUT"` for rename and cleanup.
 
 ## In-Flight Work
 
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 - Choosing the next non-hardware polish slice after the library browser, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
-- Deciding how far to wire the bake/upload path into the live app shell before hardware is fully trusted, given that real firmware `3.0.0.24` still exposes unresolved `/v2/upload` persistence semantics.
+- Deciding how far to wire the bake/upload path into the live app shell now that library-import semantics are verified, while still keeping the shipping grading path conservative.
 - Using the restored production network window to finish as much live hardware validation as possible beyond the now-confirmed preset timing fix.
+- Finishing the release-facing accessibility and documentation pass now that preview controls, diagnostics export, notices, and preset workflow polish are in place.
+- Moving the library area from read-only browse toward the user-approved v1 import / write workflow now that the hardware contract is trustworthy enough to implement against.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
 - True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
-- The current reference ColorBox firmware still does not provide a fully understood live dynamic-LUT upload materialization path, so the app continues to use the hardware-verified `pipelineStages` grading route while the bake/upload queue is validated against the mock.
+- The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
+- The baked dynamic-LUT upload queue is still only mock-validated for live grading behavior, so the app continues to use the hardware-verified `pipelineStages` route for the control surface even though library asset import semantics are now verified on-device.
 
 ## Next Steps
 
@@ -91,5 +98,7 @@
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
 - Finish the remaining release-collateral cleanup now that `NOTICES.md`, diagnostics export, and in-app notices are in place.
 - Re-run the manual hardware checklist with attention to preset-save timing, now that the app includes a one-second settle before `saveDynamicLutRequest`.
-- Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before the live hardware upload path is fully understood.
+- Extend the passing accessibility audit work into broader VoiceOver / Dynamic Type / contrast verification beyond the current hit-region pass.
+- Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before a live grading workflow based on uploads is fully understood.
+- Implement the next library milestone against the newly verified live contract: delete from the browser first, then import / rename where the UI can support it safely.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

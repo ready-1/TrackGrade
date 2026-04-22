@@ -6,6 +6,7 @@ actor MockColorBoxState {
     private let systemInfoValue: ColorBoxSystemInfo
     private var firmwareInfoValue: ColorBoxFirmwareInfo
     private var pipelineStateValue: ColorBoxPipelineState
+    private var previewSourceValue: ColorBoxPreviewSource
     private var persistedDynamicGradeValue: ColorBoxGradeControlState
     private var presetStore: [Int: ColorBoxPresetSummary]
     private var presetPipelineStore: [Int: ColorBoxPipelineState]
@@ -36,6 +37,7 @@ actor MockColorBoxState {
             gradeControl: .identity,
             lastRecalledPresetSlot: nil
         )
+        self.previewSourceValue = .output
         self.persistedDynamicGradeValue = .identity
         self.presetStore = [
             1: ColorBoxPresetSummary(slot: 1, name: "Factory Neutral"),
@@ -97,6 +99,7 @@ actor MockColorBoxState {
         pipelineStateValue = ColorBoxPipelineState(
             bypassEnabled: pipelineStateValue.bypassEnabled,
             falseColorEnabled: pipelineStateValue.falseColorEnabled,
+            previewSource: previewSourceValue,
             dynamicLUTMode: mode,
             gradeControl: pipelineStateValue.gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
@@ -129,6 +132,26 @@ actor MockColorBoxState {
         pipelineStateValue = ColorBoxPipelineState(
             bypassEnabled: enabled,
             falseColorEnabled: pipelineStateValue.falseColorEnabled,
+            previewSource: previewSourceValue,
+            dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
+            gradeControl: pipelineStateValue.gradeControl,
+            lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
+        )
+        return pipelineStateValue
+    }
+
+    func previewSource() async throws -> ColorBoxPreviewSource {
+        try await applyLatency()
+        return previewSourceValue
+    }
+
+    func setPreviewSource(_ source: ColorBoxPreviewSource) async throws -> ColorBoxPipelineState {
+        try await applyLatency()
+        previewSourceValue = source
+        pipelineStateValue = ColorBoxPipelineState(
+            bypassEnabled: pipelineStateValue.bypassEnabled,
+            falseColorEnabled: pipelineStateValue.falseColorEnabled,
+            previewSource: source,
             dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
             gradeControl: pipelineStateValue.gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
@@ -141,6 +164,7 @@ actor MockColorBoxState {
         pipelineStateValue = ColorBoxPipelineState(
             bypassEnabled: pipelineStateValue.bypassEnabled,
             falseColorEnabled: enabled,
+            previewSource: previewSourceValue,
             dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
             gradeControl: pipelineStateValue.gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
@@ -155,6 +179,7 @@ actor MockColorBoxState {
         pipelineStateValue = ColorBoxPipelineState(
             bypassEnabled: pipelineStateValue.bypassEnabled,
             falseColorEnabled: pipelineStateValue.falseColorEnabled,
+            previewSource: previewSourceValue,
             dynamicLUTMode: "dynamic",
             gradeControl: gradeControl,
             lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
@@ -249,6 +274,7 @@ actor MockColorBoxState {
             presetPipelineStore[entry] = ColorBoxPipelineState(
                 bypassEnabled: pipelineStateValue.bypassEnabled,
                 falseColorEnabled: pipelineStateValue.falseColorEnabled,
+                previewSource: previewSourceValue,
                 dynamicLUTMode: pipelineStateValue.dynamicLUTMode,
                 gradeControl: storedGradeControl,
                 lastRecalledPresetSlot: pipelineStateValue.lastRecalledPresetSlot
@@ -265,6 +291,7 @@ actor MockColorBoxState {
             pipelineStateValue = ColorBoxPipelineState(
                 bypassEnabled: storedState.bypassEnabled,
                 falseColorEnabled: storedState.falseColorEnabled,
+                previewSource: previewSourceValue,
                 dynamicLUTMode: storedState.dynamicLUTMode,
                 gradeControl: storedState.gradeControl,
                 lastRecalledPresetSlot: entry

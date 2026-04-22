@@ -153,6 +153,33 @@ public actor DeviceManager {
     }
 
     @discardableResult
+    public func setPreviewSource(
+        id: UUID,
+        source: ColorBoxPreviewSource
+    ) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let client = makeClient(for: storedDevice)
+            let pipelineState = try await client.setPreviewSource(source)
+            let previewFrame = try await client.fetchPreviewFrame()
+            var updated = storedDevice
+            updated.snapshot.pipelineState = pipelineState
+            updated.snapshot.previewFrameData = previewFrame
+            updated.snapshot.previewByteCount = previewFrame.count
+            updated.snapshot.connectionState = .connected
+            updated.snapshot.lastErrorDescription = nil
+            updated.hasConnectedOnce = true
+            devices[id] = updated
+            reconnectTasks[id]?.cancel()
+            reconnectTasks[id] = nil
+            broadcastSnapshots()
+            return updated.snapshot
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
     public func setFalseColor(id: UUID, enabled: Bool) async throws -> ManagedColorBoxDevice {
         do {
             let storedDevice = try requireDevice(id: id)
@@ -383,6 +410,7 @@ public actor DeviceManager {
             storedDevice.snapshot.pipelineState = ColorBoxPipelineState(
                 bypassEnabled: pipelineState.bypassEnabled,
                 falseColorEnabled: false,
+                previewSource: pipelineState.previewSource,
                 dynamicLUTMode: pipelineState.dynamicLUTMode,
                 gradeControl: pipelineState.gradeControl,
                 lastRecalledPresetSlot: pipelineState.lastRecalledPresetSlot

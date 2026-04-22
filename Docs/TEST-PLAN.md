@@ -42,6 +42,8 @@ Current automated coverage:
 - Mock-server integration for connect, preview, device library reads, bypass, presets, reconnect, and unsupported false color
 - Mock-server integration for identity LUT upload and last-write-wins queue coalescing
 - Fixture-backed iPad UI flows for launch, bypass, Before / After compare, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library browsing
+- Fixture-backed iPad UI flows for preview source toggle and enlarged preview presentation
+- Fixture-backed hit-region accessibility audit for the static control surface
 
 Current measured Phase 3 acceptance evidence:
 
@@ -58,6 +60,8 @@ Manual simulator checks:
 - Toggle `Before / After` and confirm it temporarily flips bypass, then restores the prior state
 - Verify saturation sits above the trackballs
 - Verify reset controls remain visible for Lift, Gamma, Gain, and Saturation
+- Tap the preview thumbnail and confirm it flips between `Output` and `Input`
+- Use the expand preview control and confirm the enlarged preview sheet opens and closes cleanly
 - Open the drawer and confirm the `Workflow`, `Presets`, and `Device` panels switch cleanly
 - Open the library browser and confirm seeded library sections and entries appear
 - Link at least two fixture peers from the device list and confirm bypass mirrors to them
@@ -72,6 +76,7 @@ These checks still require a real iPad and the reference ColorBox.
 ### Device Connection
 
 - Connect to the reference ColorBox and confirm the app reads device identity, preview, and pipeline state
+- Confirm the preview thumbnail switches the hardware between `OUTPUT` and `INPUT` taps and refreshes the frame
 - Confirm bypass toggles live on the device
 - Confirm Lift / Gamma / Gain / Saturation changes round-trip without drift after refresh
 - Once the real upload path is re-enabled, confirm finger-up results in the final baked LUT matching the visible UI state on-device
@@ -89,6 +94,7 @@ These checks still require a real iPad and the reference ColorBox.
 - Recall the saved preset on the hardware and confirm the grade state restores correctly
 - Delete a preset and confirm it disappears from the device library
 - Verify local snapshots and scratch slots do not interfere with device-native preset behavior
+- Import a test `3D LUT` into an empty slot, confirm it appears in the library, rename it, and then delete it cleanly
 
 ### Gang Validation
 

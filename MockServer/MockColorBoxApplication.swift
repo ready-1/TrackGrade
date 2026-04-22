@@ -107,9 +107,10 @@ enum MockColorBoxApplication {
 
         app.get("v2", "routing") { request async throws -> MockColorBoxRouting in
             let pipelineState = try await state.pipelineState()
+            let previewSource = try await state.previewSource()
             return MockColorBoxRouting(
                 mode: "Input",
-                previewTap: "OUTPUT",
+                previewTap: previewSource.rawValue,
                 pipelineBypassButton: false,
                 pipelineBypassUser: pipelineState.bypassEnabled
             )
@@ -118,6 +119,9 @@ enum MockColorBoxApplication {
         app.put("v2", "routing") { request async throws -> HTTPStatus in
             let routing = try request.content.decode(MockColorBoxRouting.self)
             _ = try await state.setBypass(routing.pipelineBypassUser)
+            if let previewTap = ColorBoxPreviewSource(rawValue: routing.previewTap.uppercased()) {
+                _ = try await state.setPreviewSource(previewTap)
+            }
             return .ok
         }
 

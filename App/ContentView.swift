@@ -6,23 +6,33 @@ struct ContentView: View {
     @State private var appModel = TrackGradeAppModel()
 
     var body: some View {
-        NavigationSplitView {
-            ConnectFeatureView(model: appModel)
-        } detail: {
-            if let selectedSnapshot = appModel.selectedSnapshot {
-                GradeFeatureView(
-                    model: appModel,
-                    device: selectedSnapshot
-                )
-            } else {
-                ContentUnavailableView(
-                    "TrackGrade",
-                    systemImage: "dial.medium",
-                    description: Text("Add an AJA ColorBox by IP or select a discovered device to begin.")
-                )
+        GeometryReader { proxy in
+            HStack(spacing: 0) {
+                ConnectFeatureView(model: appModel)
+                    .frame(width: sidebarWidth(for: proxy.size))
+                    .background(Color(uiColor: .systemGroupedBackground))
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(width: 1)
+
+                Group {
+                    if let selectedSnapshot = appModel.selectedSnapshot {
+                        GradeFeatureView(
+                            model: appModel,
+                            device: selectedSnapshot
+                        )
+                    } else {
+                        ContentUnavailableView(
+                            "TrackGrade",
+                            systemImage: "dial.medium",
+                            description: Text("Add an AJA ColorBox by IP or select a discovered device to begin.")
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .navigationSplitViewStyle(.balanced)
         .task {
             await appModel.start(modelContext: modelContext)
         }
@@ -94,6 +104,10 @@ struct ContentView: View {
                 }
             }
         )
+    }
+
+    private func sidebarWidth(for size: CGSize) -> CGFloat {
+        min(340, max(300, size.width * 0.28))
     }
 }
 

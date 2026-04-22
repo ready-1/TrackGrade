@@ -16,6 +16,46 @@ struct ConnectFeatureView: View {
                 .padding(.vertical, 8)
             }
 
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Device Actions")
+                        .font(.headline)
+
+                    HStack(spacing: 10) {
+                        Button {
+                            model.refreshDiscovery()
+                        } label: {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+
+                        Button {
+                            model.isShowingAddDeviceSheet = true
+                        } label: {
+                            Label("Add Device", systemImage: "plus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+
+                        Button {
+                            Task {
+                                await model.connectSelectedDevice()
+                            }
+                        } label: {
+                            Label("Connect", systemImage: "dot.radiowaves.left.and.right")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .disabled(model.selectedDeviceID == nil)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
             if model.gangedPeerCount > 0 {
                 Section {
                     HStack(spacing: 12) {
@@ -43,7 +83,7 @@ struct ConnectFeatureView: View {
                 }
             }
 
-            Section("Saved Devices") {
+            Section {
                 if model.knownDevices.isEmpty {
                     ContentUnavailableView(
                         "No saved devices",
@@ -55,15 +95,17 @@ struct ConnectFeatureView: View {
                     ForEach(model.knownDevices) { device in
                         let snapshot = model.snapshots.first { $0.id == device.id }
                         HStack(spacing: 12) {
-                            SavedDeviceRow(
-                                device: device,
-                                snapshot: snapshot,
-                                isSelected: model.selectedDeviceID == device.id
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
+                            Button {
                                 model.selectedDeviceID = device.id
+                            } label: {
+                                SavedDeviceRow(
+                                    device: device,
+                                    snapshot: snapshot,
+                                    isSelected: model.selectedDeviceID == device.id
+                                )
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("saved-device-\(device.id.uuidString)")
 
                             Button {
                                 Task {
@@ -76,11 +118,15 @@ struct ConnectFeatureView: View {
                                 Image(systemName: device.isGanged ? "link.circle.fill" : "link.circle")
                                     .font(.title3)
                                     .foregroundStyle(device.isGanged ? .orange : .secondary)
+                                    .frame(width: 44, height: 44)
+                                    .background(
+                                        Circle()
+                                            .fill((device.isGanged ? Color.orange : Color.secondary).opacity(0.14))
+                                    )
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(device.isGanged ? "Ungang \(device.name)" : "Gang \(device.name)")
                         }
-                        .accessibilityIdentifier("saved-device-\(device.id.uuidString)")
                         .swipeActions {
                             Button("Auth") {
                                 model.promptForAuthentication(deviceID: device.id)
@@ -95,9 +141,11 @@ struct ConnectFeatureView: View {
                         }
                     }
                 }
+            } header: {
+                SidebarSectionHeader(title: "Saved Devices")
             }
 
-            Section("Discovered on LAN") {
+            Section {
                 if model.discoveredDevices.isEmpty {
                     Text("No Bonjour-advertised ColorBox services are visible yet.")
                         .foregroundStyle(.secondary)
@@ -130,32 +178,8 @@ struct ConnectFeatureView: View {
                         .padding(.vertical, 4)
                     }
                 }
-            }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarLeading) {
-                Button {
-                    model.refreshDiscovery()
-                } label: {
-                    Label("Refresh Discovery", systemImage: "arrow.clockwise")
-                }
-            }
-
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    model.isShowingAddDeviceSheet = true
-                } label: {
-                    Label("Add Device", systemImage: "plus")
-                }
-
-                Button {
-                    Task {
-                        await model.connectSelectedDevice()
-                    }
-                } label: {
-                    Label("Connect", systemImage: "dot.radiowaves.left.and.right")
-                }
-                .disabled(model.selectedDeviceID == nil)
+            } header: {
+                SidebarSectionHeader(title: "Discovered on LAN")
             }
         }
     }
@@ -294,32 +318,42 @@ private struct SavedDeviceRow: View {
                 .font(.title3)
                 .foregroundStyle(statusColor)
                 .frame(width: 28)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(device.name)
                     .font(.headline)
                 Text(device.address)
-                    .font(.footnote.monospaced())
+                    .font(.callout.monospaced())
                     .foregroundStyle(.secondary)
                 Text(statusText)
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(statusColor)
             }
+            .accessibilityHidden(true)
 
             Spacer()
 
             if device.isGanged {
                 Image(systemName: "link")
                     .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
             }
 
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
             }
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(device.name))
+        .accessibilityValue(Text(accessibilitySummary))
+        .accessibilityHint(Text(isSelected ? "Focused device." : "Focuses this device."))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var statusText: String {
@@ -350,5 +384,22 @@ private struct SavedDeviceRow: View {
         default:
             return .secondary
         }
+    }
+
+    private var accessibilitySummary: String {
+        let selection = isSelected ? "Selected." : "Not selected."
+        let gangStatus = device.isGanged ? "Ganged." : "Not ganged."
+        return "\(device.address). \(statusText). \(selection) \(gangStatus)"
+    }
+}
+
+private struct SidebarSectionHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .textCase(nil)
     }
 }

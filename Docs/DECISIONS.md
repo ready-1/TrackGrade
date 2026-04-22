@@ -633,3 +633,40 @@ Implement `Before / After` as a reversible compare session:
 - The app now matches the brief’s distinction between temporary compare and persistent device bypass without requiring a separate device-side API.
 - Gang peers can participate in compare mode using the same captured-state restore path as the focus device.
 - The compare workflow is fully testable in fixture mode, reducing the risk of a hardware-only regression tomorrow.
+
+## 2026-04-22 — Map Preview Source Onto `routing.previewTap` And Present Enlarged Preview As A Medium Sheet
+
+### Context
+
+The brief calls for a preview thumbnail that can switch between input and output, refresh on demand, auto-refresh on an interval, and enlarge without disturbing the fixed landscape grading layout. The live ColorBox contract on firmware `3.0.0.24` exposes `previewTap` in `GET/PUT /v2/routing`, but the app was still treating preview as a read-only thumbnail refresh.
+
+### Decision
+
+Use `routing.previewTap` as the source-of-truth preview source control:
+
+- `OUTPUT` and `INPUT` map to a new `ColorBoxPreviewSource` value in app state
+- tapping the thumbnail flips the current source and immediately refreshes the preview frame
+- the preview controls include explicit refresh and expand affordances
+- enlarged preview is shown in a medium detented sheet rather than a custom in-surface overlay so the static control surface remains stable and the behavior is accessible and testable
+
+### Consequences
+
+- Preview behavior is now aligned with the live `/v2` API instead of being only a passive frame fetch.
+- The mock server and fixture mode can mirror preview-source state for offline development and UI coverage.
+- The grading surface remains visually static while still giving operators a larger preview when needed.
+
+## 2026-04-22 — Treat `/v2/upload` As Verified For Library Asset Workflows, But Keep Live Grading On `pipelineStages`
+
+### Context
+
+Earlier live probing against firmware `3.0.0.24` suggested that `POST /v2/upload` might accept files without materializing them in the visible libraries, which is why the app shipped a read-only library browser. A fresh hardware pass on the production network showed that `POST /v2/upload` with `kind=lut_3d` does create `3D LUT` library entries, and that `SetUserName` plus `DeleteEntry` work through `PUT /v2/libraryControl` for rename and cleanup.
+
+### Decision
+
+Treat `/v2/upload` as a trustworthy live contract for ColorBox library asset management, while continuing to keep the live grading surface on the already-proven `PUT /v2/pipelineStages` route instead of switching grading to baked uploads.
+
+### Consequences
+
+- The library feature can move beyond read-only browsing without inventing another transport path.
+- Docs and tests should distinguish between verified asset-library uploads and the separate question of whether live grading should be driven by baked LUT uploads.
+- The app remains conservative where it matters most for the MVP: operators still grade through the direct, hardware-verified `pipelineStages` control path.

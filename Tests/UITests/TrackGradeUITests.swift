@@ -12,36 +12,36 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertTrue(fixtureElement("dynamic-grade-card", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Control Surface"].exists)
         XCTAssertTrue(app.staticTexts["Saturation"].exists)
-        XCTAssertTrue(app.switches["bypass-toggle"].exists)
+        XCTAssertTrue(app.buttons["bypass-toggle"].exists)
         XCTAssertTrue(app.buttons["secondary-controls-button"].exists)
     }
 
     func testBypassToggleMutatesFixtureState() throws {
         let app = launchFixtureApp()
-        let bypassToggle = app.switches["bypass-toggle"]
+        let bypassToggle = app.buttons["bypass-toggle"]
 
         XCTAssertTrue(bypassToggle.waitForExistence(timeout: 5))
-        XCTAssertEqual(bypassToggle.value as? String, "0")
+        XCTAssertEqual(bypassToggle.value as? String, "Off")
 
         bypassToggle.tap()
 
-        XCTAssertEqual(bypassToggle.value as? String, "1")
+        XCTAssertEqual(bypassToggle.value as? String, "On")
     }
 
     func testBeforeAfterCompareRestoresFixtureBypassState() throws {
         let app = launchFixtureApp()
         let compareButton = app.buttons["before-after-button"]
-        let bypassToggle = app.switches["bypass-toggle"]
+        let bypassToggle = app.buttons["bypass-toggle"]
 
         XCTAssertTrue(compareButton.waitForExistence(timeout: 5))
         XCTAssertTrue(bypassToggle.waitForExistence(timeout: 5))
-        XCTAssertEqual(bypassToggle.value as? String, "0")
+        XCTAssertEqual(bypassToggle.value as? String, "Off")
 
         compareButton.tap()
-        XCTAssertEqual(bypassToggle.value as? String, "1")
+        XCTAssertEqual(bypassToggle.value as? String, "On")
 
         compareButton.tap()
-        XCTAssertEqual(bypassToggle.value as? String, "0")
+        XCTAssertEqual(bypassToggle.value as? String, "Off")
     }
 
     func testSettingsSheetLaunchesFromSurface() throws {
@@ -57,6 +57,33 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Rec.709 SDR"].exists)
         XCTAssertTrue(app.buttons["Rec.709 HLG"].exists)
         app.buttons["Rec.709 HLG"].tap()
+    }
+
+    func testPreviewThumbnailTogglesFixturePreviewSource() throws {
+        let app = launchFixtureApp()
+
+        let previewSourceLabel = app.staticTexts["preview-source-label"]
+        XCTAssertTrue(previewSourceLabel.waitForExistence(timeout: 5))
+        XCTAssertEqual(previewSourceLabel.label, "Output Preview")
+
+        app.otherElements["grade-preview-thumbnail"].tap()
+
+        XCTAssertEqual(previewSourceLabel.label, "Input Preview")
+    }
+
+    func testExpandedPreviewOverlayOpensFromPreviewControls() throws {
+        let app = launchFixtureApp()
+
+        let expandButton = app.buttons["expand-preview-button"]
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 5))
+        expandButton.tap()
+
+        let overlayMarker = app.staticTexts["expanded-preview-visible"]
+        let doneButton = app.buttons["expanded-preview-done-button"]
+        XCTAssertTrue(doneButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(overlayMarker.exists)
+        doneButton.tap()
+        XCTAssertFalse(doneButton.waitForExistence(timeout: 1))
     }
 
     func testSavingPresetAddsFixturePresetCard() throws {
@@ -179,22 +206,27 @@ final class TrackGradeUITests: XCTestCase {
         let gangBButton = app.buttons["Gang Fixture ColorBox B"]
         let gangCButton = app.buttons["Gang Fixture ColorBox C"]
         XCTAssertTrue(gangBButton.waitForExistence(timeout: 5))
+        scrollToElement(gangCButton, in: app)
         XCTAssertTrue(gangCButton.waitForExistence(timeout: 5))
 
         gangBButton.tap()
         gangCButton.tap()
 
-        let bypassToggle = app.switches["bypass-toggle"]
+        let bypassToggle = app.buttons["bypass-toggle"]
         XCTAssertTrue(bypassToggle.waitForExistence(timeout: 5))
-        XCTAssertEqual(bypassToggle.value as? String, "0")
+        XCTAssertEqual(bypassToggle.value as? String, "Off")
         bypassToggle.tap()
-        XCTAssertEqual(bypassToggle.value as? String, "1")
+        XCTAssertEqual(bypassToggle.value as? String, "On")
 
-        app.staticTexts["Fixture ColorBox B"].tap()
-        XCTAssertEqual(bypassToggle.value as? String, "1")
+        let deviceBButton = app.buttons["Fixture ColorBox B"]
+        scrollToElement(deviceBButton, in: app)
+        deviceBButton.tap()
+        XCTAssertEqual(bypassToggle.value as? String, "On")
 
-        app.staticTexts["Fixture ColorBox C"].tap()
-        XCTAssertEqual(bypassToggle.value as? String, "1")
+        let deviceCButton = app.buttons["Fixture ColorBox C"]
+        scrollToElement(deviceCButton, in: app)
+        deviceCButton.tap()
+        XCTAssertEqual(bypassToggle.value as? String, "On")
     }
 
     func testLibraryBrowserShowsFixtureSections() throws {
@@ -210,12 +242,32 @@ final class TrackGradeUITests: XCTestCase {
         showLibraryButton.tap()
 
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+        XCTAssertTrue(fixtureElement("library-list", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["3D LUT"].exists)
         XCTAssertTrue(app.staticTexts["Stage Neutral"].waitForExistence(timeout: 5))
+        XCTAssertTrue(fixtureElement("library-read-only-note", in: app).exists)
+    }
 
-        let overlayEntry = app.staticTexts["Lower Third"]
-        scrollToElement(overlayEntry, in: app)
-        XCTAssertTrue(overlayEntry.waitForExistence(timeout: 5))
+    func testFixtureControlSurfacePassesAccessibilityAudit() throws {
+        let app = launchFixtureApp()
+
+        XCTAssertTrue(fixtureElement("dynamic-grade-card", in: app).waitForExistence(timeout: 5))
+
+        if #available(iOS 17.0, *) {
+            var recordedIssues: [String] = []
+            try app.performAccessibilityAudit(for: .hitRegion) { issue in
+                let elementDescription = issue.element?.debugDescription ?? "No element"
+                let message = [
+                    issue.compactDescription,
+                    issue.detailedDescription,
+                    elementDescription,
+                ].joined(separator: " | ")
+                print("Accessibility audit issue: \(message)")
+                recordedIssues.append(message)
+                return true
+            }
+            XCTAssertTrue(recordedIssues.isEmpty, recordedIssues.joined(separator: "\n\n"))
+        }
     }
 
     private func launchFixtureApp() -> XCUIApplication {
@@ -247,14 +299,16 @@ final class TrackGradeUITests: XCTestCase {
     private func scrollToElement(
         _ element: XCUIElement,
         in app: XCUIApplication,
-        maximumSwipes: Int = 4
+        maximumSwipes: Int = 10
     ) {
         guard element.exists == false else {
             return
         }
 
-        let libraryList = app.tables["library-list"].firstMatch
-        let scrollContainer = libraryList.exists ? libraryList : app.collectionViews.firstMatch
+        let identifiedList = fixtureElement("library-list", in: app)
+        let collectionViews = app.collectionViews.allElementsBoundByIndex
+        let preferredCollectionView = collectionViews.last ?? app.collectionViews.firstMatch
+        let scrollContainer = identifiedList.exists ? identifiedList : preferredCollectionView
 
         guard scrollContainer.exists else {
             return

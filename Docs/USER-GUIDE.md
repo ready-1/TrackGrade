@@ -119,6 +119,15 @@ The saturation control sits above the trackballs and adjusts the shared saturati
 
 The live LGG/S state display is tappable so values can be nudged and inspected numerically.
 
+## Preview
+
+The preview thumbnail in the center display now supports:
+
+- tap to switch between `Output` and `Input`
+- the refresh button to pull a fresh frame immediately
+- the expand button to open a larger medium-sheet preview without disturbing the static grading surface
+- optional auto-refresh based on the interval selected in Settings
+
 ## Drawer Panels
 
 Tap `Controls` to open the slide-over drawer.
@@ -167,6 +176,7 @@ The settings sheet currently exposes:
 - per-device working color space selection (`Rec.709 SDR` or `Rec.709 HLG`)
 - per-control sensitivities
 - haptics enable / disable
+- preview auto-refresh interval (`Off`, `1s`, `5s`, or `10s`)
 - reset-confirmation behavior
 - diagnostics export for the focused device
 - in-app open-source notices
@@ -221,7 +231,7 @@ Use `Refresh` in the sheet toolbar to re-read the current device state.
 
 ## Current Limitations
 
-- The asset library browser is read-only in this build; import and destructive library actions still depend on a verified live upload path.
+- The current app build still presents the library area conservatively even though the underlying live upload / rename / delete contract is now verified on the reference ColorBox.
 - The current grading path writes directly through `/v2/pipelineStages` rather than uploading baked LUTs.
 - Gang control currently focuses on mirroring a single focus device to linked peers; more advanced gang workflows can still be added later.
 - Final tactile tuning still needs real iPad + ColorBox validation.

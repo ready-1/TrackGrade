@@ -296,6 +296,7 @@ private extension Float {
 public struct ColorBoxPipelineState: Codable, Sendable, Equatable {
     public let bypassEnabled: Bool
     public let falseColorEnabled: Bool
+    public let previewSource: ColorBoxPreviewSource
     public let dynamicLUTMode: String
     public let gradeControl: ColorBoxGradeControlState
     public let lastRecalledPresetSlot: Int?
@@ -303,15 +304,60 @@ public struct ColorBoxPipelineState: Codable, Sendable, Equatable {
     public init(
         bypassEnabled: Bool,
         falseColorEnabled: Bool,
+        previewSource: ColorBoxPreviewSource = .output,
         dynamicLUTMode: String,
         gradeControl: ColorBoxGradeControlState = .identity,
         lastRecalledPresetSlot: Int? = nil
     ) {
         self.bypassEnabled = bypassEnabled
         self.falseColorEnabled = falseColorEnabled
+        self.previewSource = previewSource
         self.dynamicLUTMode = dynamicLUTMode
         self.gradeControl = gradeControl
         self.lastRecalledPresetSlot = lastRecalledPresetSlot
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case bypassEnabled
+        case falseColorEnabled
+        case previewSource
+        case dynamicLUTMode
+        case gradeControl
+        case lastRecalledPresetSlot
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        bypassEnabled = try container.decode(Bool.self, forKey: .bypassEnabled)
+        falseColorEnabled = try container.decode(Bool.self, forKey: .falseColorEnabled)
+        previewSource = try container.decodeIfPresent(ColorBoxPreviewSource.self, forKey: .previewSource) ?? .output
+        dynamicLUTMode = try container.decode(String.self, forKey: .dynamicLUTMode)
+        gradeControl = try container.decodeIfPresent(ColorBoxGradeControlState.self, forKey: .gradeControl) ?? .identity
+        lastRecalledPresetSlot = try container.decodeIfPresent(Int.self, forKey: .lastRecalledPresetSlot)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(bypassEnabled, forKey: .bypassEnabled)
+        try container.encode(falseColorEnabled, forKey: .falseColorEnabled)
+        try container.encode(previewSource, forKey: .previewSource)
+        try container.encode(dynamicLUTMode, forKey: .dynamicLUTMode)
+        try container.encode(gradeControl, forKey: .gradeControl)
+        try container.encodeIfPresent(lastRecalledPresetSlot, forKey: .lastRecalledPresetSlot)
+    }
+}
+
+public enum ColorBoxPreviewSource: String, Codable, Sendable, CaseIterable {
+    case input = "INPUT"
+    case output = "OUTPUT"
+
+    public var displayName: String {
+        switch self {
+        case .input:
+            return "Input"
+        case .output:
+            return "Output"
+        }
     }
 }
 

@@ -82,9 +82,10 @@ struct GradeFeatureView: View {
                         GangStatusBadge(summary: gangSummary)
                     }
                     Text(device.address)
-                        .font(.system(size: 15, weight: .regular, design: .monospaced))
-                        .foregroundStyle(Color.white.opacity(0.72))
+                        .font(.callout.monospaced())
+                        .foregroundStyle(Color.white.opacity(0.9))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
 
@@ -101,32 +102,19 @@ struct GradeFeatureView: View {
             }
             .accessibilityIdentifier("before-after-button")
 
-            HStack(spacing: 12) {
-                Text("Bypass")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.86))
-
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { device.pipelineState?.bypassEnabled ?? false },
-                        set: { isEnabled in
-                            emitButtonHaptic()
-                            Task {
-                                await model.setBypass(
-                                    id: device.id,
-                                    enabled: isEnabled
-                                )
-                            }
-                        }
+            BypassToggleButton(
+                isEnabled: device.pipelineState?.bypassEnabled ?? false,
+                isDisabled: model.isBeforeAfterActive(device.id)
+            ) {
+                emitButtonHaptic()
+                Task {
+                    await model.setBypass(
+                        id: device.id,
+                        enabled: (device.pipelineState?.bypassEnabled ?? false) == false
                     )
-                )
-                .labelsHidden()
-                .tint(.orange)
-                .disabled(model.isBeforeAfterActive(device.id))
-                .opacity(model.isBeforeAfterActive(device.id) ? 0.5 : 1)
-                .accessibilityIdentifier("bypass-toggle")
+                }
             }
+            .accessibilityIdentifier("bypass-toggle")
 
             Button {
                 emitButtonHaptic()
@@ -136,7 +124,8 @@ struct GradeFeatureView: View {
                     .labelStyle(.titleAndIcon)
             }
             .buttonStyle(.bordered)
-            .tint(.white.opacity(0.18))
+            .controlSize(.large)
+            .tint(Color.black.opacity(0.32))
             .accessibilityIdentifier("secondary-controls-button")
 
             Button {
@@ -147,7 +136,8 @@ struct GradeFeatureView: View {
                     .labelStyle(.iconOnly)
             }
             .buttonStyle(.bordered)
-            .tint(.white.opacity(0.18))
+            .controlSize(.large)
+            .tint(Color.black.opacity(0.32))
             .accessibilityIdentifier("grade-settings-button")
         }
         .padding(18)
@@ -203,7 +193,7 @@ private struct BeforeAfterCompareButton: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Before / After")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.74))
+                    .foregroundStyle(.white.opacity(0.88))
 
                 HStack(spacing: 8) {
                     Image(systemName: isActive ? "rectangle.on.rectangle.circle.fill" : "rectangle.on.rectangle")
@@ -217,16 +207,60 @@ private struct BeforeAfterCompareButton: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(isActive ? Color.orange.opacity(0.22) : Color.white.opacity(0.1))
+                    .fill(isActive ? Color.orange.opacity(0.3) : Color.black.opacity(0.3))
             )
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(isActive ? Color.orange.opacity(0.55) : Color.white.opacity(0.14))
+                    .strokeBorder(isActive ? Color.orange.opacity(0.6) : Color.white.opacity(0.22))
             }
         }
+        .frame(minHeight: 44)
         .buttonStyle(.plain)
         .accessibilityLabel("Before and After")
         .accessibilityValue(statusText)
+    }
+}
+
+private struct BypassToggleButton: View {
+    let isEnabled: Bool
+    let isDisabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Text("Bypass")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                Text(isEnabled ? "On" : "Off")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(isEnabled ? Color.orange.opacity(0.34) : Color.black.opacity(0.34))
+                    )
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.black.opacity(0.28))
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(isEnabled ? Color.orange.opacity(0.55) : Color.white.opacity(0.2))
+            }
+        }
+        .frame(minHeight: 44)
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.5 : 1)
+        .accessibilityLabel("Bypass")
+        .accessibilityValue(isEnabled ? "On" : "Off")
+        .accessibilityHint(isDisabled ? "Disabled while before and after compare is active." : "Toggles dynamic LUT bypass.")
     }
 }
 
@@ -240,7 +274,7 @@ private struct GangStatusBadge: View {
             Image(systemName: systemImage)
         }
         .font(.caption.weight(.semibold))
-        .foregroundStyle(foregroundColor)
+        .foregroundStyle(.white)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(
@@ -273,24 +307,17 @@ private struct GangStatusBadge: View {
     }
 
     private var foregroundColor: Color {
-        switch summary.state {
-        case .synced:
-            return .green
-        case .drift:
-            return .yellow
-        case .waiting:
-            return .orange
-        }
+        .white
     }
 
     private var backgroundColor: Color {
         switch summary.state {
         case .synced:
-            return Color.green.opacity(0.18)
+            return Color(red: 0.09, green: 0.43, blue: 0.24)
         case .drift:
-            return Color.yellow.opacity(0.18)
+            return Color(red: 0.58, green: 0.38, blue: 0.04)
         case .waiting:
-            return Color.orange.opacity(0.18)
+            return Color(red: 0.63, green: 0.32, blue: 0.06)
         }
     }
 }
@@ -332,6 +359,7 @@ private struct DynamicGradeControlsCard: View {
     @State private var activeEditor: GradeEditorTarget?
     @State private var activeTouchCount = 0
     @State private var interactionOrigin: ColorBoxGradeControlState?
+    @State private var isShowingPreviewOverlay = false
 
     @State private var ballAnchors: [TrackballSurfaceKind: ColorBoxControlPoint] = [:]
     @State private var ringAnchors: [TrackballSurfaceKind: Float] = [:]
@@ -345,6 +373,7 @@ private struct DynamicGradeControlsCard: View {
     @AppStorage(TrackGradeSettingsKey.gainRingSensitivity) private var gainRingSensitivity = 1.0
     @AppStorage(TrackGradeSettingsKey.saturationSensitivity) private var saturationSensitivity = 1.0
     @AppStorage(TrackGradeSettingsKey.hapticsEnabled) private var hapticsEnabled = true
+    @AppStorage(TrackGradeSettingsKey.autoRefreshInterval) private var autoRefreshInterval = 0.0
     @AppStorage(TrackGradeSettingsKey.resetRequiresConfirmation) private var resetRequiresConfirmation = true
 
     init(
@@ -375,7 +404,8 @@ private struct DynamicGradeControlsCard: View {
                         .foregroundStyle(.white)
                     Text("Static landscape layout with visible reset controls and compact telemetry.")
                         .font(.footnote)
-                        .foregroundStyle(Color.white.opacity(0.66))
+                        .foregroundStyle(Color.white.opacity(0.84))
+                        .accessibilityHidden(true)
                 }
 
                 Spacer(minLength: 12)
@@ -407,13 +437,27 @@ private struct DynamicGradeControlsCard: View {
                 GradeStateDisplay(
                     grade: draftGrade,
                     previewFrameData: device.previewFrameData,
+                    previewSource: device.pipelineState?.previewSource ?? .output,
                     onEdit: { target in
                         activeEditor = target
+                    },
+                    onTogglePreviewSource: {
+                        let currentSource = device.pipelineState?.previewSource ?? .output
+                        let nextSource: ColorBoxPreviewSource = currentSource == .output ? .input : .output
+                        Task {
+                            await model.setPreviewSource(
+                                id: device.id,
+                                source: nextSource
+                            )
+                        }
                     },
                     onRefreshPreview: {
                         Task {
                             await model.refreshPreview(id: device.id)
                         }
+                    },
+                    onShowPreviewOverlay: {
+                        isShowingPreviewOverlay = true
                     }
                 )
                 .frame(maxWidth: .infinity)
@@ -426,6 +470,10 @@ private struct DynamicGradeControlsCard: View {
                     SurfaceMetricRow(
                         label: "Preview",
                         value: "\(device.previewByteCount) B"
+                    )
+                    SurfaceMetricRow(
+                        label: "Preview Tap",
+                        value: (device.pipelineState?.previewSource ?? .output).displayName
                     )
                     SurfaceMetricRow(
                         label: "False Color",
@@ -552,6 +600,15 @@ private struct DynamicGradeControlsCard: View {
                 }
             )
         }
+        .sheet(isPresented: $isShowingPreviewOverlay) {
+            EnlargedPreviewOverlay(
+                imageData: device.previewFrameData,
+                source: device.pipelineState?.previewSource ?? .output,
+                onDismiss: {
+                    isShowingPreviewOverlay = false
+                }
+            )
+        }
         .onChange(of: device.pipelineState?.gradeControl) { _, newValue in
             guard let newValue else {
                 return
@@ -566,6 +623,9 @@ private struct DynamicGradeControlsCard: View {
         }
         .onDisappear {
             pendingUpdateTask?.cancel()
+        }
+        .task(id: previewAutoRefreshTaskID) {
+            await runPreviewAutoRefreshLoop()
         }
     }
 
@@ -600,6 +660,10 @@ private struct DynamicGradeControlsCard: View {
 
     private func formatted(_ vector: ColorBoxRGBVector) -> String {
         "R \(formatted(vector.red))  G \(formatted(vector.green))  B \(formatted(vector.blue))"
+    }
+
+    private var previewAutoRefreshTaskID: String {
+        "\(device.id.uuidString)-\(autoRefreshInterval)"
     }
 
     private func handleLiftBall(
@@ -915,6 +979,27 @@ private struct DynamicGradeControlsCard: View {
     private func emitSuccessHaptic() {
         Task { @MainActor in
             HapticsCoordinator.shared.emitSuccess(isEnabled: hapticsEnabled)
+        }
+    }
+
+    private func runPreviewAutoRefreshLoop() async {
+        guard autoRefreshInterval > 0 else {
+            return
+        }
+
+        let refreshInterval = UInt64(autoRefreshInterval * 1_000_000_000)
+        guard refreshInterval > 0 else {
+            return
+        }
+
+        while Task.isCancelled == false {
+            try? await Task.sleep(nanoseconds: refreshInterval)
+
+            if Task.isCancelled {
+                break
+            }
+
+            await model.refreshPreview(id: device.id)
         }
     }
 
@@ -1250,13 +1335,19 @@ private struct SurfaceMetricRow: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.white.opacity(0.56))
+                .foregroundStyle(Color.white.opacity(0.82))
                 .textCase(.uppercase)
+                .accessibilityHidden(true)
             Text(value)
-                .font(.system(size: 15, weight: .regular, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.92))
+                .font(.callout.monospaced())
+                .foregroundStyle(.white)
                 .lineLimit(2)
+                .minimumScaleFactor(0.75)
+                .accessibilityHidden(true)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
     }
 }
 
@@ -1269,21 +1360,21 @@ private struct ConnectionStateBadge: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(badgeColor.gradient, in: Capsule())
+            .background(badgeColor, in: Capsule())
     }
 
     private var badgeColor: Color {
         switch state {
         case .connected:
-            return .green
+            return Color(red: 0.09, green: 0.43, blue: 0.24)
         case .connecting:
-            return .blue
+            return Color(red: 0.08, green: 0.28, blue: 0.55)
         case .degraded:
-            return .orange
+            return Color(red: 0.58, green: 0.38, blue: 0.04)
         case .error:
-            return .red
+            return Color(red: 0.53, green: 0.14, blue: 0.16)
         case .disconnected:
-            return .gray
+            return Color(red: 0.28, green: 0.31, blue: 0.36)
         }
     }
 }
@@ -1291,8 +1382,11 @@ private struct ConnectionStateBadge: View {
 private struct GradeStateDisplay: View {
     let grade: ColorBoxGradeControlState
     let previewFrameData: Data?
+    let previewSource: ColorBoxPreviewSource
     let onEdit: (GradeEditorTarget) -> Void
+    let onTogglePreviewSource: () -> Void
     let onRefreshPreview: () -> Void
+    let onShowPreviewOverlay: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
@@ -1331,14 +1425,18 @@ private struct GradeStateDisplay: View {
 
                 Text("Tap any row to edit values numerically.")
                     .font(.footnote)
-                    .foregroundStyle(Color.white.opacity(0.66))
+                    .foregroundStyle(Color.white.opacity(0.84))
+                    .accessibilityHidden(true)
             }
 
             Spacer(minLength: 0)
 
             PreviewThumbnail(
                 imageData: previewFrameData,
-                refreshAction: onRefreshPreview
+                source: previewSource,
+                toggleAction: onTogglePreviewSource,
+                refreshAction: onRefreshPreview,
+                enlargeAction: onShowPreviewOverlay
             )
             .frame(width: 140, height: 92)
         }
@@ -1379,16 +1477,22 @@ private struct NumericDisplayRow: View {
             HStack {
                 Text(label)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.84))
+                    .foregroundStyle(.white)
+                    .accessibilityHidden(true)
 
                 Spacer()
 
                 Text(value)
-                    .font(.body.monospacedDigit())
+                    .font(.body.monospaced())
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.trailing)
+                    .minimumScaleFactor(0.75)
+                    .accessibilityHidden(true)
             }
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
         }
+        .frame(minHeight: 48)
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(label))
@@ -1401,10 +1505,13 @@ private struct NumericDisplayRow: View {
 
 private struct PreviewThumbnail: View {
     let imageData: Data?
+    let source: ColorBoxPreviewSource
+    let toggleAction: () -> Void
     let refreshAction: () -> Void
+    let enlargeAction: () -> Void
 
     var body: some View {
-        Button(action: refreshAction) {
+        ZStack(alignment: .topLeading) {
             Group {
                 if let imageData,
                    let image = UIImage(data: imageData) {
@@ -1421,22 +1528,101 @@ private struct PreviewThumbnail: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("grade-preview-thumbnail")
-        .overlay(alignment: .bottomTrailing) {
-            Text("Hold to refresh")
-                .font(.caption2.weight(.semibold))
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .onTapGesture(perform: toggleAction)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.45)
+                    .onEnded { _ in
+                        enlargeAction()
+                    }
+            )
+
+            Text("\(source.displayName) Preview")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.white)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(.ultraThinMaterial, in: Capsule())
+                .background(Color.black.opacity(0.62), in: Capsule())
                 .padding(8)
+                .minimumScaleFactor(0.75)
+                .accessibilityHidden(true)
+                .accessibilityIdentifier("preview-source-label")
+
+            VStack {
+                HStack {
+                    Spacer()
+
+                    Button(action: enlargeAction) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.caption.weight(.bold))
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .background(Color.black.opacity(0.62), in: Circle())
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("expand-preview-button")
+
+                    Button(action: refreshAction) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption.weight(.bold))
+                            .frame(width: 44, height: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .background(Color.black.opacity(0.62), in: Circle())
+                    .padding(8)
+                    .accessibilityIdentifier("refresh-preview-button")
+                }
+
+                Spacer()
+            }
         }
-        .onLongPressGesture(perform: refreshAction)
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Preview thumbnail")
+        .accessibilityValue("\(source.displayName) source")
+        .accessibilityHint("Tap to toggle between input and output preview. Touch and hold to enlarge. Use the refresh button to fetch a new frame.")
+        .accessibilityIdentifier("grade-preview-thumbnail")
+    }
+}
+
+private struct EnlargedPreviewOverlay: View {
+    let imageData: Data?
+    let source: ColorBoxPreviewSource
+    let onDismiss: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Preview overlay active")
+                    .font(.caption)
+                    .foregroundStyle(.clear)
+                    .accessibilityIdentifier("expanded-preview-visible")
+
+                PreviewFeatureView(
+                    imageData: imageData,
+                    byteCount: imageData?.count ?? 0
+                )
+                .frame(maxWidth: .infinity, minHeight: 280, maxHeight: 360)
+
+                Text("Tap the preview thumbnail to switch between input and output. This sheet stays focused on the current preview source.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(20)
+            .navigationTitle("\(source.displayName) Preview")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onDismiss)
+                        .accessibilityIdentifier("expanded-preview-done-button")
+                }
+            }
+        }
+        .accessibilityIdentifier("expanded-preview-overlay")
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
 
@@ -2047,20 +2233,21 @@ private struct DoubleTapActionChip: View {
     let action: () -> Void
 
     var body: some View {
-        Text(requiresExplicitLabel ? "\(title) (double-tap)" : title)
-            .font(.callout.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 13)
-            .padding(.vertical, 10)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(tint.opacity(0.18))
-            )
-            .contentShape(Capsule())
-            .onTapGesture(count: 2, perform: action)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityHint("Double-tap to \(title.lowercased()).")
-            .accessibilityIdentifier(identifier)
+        Button(action: action) {
+            Text(title)
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(minHeight: 44)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(tint.opacity(0.32))
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(requiresExplicitLabel ? "Resets this control." : "Activates \(title.lowercased()).")
+        .accessibilityIdentifier(identifier)
     }
 }
 
@@ -2233,6 +2420,8 @@ private struct ControlTouchSurface: UIViewRepresentable {
         let view = TouchSurfaceRegionView()
         view.backgroundColor = .clear
         view.isMultipleTouchEnabled = true
+        view.isAccessibilityElement = false
+        view.accessibilityElementsHidden = true
         view.eventHandler = onEvent
         view.shape = shape
         return view
@@ -2259,6 +2448,8 @@ private final class TouchSurfaceRegionView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         isOpaque = false
+        isAccessibilityElement = false
+        accessibilityElementsHidden = true
         addGestureRecognizer(touchRecognizer)
     }
 

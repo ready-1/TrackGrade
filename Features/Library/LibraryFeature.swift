@@ -24,6 +24,7 @@ struct LibraryFeatureView: View {
                             Text("Read-only browse of the device libraries. Upload and write semantics remain deferred on the reference firmware, but the current app can inspect the existing assets on the ColorBox.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
+                                .accessibilityIdentifier("library-read-only-note")
                         }
 
                         ForEach(sections) { section in

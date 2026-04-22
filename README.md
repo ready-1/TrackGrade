@@ -16,21 +16,22 @@ Current grading surface in simulator fixture mode:
 
 - Touch-based Lift, Gamma, and Gain trackball controls with luminance rings
 - Saturation roller and live numeric state display
+- Input/output preview toggle with refresh and enlarged preview sheet
 - Direct LAN communication with AJA ColorBox hardware
 - Device discovery, ColorBox-resident preset save / recall / delete, and local snapshots / scratch slots
 - Distinct `Before / After` compare control alongside persistent ColorBox bypass
 - Focus-device gang broadcast to linked peer devices with sync / drift status
 - Per-device working color space selection for `Rec.709 SDR` and `Rec.709 HLG`
 - Fixed landscape control surface with drawer-based secondary controls
-- Read-only device library browser for 1D LUT, 3D LUT, matrix, image, and overlay slots
+- Device library browser for 1D LUT, 3D LUT, matrix, image, and overlay slots
 - Mock ColorBox server for local development without hardware
 - Phase 3 color-math core with CDL, transfer functions, `.cube` baking, and a queued dynamic-LUT upload path validated against the mock
 
 ## Planned Next
 
 - Final live-hardware sensitivity tuning on iPad
-- Additional workflow polish, library import tooling, and release packaging
-- Final live verification of the dynamic-LUT upload path once the hardware-side `/v2/upload` behavior is fully understood
+- Additional workflow polish, library import/write tooling, and release packaging
+- Final live verification of a grading workflow based on baked LUT uploads if TrackGrade ever moves beyond the current `pipelineStages` grading path
 - Deeper multi-device validation on real ColorBox peers
 
 ## Requirements

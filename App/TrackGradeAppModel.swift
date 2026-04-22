@@ -206,6 +206,7 @@ final class TrackGradeAppModel {
         Grade Surface
         - Working Color Space: \(workingTransferFunction)
         - Dynamic LUT Mode: \(pipelineState?.dynamicLUTMode ?? "Unavailable")
+        - Preview Source: \(pipelineState?.previewSource.displayName ?? "Unavailable")
         - Bypass: \((pipelineState?.bypassEnabled ?? false) ? "On" : "Off")
         - False Color: \((pipelineState?.falseColorEnabled ?? false) ? "On" : "Off")
         - Last Preset: \(pipelineState?.lastRecalledPresetSlot.map { "Slot \($0)" } ?? "None")
@@ -606,6 +607,7 @@ final class TrackGradeAppModel {
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: current?.bypassEnabled ?? false,
                     falseColorEnabled: current?.falseColorEnabled ?? false,
+                    previewSource: current?.previewSource ?? .output,
                     dynamicLUTMode: "dynamic",
                     gradeControl: current?.gradeControl ?? .identity,
                     lastRecalledPresetSlot: current?.lastRecalledPresetSlot
@@ -633,6 +635,7 @@ final class TrackGradeAppModel {
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: enabled,
                     falseColorEnabled: current?.falseColorEnabled ?? false,
+                    previewSource: current?.previewSource ?? .output,
                     dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
                     gradeControl: current?.gradeControl ?? .identity,
                     lastRecalledPresetSlot: current?.lastRecalledPresetSlot
@@ -670,6 +673,7 @@ final class TrackGradeAppModel {
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: current?.bypassEnabled ?? false,
                     falseColorEnabled: enabled,
+                    previewSource: current?.previewSource ?? .output,
                     dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
                     gradeControl: current?.gradeControl ?? .identity,
                     lastRecalledPresetSlot: current?.lastRecalledPresetSlot
@@ -687,6 +691,37 @@ final class TrackGradeAppModel {
         }
     }
 
+    func setPreviewSource(
+        id: UUID,
+        source: ColorBoxPreviewSource
+    ) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                let current = snapshot.pipelineState
+                snapshot.pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: current?.bypassEnabled ?? false,
+                    falseColorEnabled: current?.falseColorEnabled ?? false,
+                    previewSource: source,
+                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                    gradeControl: current?.gradeControl ?? .identity,
+                    lastRecalledPresetSlot: current?.lastRecalledPresetSlot
+                )
+                snapshot.previewByteCount = snapshot.previewFrameData?.count ?? 0
+            }
+            return
+        }
+
+        do {
+            let snapshot = try await deviceManager.setPreviewSource(
+                id: id,
+                source: source
+            )
+            handleAuthenticationPromptIfNeeded(for: snapshot)
+        } catch {
+            errorMessage = "Failed to update the preview source: \(error.localizedDescription)"
+        }
+    }
+
     func updateGradeControl(
         id: UUID,
         gradeControl: ColorBoxGradeControlState
@@ -698,6 +733,7 @@ final class TrackGradeAppModel {
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: current?.bypassEnabled ?? false,
                     falseColorEnabled: current?.falseColorEnabled ?? false,
+                    previewSource: current?.previewSource ?? .output,
                     dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
                     gradeControl: gradeControl,
                     lastRecalledPresetSlot: current?.lastRecalledPresetSlot
@@ -875,6 +911,7 @@ final class TrackGradeAppModel {
                     snapshot.pipelineState = ColorBoxPipelineState(
                         bypassEnabled: current?.bypassEnabled ?? false,
                         falseColorEnabled: current?.falseColorEnabled ?? false,
+                        previewSource: current?.previewSource ?? .output,
                         dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
                         gradeControl: storedGrade ?? current?.gradeControl ?? .identity,
                         lastRecalledPresetSlot: slot
@@ -1599,6 +1636,7 @@ final class TrackGradeAppModel {
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: isBypassed,
                     falseColorEnabled: current?.falseColorEnabled ?? false,
+                    previewSource: current?.previewSource ?? .output,
                     dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
                     gradeControl: current?.gradeControl ?? .identity,
                     lastRecalledPresetSlot: current?.lastRecalledPresetSlot
