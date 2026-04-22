@@ -5,6 +5,7 @@
 - `swift test` validates the shared `TrackGradeCore` package, mock-server integration, generated OpenAPI client smoke coverage, and trackball mapping helpers.
 - `xcodebuild test` now runs a real `TrackGradeUITests` bundle against the iPad app.
 - The UI tests launch TrackGrade with the `-ui-test-fixture` argument so the app seeds an in-memory ColorBox snapshot and never depends on live hardware.
+- The UI tests explicitly rotate the simulator to landscape before assertions so the automated checks match the app's fixed landscape operating mode.
 
 ## Offline Fixture Mode
 
@@ -14,6 +15,7 @@
   - seeds one connected fixture ColorBox
   - keeps preset mutations in local fixture state
   - allows bypass, settings, and preset-save flows to run without LAN or hardware access
+  - exercises the slide-over secondary-controls drawer in the same app shell used for live grading
 
 ## Simulator Test Command
 

@@ -13,7 +13,7 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Control Surface"].exists)
         XCTAssertTrue(app.staticTexts["Saturation"].exists)
         XCTAssertTrue(app.switches["bypass-toggle"].exists)
-        XCTAssertTrue(app.buttons["save-preset-button"].exists)
+        XCTAssertTrue(app.buttons["secondary-controls-button"].exists)
     }
 
     func testBypassToggleMutatesFixtureState() throws {
@@ -41,6 +41,10 @@ final class TrackGradeUITests: XCTestCase {
     func testSavingPresetAddsFixturePresetCard() throws {
         let app = launchFixtureApp()
 
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+
         let savePresetButton = app.buttons["save-preset-button"]
         XCTAssertTrue(savePresetButton.waitForExistence(timeout: 5))
         savePresetButton.tap()
@@ -58,6 +62,7 @@ final class TrackGradeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-test-fixture")
         app.launch()
+        XCUIDevice.shared.orientation = .landscapeLeft
         return app
     }
 

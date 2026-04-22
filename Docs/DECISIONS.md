@@ -401,3 +401,21 @@ For the next Phase 2 UI pass:
 - The current stacked-card layout is a temporary implementation and should be treated as transitional.
 - The next UI refactor should optimize for a fixed live-operation surface rather than for inspector-style content flow.
 - Secondary controls may become less immediately exposed, but the core grading gestures and their state readout should become faster to operate in show conditions.
+
+## 2026-04-21 — Keep Bypass In The Main Bar And Move Presets / Secondary Actions Into A Drawer
+
+### Context
+
+The static-layout refactor needed to preserve immediate access to the MVP-critical bypass toggle while still reclaiming enough room for the grading surface, visible reset controls, and compact telemetry.
+
+### Decision
+
+- Keep the bypass toggle in the always-visible main control bar.
+- Move presets, false color, refresh / configure actions, and similar secondary operations into a slide-over drawer.
+- Keep device and pipeline telemetry as compact side panels around the centered LGG / Saturation state display.
+
+### Consequences
+
+- The main grading surface stays fixed and uncluttered while still exposing the highest-priority show control.
+- Offline UI tests need to open the drawer before preset assertions instead of assuming all secondary actions remain visible at launch.
+- Real-hardware validation should focus on whether the drawer still feels fast enough during operation or whether any secondary controls need promotion back to the main surface.

@@ -6,176 +6,125 @@ struct GradeFeatureView: View {
     let device: ManagedColorBoxDevice
 
     @State private var isShowingSettings = false
+    @State private var isShowingControlsDrawer = false
     @AppStorage(TrackGradeSettingsKey.hapticsEnabled) private var hapticsEnabled = true
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                deviceSummaryCard
-                actionCard
-                gradeCard
-                toggleCard
-                previewCard
-                PresetsFeatureView(
-                    model: model,
-                    device: device
-                )
-            }
-            .padding(24)
-        }
-        .background(Color(uiColor: .systemGroupedBackground))
-        .navigationTitle(device.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    emitButtonHaptic()
-                    isShowingSettings = true
-                } label: {
-                    Label("Settings", systemImage: "gearshape.fill")
+        GeometryReader { proxy in
+            ZStack(alignment: .trailing) {
+                surfaceBackground
+                    .ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 16) {
+                    controlBar
+                    DynamicGradeControlsCard(
+                        model: model,
+                        device: device,
+                        availableSize: proxy.size
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .accessibilityIdentifier("grade-settings-button")
+                .padding(20)
+
+                if isShowingControlsDrawer {
+                    Color.black.opacity(0.2)
+                        .ignoresSafeArea()
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            emitButtonHaptic()
+                            isShowingControlsDrawer = false
+                        }
+
+                    SecondaryControlsDrawer(
+                        model: model,
+                        device: device,
+                        falseColorUnsupportedMessage: falseColorUnsupportedMessage,
+                        closeAction: {
+                            emitButtonHaptic()
+                            isShowingControlsDrawer = false
+                        }
+                    )
+                    .frame(width: drawerWidth(for: proxy.size))
+                    .padding(.trailing, 20)
+                    .padding(.vertical, 20)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
+            .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isShowingControlsDrawer)
         }
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $isShowingSettings) {
             SettingsFeatureView(deviceName: device.name)
         }
     }
 
-    private var deviceSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Device State")
-                .font(.title3.weight(.bold))
+    private var controlBar: some View {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(device.name)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
 
-            LabeledContent("Address", value: device.address)
-            LabeledContent("Connection", value: device.connectionState.rawValue.capitalized)
-            if let productName = device.systemInfo?.productName {
-                LabeledContent("Product", value: productName)
+                HStack(spacing: 8) {
+                    ConnectionStateBadge(state: device.connectionState)
+                    Text(device.address)
+                        .font(.system(size: 15, weight: .regular, design: .monospaced))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .lineLimit(1)
+                }
             }
-            if let serialNumber = device.systemInfo?.serialNumber {
-                LabeledContent("Serial", value: serialNumber)
-            }
-            if let firmwareVersion = device.firmwareInfo?.version {
-                LabeledContent("Firmware", value: firmwareVersion)
-            }
-            if let dynamicLUTMode = device.pipelineState?.dynamicLUTMode {
-                LabeledContent("3D LUT Node", value: dynamicLUTMode.capitalized)
-            }
-            LabeledContent("Preview", value: "\(device.previewByteCount) bytes")
-        }
-        .cardStyle()
-    }
 
-    private var actionCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Connection")
-                .font(.title3.weight(.bold))
+            Spacer(minLength: 16)
 
             HStack(spacing: 12) {
-                Button("Connect") {
-                    Task {
-                        await model.connect(to: device.id)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
+                Text("Bypass")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.86))
 
-                Button("Refresh") {
-                    Task {
-                        await model.refreshDevice(id: device.id)
-                    }
-                }
-                .buttonStyle(.bordered)
-
-                Button("Preview") {
-                    Task {
-                        await model.refreshPreview(id: device.id)
-                    }
-                }
-                .buttonStyle(.bordered)
-
-                Button("Auth") {
-                    model.promptForAuthentication(deviceID: device.id)
-                }
-                .buttonStyle(.bordered)
-            }
-
-            Button("Configure Node 4 as Dynamic 3D LUT") {
-                Task {
-                    await model.configurePipeline(id: device.id)
-                }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .cardStyle()
-    }
-
-    private var gradeCard: some View {
-        DynamicGradeControlsCard(
-            model: model,
-            device: device
-        )
-    }
-
-    private var toggleCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Pipeline Toggles")
-                .font(.title3.weight(.bold))
-
-            Toggle(
-                "Bypass",
-                isOn: Binding(
-                    get: { device.pipelineState?.bypassEnabled ?? false },
-                    set: { isEnabled in
-                        emitButtonHaptic()
-                        Task {
-                            await model.setBypass(
-                                id: device.id,
-                                enabled: isEnabled
-                            )
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { device.pipelineState?.bypassEnabled ?? false },
+                        set: { isEnabled in
+                            emitButtonHaptic()
+                            Task {
+                                await model.setBypass(
+                                    id: device.id,
+                                    enabled: isEnabled
+                                )
+                            }
                         }
-                    }
+                    )
                 )
-            )
-            .accessibilityIdentifier("bypass-toggle")
-
-            Toggle(
-                "False Color",
-                isOn: Binding(
-                    get: { device.pipelineState?.falseColorEnabled ?? false },
-                    set: { isEnabled in
-                        emitButtonHaptic()
-                        Task {
-                            await model.setFalseColor(
-                                id: device.id,
-                                enabled: isEnabled
-                            )
-                        }
-                    }
-                )
-            )
-            .disabled(device.supportsFalseColor == false)
-            .accessibilityIdentifier("false-color-toggle")
-
-            if device.supportsFalseColor == false {
-                Text(falseColorUnsupportedMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                .labelsHidden()
+                .tint(.orange)
+                .accessibilityIdentifier("bypass-toggle")
             }
-        }
-        .cardStyle()
-    }
 
-    private var previewCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Preview")
-                .font(.title3.weight(.bold))
+            Button {
+                emitButtonHaptic()
+                isShowingControlsDrawer.toggle()
+            } label: {
+                Label("Controls", systemImage: "slider.horizontal.3")
+                    .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.bordered)
+            .tint(.white.opacity(0.18))
+            .accessibilityIdentifier("secondary-controls-button")
 
-            PreviewFeatureView(
-                imageData: device.previewFrameData,
-                byteCount: device.previewByteCount
-            )
+            Button {
+                emitButtonHaptic()
+                isShowingSettings = true
+            } label: {
+                Label("Settings", systemImage: "gearshape.fill")
+                    .labelStyle(.iconOnly)
+            }
+            .buttonStyle(.bordered)
+            .tint(.white.opacity(0.18))
+            .accessibilityIdentifier("grade-settings-button")
         }
-        .cardStyle()
+        .padding(18)
+        .surfacePanelStyle(cornerRadius: 26)
     }
 
     private var falseColorUnsupportedMessage: String {
@@ -191,6 +140,29 @@ struct GradeFeatureView: View {
         Task { @MainActor in
             HapticsCoordinator.shared.emitButtonPress(isEnabled: hapticsEnabled)
         }
+    }
+
+    private var surfaceBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 0.07, green: 0.09, blue: 0.12),
+                Color(red: 0.12, green: 0.15, blue: 0.19),
+                Color(red: 0.18, green: 0.19, blue: 0.16),
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .overlay(alignment: .topTrailing) {
+            Circle()
+                .fill(Color.orange.opacity(0.12))
+                .frame(width: 280, height: 280)
+                .blur(radius: 30)
+                .offset(x: 110, y: -90)
+        }
+    }
+
+    private func drawerWidth(for size: CGSize) -> CGFloat {
+        min(380, max(320, size.width * 0.4))
     }
 }
 
@@ -221,6 +193,7 @@ private enum GradeEditorTarget: String, Identifiable {
 private struct DynamicGradeControlsCard: View {
     @Bindable var model: TrackGradeAppModel
     let device: ManagedColorBoxDevice
+    let availableSize: CGSize
 
     @State private var draftGrade: ColorBoxGradeControlState
     @State private var liftState: ColorBoxTrackballState
@@ -245,10 +218,12 @@ private struct DynamicGradeControlsCard: View {
 
     init(
         model: TrackGradeAppModel,
-        device: ManagedColorBoxDevice
+        device: ManagedColorBoxDevice,
+        availableSize: CGSize
     ) {
         self.model = model
         self.device = device
+        self.availableSize = availableSize
 
         let initialGrade = device.pipelineState?.gradeControl ?? .identity
         _draftGrade = State(initialValue: initialGrade)
@@ -258,17 +233,21 @@ private struct DynamicGradeControlsCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .top) {
+        let telemetryWidth = min(188, max(136, availableSize.width * 0.17))
+        let trackballHeight = min(244, max(188, availableSize.height * 0.3))
+
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Control Surface")
                         .font(.title3.weight(.bold))
-                    Text("Trackball, ring, and roller gestures drive the current `pipelineStages` grading path directly.")
+                        .foregroundStyle(.white)
+                    Text("Static landscape layout with visible reset controls and compact telemetry.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.white.opacity(0.66))
                 }
 
-                Spacer()
+                Spacer(minLength: 12)
 
                 DoubleTapActionChip(
                     title: "Reset All",
@@ -283,20 +262,67 @@ private struct DynamicGradeControlsCard: View {
                 }
             }
 
-            GradeStateDisplay(
-                grade: draftGrade,
-                previewFrameData: device.previewFrameData,
-                onEdit: { target in
-                    activeEditor = target
-                },
-                onRefreshPreview: {
-                    Task {
-                        await model.refreshPreview(id: device.id)
+            HStack(alignment: .top, spacing: 14) {
+                SurfaceInfoPanel(title: "Device") {
+                    SurfaceMetricRow(label: "Connection", value: device.connectionState.rawValue.capitalized)
+                    SurfaceMetricRow(label: "Address", value: device.address)
+                    SurfaceMetricRow(label: "Product", value: device.systemInfo?.productName ?? "ColorBox")
+                    SurfaceMetricRow(label: "Firmware", value: device.firmwareInfo?.version ?? "Unavailable")
+                    SurfaceMetricRow(label: "Serial", value: device.systemInfo?.serialNumber ?? "Unavailable")
+                }
+                .frame(width: telemetryWidth)
+
+                GradeStateDisplay(
+                    grade: draftGrade,
+                    previewFrameData: device.previewFrameData,
+                    onEdit: { target in
+                        activeEditor = target
+                    },
+                    onRefreshPreview: {
+                        Task {
+                            await model.refreshPreview(id: device.id)
+                        }
                     }
+                )
+                .frame(maxWidth: .infinity)
+
+                SurfaceInfoPanel(title: "Pipeline") {
+                    SurfaceMetricRow(
+                        label: "3D LUT Node",
+                        value: device.pipelineState?.dynamicLUTMode.capitalized ?? "Unknown"
+                    )
+                    SurfaceMetricRow(
+                        label: "Preview",
+                        value: "\(device.previewByteCount) B"
+                    )
+                    SurfaceMetricRow(
+                        label: "False Color",
+                        value: falseColorStatus
+                    )
+                    SurfaceMetricRow(
+                        label: "Last Preset",
+                        value: lastPresetValue
+                    )
+                    SurfaceMetricRow(
+                        label: "Bypass",
+                        value: (device.pipelineState?.bypassEnabled ?? false) ? "On" : "Off"
+                    )
+                }
+                .frame(width: telemetryWidth)
+            }
+
+            SaturationRollerView(
+                value: Double(draftGrade.saturation),
+                sensitivity: saturationSensitivity,
+                onEvent: handleSaturationEvent,
+                onReset: {
+                    emitButtonHaptic()
+                    draftGrade.saturation = 1
+                    pushGradeControlImmediately(successHaptic: true)
                 }
             )
 
-            HStack(alignment: .top, spacing: 20) {
+            HStack(alignment: .top, spacing: 14) {
                 TrackballClusterView(
                     title: "Lift",
                     kind: .lift,
@@ -304,6 +330,7 @@ private struct DynamicGradeControlsCard: View {
                     renderedVector: draftGrade.lift,
                     ballSensitivity: liftBallSensitivity,
                     ringSensitivity: liftRingSensitivity,
+                    surfaceHeight: trackballHeight,
                     onBallEvent: handleLiftBall,
                     onRingEvent: handleLiftRing,
                     onResetBall: {
@@ -325,6 +352,7 @@ private struct DynamicGradeControlsCard: View {
                     renderedVector: draftGrade.gamma,
                     ballSensitivity: gammaBallSensitivity,
                     ringSensitivity: gammaRingSensitivity,
+                    surfaceHeight: trackballHeight,
                     onBallEvent: handleGammaBall,
                     onRingEvent: handleGammaRing,
                     onResetBall: {
@@ -346,6 +374,7 @@ private struct DynamicGradeControlsCard: View {
                     renderedVector: draftGrade.gain,
                     ballSensitivity: gainBallSensitivity,
                     ringSensitivity: gainRingSensitivity,
+                    surfaceHeight: trackballHeight,
                     onBallEvent: handleGainBall,
                     onRingEvent: handleGainRing,
                     onResetBall: {
@@ -360,19 +389,9 @@ private struct DynamicGradeControlsCard: View {
                     }
                 )
             }
-
-            SaturationRollerView(
-                value: Double(draftGrade.saturation),
-                sensitivity: saturationSensitivity,
-                onEvent: handleSaturationEvent,
-                onReset: {
-                    emitButtonHaptic()
-                    draftGrade.saturation = 1
-                    pushGradeControlImmediately(successHaptic: true)
-                }
-            )
         }
-        .cardStyle()
+        .padding(20)
+        .surfacePanelStyle(cornerRadius: 30)
         .accessibilityIdentifier("dynamic-grade-card")
         .sheet(item: $activeEditor) { target in
             NumericGradeEditorSheet(
@@ -398,6 +417,22 @@ private struct DynamicGradeControlsCard: View {
         .onDisappear {
             pendingUpdateTask?.cancel()
         }
+    }
+
+    private var falseColorStatus: String {
+        if device.supportsFalseColor == false {
+            return "Unsupported"
+        }
+
+        return (device.pipelineState?.falseColorEnabled ?? false) ? "On" : "Off"
+    }
+
+    private var lastPresetValue: String {
+        guard let slot = device.pipelineState?.lastRecalledPresetSlot else {
+            return "—"
+        }
+
+        return "Slot \(slot)"
     }
 
     private func handleLiftBall(
@@ -702,6 +737,232 @@ private enum TrackballSurfaceKind: String {
     }
 }
 
+private struct SecondaryControlsDrawer: View {
+    @Bindable var model: TrackGradeAppModel
+    let device: ManagedColorBoxDevice
+    let falseColorUnsupportedMessage: String
+    let closeAction: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Secondary Controls")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text("Device actions, optional toggles, and ColorBox presets.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.68))
+                }
+
+                Spacer()
+
+                Button(action: closeAction) {
+                    Image(systemName: "xmark")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.08), in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            DrawerActionGrid(
+                connectAction: {
+                    Task {
+                        await model.connect(to: device.id)
+                    }
+                },
+                refreshAction: {
+                    Task {
+                        await model.refreshDevice(id: device.id)
+                    }
+                },
+                previewAction: {
+                    Task {
+                        await model.refreshPreview(id: device.id)
+                    }
+                },
+                configureAction: {
+                    Task {
+                        await model.configurePipeline(id: device.id)
+                    }
+                },
+                authAction: {
+                    model.promptForAuthentication(deviceID: device.id)
+                }
+            )
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Optional Pipeline Controls")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                Toggle(
+                    "False Color",
+                    isOn: Binding(
+                        get: { device.pipelineState?.falseColorEnabled ?? false },
+                        set: { isEnabled in
+                            Task {
+                                await model.setFalseColor(
+                                    id: device.id,
+                                    enabled: isEnabled
+                                )
+                            }
+                        }
+                    )
+                )
+                .tint(.orange)
+                .foregroundStyle(.white)
+                .disabled(device.supportsFalseColor == false)
+                .accessibilityIdentifier("false-color-toggle")
+
+                if device.supportsFalseColor == false {
+                    Text(falseColorUnsupportedMessage)
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.68))
+                }
+            }
+            .padding(16)
+            .surfacePanelStyle(cornerRadius: 24)
+
+            PresetsFeatureView(
+                model: model,
+                device: device,
+                style: .drawer
+            )
+
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .surfacePanelStyle(cornerRadius: 30)
+    }
+}
+
+private struct DrawerActionGrid: View {
+    let connectAction: () -> Void
+    let refreshAction: () -> Void
+    let previewAction: () -> Void
+    let configureAction: () -> Void
+    let authAction: () -> Void
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+            DrawerActionButton(title: "Connect", systemImage: "link", tint: .orange, action: connectAction)
+            DrawerActionButton(title: "Refresh", systemImage: "arrow.clockwise", tint: .blue, action: refreshAction)
+            DrawerActionButton(title: "Preview", systemImage: "photo", tint: .teal, action: previewAction)
+            DrawerActionButton(title: "Configure", systemImage: "cube.transparent", tint: .mint, action: configureAction)
+            DrawerActionButton(title: "Auth", systemImage: "key.fill", tint: .pink, action: authAction)
+        }
+    }
+}
+
+private struct DrawerActionButton: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .imageScale(.medium)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .foregroundStyle(.white)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(tint.opacity(0.22))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SurfaceInfoPanel<Content: View>: View {
+    let title: String
+    let content: Content
+
+    init(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+
+            VStack(alignment: .leading, spacing: 10) {
+                content
+            }
+        }
+        .padding(16)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .surfacePanelStyle(cornerRadius: 24)
+    }
+}
+
+private struct SurfaceMetricRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.56))
+                .textCase(.uppercase)
+            Text(value)
+                .font(.system(size: 15, weight: .regular, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.92))
+                .lineLimit(2)
+        }
+    }
+}
+
+private struct ConnectionStateBadge: View {
+    let state: ConnectionState
+
+    var body: some View {
+        Text(state.rawValue.capitalized)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(badgeColor.gradient, in: Capsule())
+    }
+
+    private var badgeColor: Color {
+        switch state {
+        case .connected:
+            return .green
+        case .connecting:
+            return .blue
+        case .degraded:
+            return .orange
+        case .error:
+            return .red
+        case .disconnected:
+            return .gray
+        }
+    }
+}
+
 private struct GradeStateDisplay: View {
     let grade: ColorBoxGradeControlState
     let previewFrameData: Data?
@@ -711,8 +972,9 @@ private struct GradeStateDisplay: View {
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("State Display")
+                Text("LGG / Saturation")
                     .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
 
                 NumericDisplayRow(
                     label: "Lift",
@@ -744,7 +1006,7 @@ private struct GradeStateDisplay: View {
 
                 Text("Tap any row to edit values numerically.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.66))
             }
 
             Spacer(minLength: 0)
@@ -756,10 +1018,7 @@ private struct GradeStateDisplay: View {
             .frame(width: 140, height: 92)
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.black.opacity(0.92))
-        )
+        .surfacePanelStyle(cornerRadius: 28)
         .accessibilityIdentifier("grade-state-display")
     }
 
@@ -783,7 +1042,7 @@ private struct NumericDisplayRow: View {
             HStack {
                 Text(label)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(.white.opacity(0.84))
 
                 Spacer()
 
@@ -833,6 +1092,10 @@ private struct PreviewThumbnail: View {
                 .padding(8)
         }
         .onLongPressGesture(perform: refreshAction)
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
     }
 }
 
@@ -843,6 +1106,7 @@ private struct TrackballClusterView: View {
     let renderedVector: ColorBoxRGBVector
     let ballSensitivity: Double
     let ringSensitivity: Double
+    let surfaceHeight: CGFloat
     let onBallEvent: (SimultaneousTouchEvent, CGSize) -> Void
     let onRingEvent: (SimultaneousTouchEvent, CGSize) -> Void
     let onResetBall: () -> Void
@@ -853,10 +1117,11 @@ private struct TrackballClusterView: View {
             HStack {
                 Text(title)
                     .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
                 Spacer()
                 Text("B \(ballSensitivity, specifier: "%.2fx")  R \(ringSensitivity, specifier: "%.2fx")")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.6))
             }
 
             GeometryReader { proxy in
@@ -893,7 +1158,7 @@ private struct TrackballClusterView: View {
                 .accessibilityLabel(Text("\(title) trackball"))
                 .accessibilityIdentifier(kind.accessibilityIdentifier)
             }
-            .frame(minHeight: 220)
+            .frame(height: surfaceHeight)
 
             HStack(spacing: 10) {
                 DoubleTapActionChip(
@@ -913,6 +1178,8 @@ private struct TrackballClusterView: View {
                 )
             }
         }
+        .padding(16)
+        .surfacePanelStyle(cornerRadius: 24)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -1044,12 +1311,14 @@ private struct SaturationRollerView: View {
             HStack {
                 Text("Saturation")
                     .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
                 Spacer()
                 Text("\(sensitivity, specifier: "%.2fx")")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.6))
                 Text(String(format: "%.2f", value))
                     .font(.body.monospacedDigit())
+                    .foregroundStyle(.white)
             }
 
             GeometryReader { proxy in
@@ -1058,7 +1327,7 @@ private struct SaturationRollerView: View {
 
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Color.black.opacity(0.08))
+                        .fill(Color.black.opacity(0.2))
 
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(
@@ -1096,7 +1365,7 @@ private struct SaturationRollerView: View {
             HStack {
                 Text("0.00")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.6))
                 Spacer()
                 DoubleTapActionChip(
                     title: "Reset To 1.00",
@@ -1108,9 +1377,11 @@ private struct SaturationRollerView: View {
                 Spacer()
                 Text("2.00")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.6))
             }
         }
+        .padding(16)
+        .surfacePanelStyle(cornerRadius: 24)
     }
 }
 
@@ -1123,13 +1394,13 @@ private struct DoubleTapActionChip: View {
 
     var body: some View {
         Text(requiresExplicitLabel ? "\(title) (double-tap)" : title)
-            .font(.footnote.weight(.semibold))
+            .font(.callout.weight(.semibold))
             .foregroundStyle(tint)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 10)
             .background(
                 Capsule(style: .continuous)
-                    .fill(tint.opacity(0.12))
+                    .fill(tint.opacity(0.18))
             )
             .contentShape(Capsule())
             .onTapGesture(count: 2, perform: action)
@@ -1372,6 +1643,17 @@ private extension Float {
 }
 
 extension View {
+    func surfacePanelStyle(cornerRadius: CGFloat) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color(red: 0.1, green: 0.12, blue: 0.16).opacity(0.9))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
+    }
+
     func cardStyle() -> some View {
         padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)

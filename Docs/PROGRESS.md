@@ -40,30 +40,22 @@
 - `TrackGrade.xcodeproj` now contains a real `TrackGradeUITests` target, and `xcodebuild test` covers fixture-backed launch, bypass toggle, settings-sheet launch, and preset-save flows on the iPad simulator.
 - `Docs/PHASE-2-TESTING.md` now records the offline fixture path, simulator command, and the remaining manual checklist for simultaneous multi-touch and hardware feel validation.
 - `App/Info.plist` now includes placeholder `UILaunchScreen` metadata so the iPad app shell stays ahead of the simulator launch-screen requirement.
+- The grading screen has now been refactored into a fixed landscape surface with no vertical scroll: compact device and pipeline telemetry flank a top-center LGG / Saturation state window, saturation sits above the trackballs, reset controls remain visible, and presets / secondary actions live in a slide-over drawer.
+- The offline fixture-backed UI suite was updated for the drawer flow and now explicitly rotates the simulator to landscape before assertions, keeping the automated checks aligned with the app’s landscape-only product shape.
+- A manual simulator sanity check confirmed the new static grading surface composes correctly in fixture mode without needing live ColorBox hardware.
 
 ## In-Flight Work
 
-- Closing the remaining Phase 2 acceptance gap around true simultaneous multi-touch and real-device feel, which XCUITest still cannot validate end to end on its own.
-- Applying the first round of layout feedback from live UI review:
-  - remove vertical scrolling and keep the grading interface static in landscape
-  - collapse telemetry into compact regions instead of large stacked cards
-  - allow bypass, presets, and similar secondary actions to move into a drawer
-  - move the LGG/S state display into a smaller top-center window and use the side areas for secondary device telemetry
-  - move saturation above the trackballs
-  - make the LGG/S reset affordances clearly visible in the main layout
+- Closing the remaining Phase 2 acceptance gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live-hardware confirmation on an iPad paired to the ColorBox.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
-- True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware even though the offline fixture-backed UI suite is now in place.
+- True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
 
 ## Next Steps
 
-- Refactor the grading screen into a fixed landscape layout with no vertical scroll.
-- Compress the telemetry layout and promote the compact top-center LGG/S state window.
-- Rework secondary actions such as bypass and presets into a drawer-oriented presentation if the static layout needs the space.
-- Move the saturation control above the trackball row.
-- Ensure reset controls for Lift / Gamma / Gain / Saturation are immediately visible and legible in the static layout.
-- Run the manual checklist in `Docs/PHASE-2-TESTING.md` once an iPad and ColorBox are available together again.
-- Tune the gesture surface against real hardware if any sensitivity adjustments emerge during manual grading.
+- Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
+- Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
+- Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Decide whether Phase 2 acceptance is satisfied with the new offline UI suite plus manual multi-touch validation, or whether another automation pass is needed before moving on.
