@@ -12,7 +12,6 @@
 
 ## TODO
 
-- Decide whether AMF multi-file import through the device’s separate upload path is worth implementing for the first public release.
 - Decide whether the mock-validated baked dynamic-LUT upload path should remain internal until a live grading workflow based on uploads is intentionally adopted.
 
 ## Live Endpoint Surface
@@ -39,6 +38,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 | AMF library | `GET` | `/v2/amfLibrary` | Returns the AMF slot array |
 | Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
 | LUT upload | `POST` | `/v2/upload` | Multipart form upload with `kind` such as `lut_3d`; route verified live for library import semantics |
+| AMF upload | `POST` | `/v2/uploadMultiple` | Multipart form upload with repeated `file` parts plus `kind=amf`, `entry`, and `selection` |
 | Save current dynamic LUT | `POST` | `/v2/saveDynamicLutRequest` | Live route verified; required before preset store when the current dynamic grade should survive recall |
 
 ## Divergences From The Provisional Wrapper
@@ -69,7 +69,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
 | Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
 | Device library read | `GET` the corresponding `/v2/*Library` endpoint, then pad the returned entries to a 16-slot UI model |
-| Device library import / replace | `POST /v2/upload` multipart form with `kind`, `entry`, and `file`, then refresh the corresponding `/v2/*Library` endpoint |
+| Device library import / replace | Single-file kinds use `POST /v2/upload`; AMF uses `POST /v2/uploadMultiple` with repeated `file` parts plus `selection`, then refresh the corresponding `/v2/*Library` endpoint |
 | Device library rename | `PUT /v2/libraryControl` with `SetUserName`, then refresh the corresponding `/v2/*Library` endpoint |
 | Device library delete | `PUT /v2/libraryControl` with `DeleteEntry`, then refresh the corresponding `/v2/*Library` endpoint |
 | Dynamic LUT upload queue | Mock-verified via `PUT /pipeline/aja/nodes/3dlut/dynamic` with `X-TrackGrade-Sequence`; retained as an offline / compatibility path while the shipping live grading route remains `pipelineStages` |
@@ -104,7 +104,9 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
   - `DeleteEntry` to remove it from the library
 - A successful cleanup probe uploaded an identity `.cube` file to slot 4, renamed it to `TrackGrade Live Probe`, verified the renamed slot in `GET /v2/3dLutLibrary`, and then deleted it cleanly.
 - The app now uses the same live-verified upload / rename / delete contract for 1D LUT, 3D LUT, matrix, image, and overlay libraries.
-- `GET /v2/amfLibrary` is also now part of TrackGrade’s surfaced library browser, but AMF import remains deferred because the device uses a separate multi-file upload contract.
+- The app now also implements the separate AMF multi-file upload contract from the committed OpenAPI document: `POST /v2/uploadMultiple` with repeated `file` parts, `kind=amf`, `entry=<slot>`, and `selection=<chosen .amf file>`.
+- TrackGrade uses the selected `.amf` filename as the library entry that should be stored on-device, while still sending any companion files in the same multipart request.
+- Live AMF verification is still pending: after the feature landed, the reference ColorBox timed out during the first direct `/v2/uploadMultiple` probe, so the repo currently only claims mock / contract validation for this path.
 - Reversible live integration tests now pass against the reference box for:
   - grade / bypass / preview round-trips
   - preset save / recall / delete

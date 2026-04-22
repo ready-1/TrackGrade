@@ -518,6 +518,28 @@ Split the secondary drawer into three fixed panels selected by a segmented contr
 
 - The main grading surface and the secondary drawer can both stay fixed-height without hiding controls below the fold.
 - Offline UI tests now have an explicit, deterministic navigation path to each secondary function.
+
+## 2026-04-22 — Shift The Grade Surface Toward A Compact Hardware-Panel Visual Language
+
+### Context
+
+The latest live iPad feedback and a newly supplied visual reference both point in the same direction: the current grade surface still reads too much like an app dashboard and not enough like a dedicated control panel. The operator wants a compact, business-like presentation with less duplicated telemetry, a denser central status window, and more of the screen reserved for the primary grading controls.
+
+### Decision
+
+For the next grade-surface refactor:
+
+- Favor a compact hardware-panel look over card-heavy dashboard styling.
+- Keep the main surface focused on color status and control affordances, not device metadata.
+- Use a small centered state window for LGG / saturation status.
+- Push lower-priority device details into the sidebar or drawer instead of the main surface.
+- Keep the trackballs visually dominant and treat secondary controls as compact transport-style actions around them.
+
+### Consequences
+
+- The current main bar and grade-panel styling should be treated as transitional.
+- Further UI work should optimize for operator scanning speed and touch efficiency before decorative depth or large typography.
+- The sidebar and drawer become the home for most connection and hardware facts, while the primary surface becomes almost entirely grading-centric.
 - Real-hardware validation should confirm that segmented drawer switching still feels quick enough during operation.
 
 ## 2026-04-21 — Seed Offline UI Fixtures Through SwiftData Instead Of Memory-Only Snapshot State
@@ -730,3 +752,24 @@ Bias the iPad shell toward a control-first landscape surface:
 - The main UI will prioritize LGG / saturation state and touch controls over infrastructure details.
 - Secondary device-management actions remain available, but no longer justify permanent space on the grading surface.
 - Layout refactors should be judged primarily by whether the trackballs and core state fit comfortably on a single iPad landscape screen.
+
+## 2026-04-22 — Support AMF Import Through `/v2/uploadMultiple` While Keeping Live Validation Explicitly Pending
+
+### Context
+
+The library feature had already grown into a real slot-based management surface, but AMF remained the last import gap because the ColorBox exposes it through a different contract than the single-file asset kinds. The committed OpenAPI spec defines `POST /v2/uploadMultiple` for `kind=amf`, including a `selection` field that identifies which uploaded `.amf` file should become the stored library entry.
+
+### Decision
+
+Implement AMF import in TrackGrade using the dedicated multi-file path:
+
+- the app can now select multiple files for AMF import
+- the client uses `POST /v2/uploadMultiple` with repeated `file` parts plus `kind`, `entry`, and `selection`
+- the mock server and package integration tests cover the AMF upload / delete lifecycle
+- live verification remains a separate step and should only be claimed once the reference ColorBox is reachable again
+
+### Consequences
+
+- TrackGrade no longer treats AMF as browse-only in the product surface.
+- The library plumbing now supports both single-file and multi-file device asset imports without forking the feature UX.
+- Repo docs must clearly distinguish between the new offline/mock-verified AMF support and the still-pending live hardware proof for `/v2/uploadMultiple`.

@@ -79,6 +79,9 @@
 - A follow-up live probe confirmed that TrackGrade can upload a `3D LUT` asset, point `lut3d_1` at a library slot with `dynamic = false`, and read that stage configuration back successfully. The reference test box appears to have no active signal right now, so identical preview hashes for `INPUT` and `OUTPUT` are no longer treated as negative evidence against the uploaded-LUT path; visual confirmation just still needs an active feed.
 - The grading shell now uses a closable overlay device drawer instead of a permanent split view, the main color surface is compressed to a single static landscape page, duplicated device telemetry has been removed from the primary surface, and lower-priority ColorBox metadata now lives in the drawer’s device panel.
 - The device drawer now has a reliable dismiss path for both users and automation, device-action buttons are stacked so labels remain readable on iPad, and the fixture UI suite now covers the revised drawer and gang-selection flow.
+- TrackGrade now supports AMF library import through the dedicated multi-file `/v2/uploadMultiple` path in the app, client, and mock server, with package coverage proving AMF package upload and delete behavior offline.
+- A new live design reference from the user now sets the preferred visual direction for the grading surface: compact, business-like, control-first, with a centered status window, minimal chrome, and drawer-based access to secondary device details.
+- The main grading surface has now been reshaped toward that compact hardware-panel direction: matte industrial styling, a small centered LGG / saturation state window, compact preview and status side panels, visually dominant trackballs, and reduced on-surface telemetry while keeping the drawer-based workflow intact.
 
 ## In-Flight Work
 
@@ -89,7 +92,7 @@
 - Using the restored production network window to finish as much live hardware validation as possible beyond the now-confirmed preset timing fix.
 - Using the restored production network window to finish the remaining iPad-only touch validation and any extra contract probing now that repeatable live backend tests exist in the repo.
 - Finishing the release-facing accessibility and documentation pass now that preview controls, diagnostics export, notices, and preset workflow polish are in place.
-- Deciding whether AMF multi-file import is worth implementing for the first release now that the single-file library workflow is live and stable.
+- Re-running live hardware probes for `/v2/uploadMultiple` once the reference ColorBox is reachable again, because the box timed out during the first AMF verification pass after the feature was implemented.
 
 ## Blockers
 
@@ -98,7 +101,7 @@
 - The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
 - The baked dynamic-LUT upload queue is still only mock-validated for live grading behavior, so the app continues to use the hardware-verified `pipelineStages` route for the control surface even though library asset import semantics are now verified on-device.
 - Visual confirmation of a library-selected uploaded LUT still needs an active signal on the reference ColorBox, because the current test box appears to be idle and therefore produces identical `INPUT` / `OUTPUT` preview hashes.
-- AMF import is still deferred because the device expects a separate `/v2/uploadMultiple` workflow that is not yet implemented in TrackGrade.
+- Live AMF verification is still pending because the reference ColorBox timed out during the first `/v2/uploadMultiple` probe after the feature landed.
 
 ## Next Steps
 
@@ -113,5 +116,5 @@
 - Re-run the new opt-in live integration tests whenever the reference firmware or network environment changes so hardware regressions are caught before manual iPad time.
 - Extend the passing accessibility audit work into broader VoiceOver / Dynamic Type / contrast verification beyond the current hit-region pass.
 - Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before a live grading workflow based on uploads is fully understood.
-- Decide whether to add AMF multi-file import now or leave AMF as browse / rename / delete only for the first release.
+- Validate AMF import against the real ColorBox as soon as the reference box is reachable again, using the committed official ACES sample package.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

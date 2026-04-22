@@ -74,6 +74,7 @@ Manual simulator checks:
 - Open the drawer and confirm the `Workflow`, `Presets`, and `Device` panels switch cleanly
 - Open the library browser and confirm seeded 16-slot library sections and entries appear
 - Confirm an empty supported library slot exposes an `Import` action
+- In fixture or mock-backed AMF flows, confirm the `.amf` payload is the selected import file even when companion files are present
 - Delete a seeded fixture library entry and confirm the slot returns to an empty importable state
 - Link at least two fixture peers from the device list and confirm bypass mirrors to them
 - Save and recall a snapshot from fixture mode
@@ -106,6 +107,7 @@ These checks still require a real iPad and the reference ColorBox.
 - Delete a preset and confirm it disappears from the device library
 - Verify local snapshots and scratch slots do not interfere with device-native preset behavior
 - Import a test asset into an empty 1D LUT, 3D LUT, matrix, image, or overlay slot, confirm it appears in the library, rename it, and then delete it cleanly
+- Import an AMF package through the multi-file picker, confirm the selected `.amf` file becomes the device library entry, and then delete it cleanly
 
 ### Gang Validation
 

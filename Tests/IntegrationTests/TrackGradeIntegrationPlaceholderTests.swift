@@ -333,6 +333,67 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertTrue(deletedEntry.isEmpty)
     }
 
+    func testManagerUploadsAndDeletesAMFPackageOnMockColorBox() async throws {
+        let application = try await makeApplication(port: 18087)
+        defer {
+            Task {
+                try? await application.asyncShutdown()
+            }
+        }
+
+        let manager = DeviceManager(retryPolicy: .testing)
+        let deviceID = try await manager.registerDevice(
+            name: "AMF Library Mock",
+            address: "http://127.0.0.1:18087"
+        )
+
+        let initialLibraries = try await manager.fetchLibraries(id: deviceID)
+        let initialAMFSection = try XCTUnwrap(
+            initialLibraries.first(where: { $0.kind == .amf })
+        )
+        XCTAssertTrue(
+            try XCTUnwrap(initialAMFSection.entries.first(where: { $0.slot == 2 })).isEmpty
+        )
+
+        let uploadedLibraries = try await manager.uploadLibraryEntries(
+            id: deviceID,
+            kind: .amf,
+            slot: 2,
+            files: [
+                ColorBoxLibraryUploadFile(
+                    fileName: "venue-wall.amf",
+                    data: Data(Self.sampleAMFText.utf8)
+                ),
+                ColorBoxLibraryUploadFile(
+                    fileName: "venue-wall-look.txt",
+                    data: Data("mock-companion".utf8)
+                ),
+            ],
+            selectionFileName: "venue-wall.amf"
+        )
+        let uploadedEntry = try XCTUnwrap(
+            uploadedLibraries
+                .first(where: { $0.kind == .amf })?
+                .entries
+                .first(where: { $0.slot == 2 })
+        )
+        XCTAssertEqual(uploadedEntry.fileName, "venue-wall.amf")
+        XCTAssertEqual(uploadedEntry.userName, "venue-wall")
+
+        let deletedLibraries = try await manager.deleteLibraryEntry(
+            id: deviceID,
+            kind: .amf,
+            slot: 2
+        )
+        let deletedEntry = try XCTUnwrap(
+            deletedLibraries
+                .first(where: { $0.kind == .amf })?
+                .entries
+                .first(where: { $0.slot == 2 })
+        )
+        XCTAssertTrue(deletedEntry.isEmpty)
+    }
+
     func testLiveColorBoxRoundTripsGradeBypassAndPreview() async throws {
         let (manager, deviceID) = try await makeLiveManager()
         let connectedDevice = try await manager.connect(id: deviceID)
@@ -590,6 +651,20 @@ final class TrackGradeIntegrationTests: XCTestCase {
             "\(formatted) \(formatted) \(formatted)",
         ].joined(separator: "\n") + "\n"
     }
+
+    private static let sampleAMFText = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <aces:acesMetadataFile version="2.0" xmlns:aces="urn:ampas:aces:amf:v2.0">
+        <aces:amfInfo>
+            <aces:uuid>urn:uuid:948E6925-2B2B-4825-8540-368304288A06</aces:uuid>
+        </aces:amfInfo>
+        <aces:pipeline>
+            <aces:pipelineInfo>
+                <aces:uuid>urn:uuid:B5Fd5DfB-ca3b-E62a-5657-dDf31E32cE92</aces:uuid>
+            </aces:pipelineInfo>
+        </aces:pipeline>
+    </aces:acesMetadataFile>
+    """
 
     private func makeLiveManager() async throws -> (DeviceManager, UUID) {
         let address = try liveColorBoxAddress()

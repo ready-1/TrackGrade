@@ -811,11 +811,11 @@ final class TrackGradeAppModel {
         }
     }
 
-    func importLibraryAsset(
+    func importLibraryAssets(
         id: UUID,
         kind: ColorBoxLibraryKind,
         slot: Int,
-        from fileURL: URL
+        from fileURLs: [URL]
     ) async {
         guard kind.supportsImport else {
             errorMessage = "\(kind.title) import is not available in this build."
@@ -823,42 +823,90 @@ final class TrackGradeAppModel {
         }
 
         do {
-            let fileName = fileURL.lastPathComponent.isEmpty
-                ? "Imported-\(kind.id)"
-                : fileURL.lastPathComponent
-            let didAccessSecurityScopedResource = fileURL.startAccessingSecurityScopedResource()
-            defer {
-                if didAccessSecurityScopedResource {
-                    fileURL.stopAccessingSecurityScopedResource()
-                }
-            }
-
-            let data = try await Task.detached(priority: .userInitiated) {
-                try Data(contentsOf: fileURL)
-            }.value
+            let uploadFiles = try await loadLibraryUploadFiles(
+                from: fileURLs,
+                kind: kind
+            )
+            let selectionFileName = preferredLibrarySelectionFileName(
+                for: kind,
+                files: uploadFiles
+            )
 
             if launchConfiguration.usesUITestFixture {
+                let selectedUpload = selectionFileName.flatMap { selection in
+                    uploadFiles.first(where: { $0.fileName == selection })
+                } ?? uploadFiles.first
                 updateFixtureLibraryEntry(
                     deviceID: id,
                     kind: kind,
                     slot: slot,
-                    userName: fileURL.deletingPathExtension().lastPathComponent,
-                    fileName: fileName
+                    userName: selectedUpload.map { URL(fileURLWithPath: $0.fileName).deletingPathExtension().lastPathComponent },
+                    fileName: selectedUpload?.fileName
                 )
                 return
             }
 
-            let sections = try await deviceManager.uploadLibraryEntry(
+            let sections = try await deviceManager.uploadLibraryEntries(
                 id: id,
                 kind: kind,
                 slot: slot,
-                fileName: fileName,
-                data: data
+                files: uploadFiles,
+                selectionFileName: selectionFileName
             )
             librarySectionsByDeviceID[id] = sections
         } catch {
             errorMessage = "Failed to import the \(kind.title) asset: \(error.localizedDescription)"
         }
+    }
+
+    private func loadLibraryUploadFiles(
+        from urls: [URL],
+        kind: ColorBoxLibraryKind
+    ) async throws -> [ColorBoxLibraryUploadFile] {
+        guard urls.isEmpty == false else {
+            throw ColorBoxAPIError.unsupportedFeature(
+                "\(kind.title) import requires at least one selected file."
+            )
+        }
+
+        return try await Task.detached(priority: .userInitiated) {
+            var uploadFiles: [ColorBoxLibraryUploadFile] = []
+
+            for url in urls {
+                let didAccessSecurityScopedResource = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didAccessSecurityScopedResource {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+
+                let fileName = url.lastPathComponent.isEmpty
+                    ? "Imported-\(kind.id)"
+                    : url.lastPathComponent
+                let data = try Data(contentsOf: url)
+                uploadFiles.append(
+                    ColorBoxLibraryUploadFile(
+                        fileName: fileName,
+                        data: data
+                    )
+                )
+            }
+
+            return uploadFiles
+        }.value
+    }
+
+    private func preferredLibrarySelectionFileName(
+        for kind: ColorBoxLibraryKind,
+        files: [ColorBoxLibraryUploadFile]
+    ) -> String? {
+        guard kind.requiresMultipleImportFiles else {
+            return files.first?.fileName
+        }
+
+        return files.first(where: { file in
+            URL(fileURLWithPath: file.fileName).pathExtension.caseInsensitiveCompare("amf") == .orderedSame
+        })?.fileName ?? files.first?.fileName
     }
 
     func renameLibraryEntry(

@@ -466,25 +466,33 @@ public enum ColorBoxLibraryKind: String, CaseIterable, Codable, Identifiable, Se
         }
     }
 
-    public var uploadKind: String? {
+    public var importMode: ColorBoxLibraryImportMode? {
         switch self {
         case .oneDLUT:
-            return "lut_1d"
+            return .singleFile(uploadKind: "lut_1d")
         case .threeDLUT:
-            return "lut_3d"
+            return .singleFile(uploadKind: "lut_3d")
         case .matrix:
-            return "matrix"
+            return .singleFile(uploadKind: "matrix")
         case .image:
-            return "image"
+            return .singleFile(uploadKind: "image")
         case .overlay:
-            return "overlay"
+            return .singleFile(uploadKind: "overlay")
         case .amf:
-            return nil
+            return .multipleFiles(uploadKind: "amf")
         }
     }
 
     public var supportsImport: Bool {
-        uploadKind != nil
+        importMode != nil
+    }
+
+    public var requiresMultipleImportFiles: Bool {
+        if case .multipleFiles = importMode {
+            return true
+        }
+
+        return false
     }
 
     public init?(uploadKind: String) {
@@ -504,6 +512,24 @@ public enum ColorBoxLibraryKind: String, CaseIterable, Codable, Identifiable, Se
         default:
             return nil
         }
+    }
+}
+
+public enum ColorBoxLibraryImportMode: Sendable, Equatable {
+    case singleFile(uploadKind: String)
+    case multipleFiles(uploadKind: String)
+}
+
+public struct ColorBoxLibraryUploadFile: Sendable, Equatable {
+    public let fileName: String
+    public let data: Data
+
+    public init(
+        fileName: String,
+        data: Data
+    ) {
+        self.fileName = fileName
+        self.data = data
     }
 }
 

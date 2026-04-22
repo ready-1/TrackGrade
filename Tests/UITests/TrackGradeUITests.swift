@@ -75,7 +75,11 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertTrue(previewSourceLabel.waitForExistence(timeout: 5))
         XCTAssertEqual(previewSourceLabel.label, "Output Preview")
 
-        app.otherElements["grade-preview-thumbnail"].tap()
+        let previewSurface = app.otherElements.matching(
+            NSPredicate(format: "label == %@", "Preview thumbnail")
+        ).firstMatch
+        XCTAssertTrue(previewSurface.waitForExistence(timeout: 5))
+        previewSurface.tap()
 
         XCTAssertEqual(previewSourceLabel.label, "Input Preview")
     }
@@ -297,8 +301,19 @@ final class TrackGradeUITests: XCTestCase {
         scrollToElement(actionsButton, in: app)
         XCTAssertTrue(actionsButton.waitForExistence(timeout: 5))
         actionsButton.tap()
-        app.buttons["Delete"].tap()
-        app.buttons["Delete"].tap()
+
+        let deleteMenuItem = app.menuItems["Delete"]
+        if deleteMenuItem.waitForExistence(timeout: 5) {
+            deleteMenuItem.tap()
+        } else {
+            let deleteButton = app.buttons["Delete"]
+            XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+            deleteButton.tap()
+        }
+
+        let deleteConfirmationButton = app.buttons["Delete"]
+        XCTAssertTrue(deleteConfirmationButton.waitForExistence(timeout: 5))
+        deleteConfirmationButton.tap()
 
         let importButton = fixtureElement("library-import-threeDLUT-1", in: app)
         XCTAssertTrue(importButton.waitForExistence(timeout: 5))

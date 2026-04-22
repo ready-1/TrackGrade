@@ -237,7 +237,7 @@ enum MockColorBoxApplication {
             guard let kind = ColorBoxLibraryKind(uploadKind: payload.kind) else {
                 throw Abort(.badRequest, reason: "Unsupported upload kind \(payload.kind).")
             }
-            guard kind.supportsImport else {
+            guard kind.importMode != nil else {
                 throw Abort(.badRequest, reason: "\(kind.title) import is not supported through /v2/upload in the mock server.")
             }
             guard let entry = payload.entry else {
@@ -252,6 +252,40 @@ enum MockColorBoxApplication {
                     at: payload.file.data.readerIndex,
                     length: payload.file.data.readableBytes
                 ) ?? Data()
+            )
+
+            var headers = HTTPHeaders()
+            headers.replaceOrAdd(name: .contentType, value: "text/plain; charset=utf-8")
+            return Response(status: .ok, headers: headers, body: .init(string: "uploaded"))
+        }
+
+        app.post("v2", "uploadMultiple") { request async throws -> Response in
+            let payload = try request.content.decode(MockColorBoxMultiUploadRequest.self)
+            guard let kind = ColorBoxLibraryKind(uploadKind: payload.kind) else {
+                throw Abort(.badRequest, reason: "Unsupported upload kind \(payload.kind).")
+            }
+            guard kind.requiresMultipleImportFiles else {
+                throw Abort(.badRequest, reason: "\(kind.title) import does not use /v2/uploadMultiple in the mock server.")
+            }
+            guard let entry = payload.entry else {
+                throw Abort(.badRequest, reason: "Upload entry is required.")
+            }
+
+            let files = [
+                ColorBoxLibraryUploadFile(
+                    fileName: payload.file.filename,
+                    data: payload.file.data.getData(
+                        at: payload.file.data.readerIndex,
+                        length: payload.file.data.readableBytes
+                    ) ?? Data()
+                )
+            ]
+
+            try await state.storeMultipleLibraryUpload(
+                kind: kind,
+                slot: entry,
+                files: files,
+                selection: payload.selection
             )
 
             var headers = HTTPHeaders()
@@ -410,6 +444,13 @@ private struct MockColorBoxUploadRequest: Content {
     var file: File
     var kind: String
     var entry: Int?
+}
+
+private struct MockColorBoxMultiUploadRequest: Content {
+    var file: File
+    var kind: String
+    var entry: Int?
+    var selection: String?
 }
 
 extension ColorBoxSystemInfo: Content {}

@@ -356,6 +356,37 @@ actor MockColorBoxState {
         }
     }
 
+    func storeMultipleLibraryUpload(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        files: [ColorBoxLibraryUploadFile],
+        selection: String?
+    ) async throws {
+        try await applyLatency()
+        guard files.isEmpty == false else {
+            return
+        }
+
+        let selectedFile = selection.flatMap { selection in
+            files.first(where: { $0.fileName == selection })
+        } ?? files.first
+
+        guard let selectedFile else {
+            return
+        }
+
+        let resolvedUserName = Self.defaultUserName(from: selectedFile.fileName)
+        updateLibraryEntry(
+            kind: kind,
+            slot: slot
+        ) { _ in
+            MockLibraryEntryState(
+                userName: resolvedUserName,
+                fileName: selectedFile.fileName
+            )
+        }
+    }
+
     func previewImageData() async throws -> Data {
         try await applyLatency()
         return previewPNGDataValue

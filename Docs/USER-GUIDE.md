@@ -222,15 +222,15 @@ The reference firmware used during development does not expose a working false-c
 The library sheet lets you manage the current device asset slots without leaving the grading surface.
 
 - every surfaced library renders as a fixed 16-slot section
-- 1D LUT, 3D LUT, matrix, image, and overlay entries support import or replace into a chosen slot
+- 1D LUT, 3D LUT, matrix, image, overlay, and AMF entries support import or replace into a chosen slot
 - populated entries support rename and delete
-- AMF entries are visible in the same browser, but AMF import is still deferred because the device uses a separate multi-file upload path
+- AMF import uses the dedicated multi-file path, so select the `.amf` file together with any companion files when importing
 
 Use `Refresh` in the sheet toolbar to re-read the current device state.
 
 ## Current Limitations
 
 - The current grading path writes directly through `/v2/pipelineStages` rather than uploading baked LUTs.
-- AMF import is still deferred while TrackGrade stays conservative around the device’s separate multi-file upload path.
+- Live AMF verification is still pending because the reference ColorBox timed out during the first `/v2/uploadMultiple` probe after the feature landed.
 - Gang control currently focuses on mirroring a single focus device to linked peers; more advanced gang workflows can still be added later.
 - Final tactile tuning still needs real iPad + ColorBox validation.

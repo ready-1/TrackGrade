@@ -72,38 +72,45 @@ struct GradeFeatureView: View {
     }
 
     private var controlBar: some View {
-        HStack(alignment: .center, spacing: 16) {
-            HStack(alignment: .center, spacing: 14) {
-                Button {
+        HStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 10) {
+                CompactToolbarButton(
+                    title: isShowingDeviceSidebar ? "Hide devices" : "Devices",
+                    systemImage: "sidebar.leading",
+                    accessibilityIdentifier: "device-sidebar-button"
+                ) {
                     emitButtonHaptic()
                     toggleDeviceSidebar()
-                } label: {
-                    Label(
-                        isShowingDeviceSidebar ? "Hide Devices" : "Devices",
-                        systemImage: "sidebar.leading"
-                    )
-                    .labelStyle(.titleAndIcon)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .tint(Color.black.opacity(0.32))
-                .accessibilityIdentifier("device-sidebar-button")
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(device.name)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(.white)
+                CompactToolbarButton(
+                    title: "Controls",
+                    systemImage: "slider.horizontal.3",
+                    accessibilityIdentifier: "secondary-controls-button"
+                ) {
+                    emitButtonHaptic()
+                    isShowingControlsDrawer.toggle()
+                }
 
-                    HStack(spacing: 8) {
-                        ConnectionStateBadge(state: device.connectionState)
-                        if let gangSummary = model.gangStatusSummary(for: device.id) {
-                            GangStatusBadge(summary: gangSummary)
-                        }
-                    }
+                CompactToolbarButton(
+                    title: "Settings",
+                    systemImage: "gearshape.fill",
+                    accessibilityIdentifier: "grade-settings-button"
+                ) {
+                    emitButtonHaptic()
+                    isShowingSettings = true
                 }
             }
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 12)
+
+            Text(device.name)
+                .font(.headline.monospaced().weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.88))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            Spacer(minLength: 12)
 
             BeforeAfterCompareButton(
                 isActive: model.isBeforeAfterActive(device.id),
@@ -129,33 +136,10 @@ struct GradeFeatureView: View {
                 }
             }
             .accessibilityIdentifier("bypass-toggle")
-
-            Button {
-                emitButtonHaptic()
-                isShowingControlsDrawer.toggle()
-            } label: {
-                Label("Controls", systemImage: "slider.horizontal.3")
-                    .labelStyle(.titleAndIcon)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(Color.black.opacity(0.32))
-            .accessibilityIdentifier("secondary-controls-button")
-
-            Button {
-                emitButtonHaptic()
-                isShowingSettings = true
-            } label: {
-                Label("Settings", systemImage: "gearshape.fill")
-                    .labelStyle(.iconOnly)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(Color.black.opacity(0.32))
-            .accessibilityIdentifier("grade-settings-button")
         }
-        .padding(14)
-        .surfacePanelStyle(cornerRadius: 26)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .surfacePanelStyle(cornerRadius: 22)
     }
 
     private var falseColorUnsupportedMessage: String {
@@ -174,26 +158,67 @@ struct GradeFeatureView: View {
     }
 
     private var surfaceBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.07, green: 0.09, blue: 0.12),
-                Color(red: 0.12, green: 0.15, blue: 0.19),
-                Color(red: 0.18, green: 0.19, blue: 0.16),
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .overlay(alignment: .topTrailing) {
-            Circle()
-                .fill(Color.orange.opacity(0.12))
-                .frame(width: 280, height: 280)
-                .blur(radius: 30)
-                .offset(x: 110, y: -90)
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.22, green: 0.22, blue: 0.23),
+                    Color(red: 0.16, green: 0.16, blue: 0.17),
+                    Color(red: 0.12, green: 0.12, blue: 0.13),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [
+                    Color.white.opacity(0.08),
+                    Color.clear,
+                ],
+                center: .top,
+                startRadius: 20,
+                endRadius: 420
+            )
+
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.black.opacity(0.22),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         }
     }
 
     private func drawerWidth(for size: CGSize) -> CGFloat {
         min(380, max(320, size.width * 0.4))
+    }
+}
+
+private struct CompactToolbarButton: View {
+    let title: String
+    let systemImage: String
+    let accessibilityIdentifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(
+                    Circle()
+                        .fill(Color.black.opacity(0.3))
+                )
+                .overlay {
+                    Circle()
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 }
 
@@ -204,27 +229,20 @@ private struct BeforeAfterCompareButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Before / After")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.88))
-
-                HStack(spacing: 8) {
-                    Image(systemName: isActive ? "rectangle.on.rectangle.circle.fill" : "rectangle.on.rectangle")
-                        .font(.subheadline.weight(.semibold))
-                    Text(statusText)
-                        .font(.subheadline.weight(.semibold))
-                }
-                .foregroundStyle(.white)
+            HStack(spacing: 8) {
+                Image(systemName: isActive ? "rectangle.on.rectangle.circle.fill" : "rectangle.on.rectangle")
+                    .font(.subheadline.weight(.semibold))
+                Text(isActive ? "Compare" : "A/B")
+                    .font(.subheadline.monospaced().weight(.semibold))
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 11)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(isActive ? Color.orange.opacity(0.3) : Color.black.opacity(0.3))
+                Capsule(style: .continuous)
+                    .fill(isActive ? Color.orange.opacity(0.24) : Color.black.opacity(0.28))
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                Capsule(style: .continuous)
                     .strokeBorder(isActive ? Color.orange.opacity(0.6) : Color.white.opacity(0.22))
             }
         }
@@ -244,27 +262,27 @@ private struct BypassToggleButton: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 Text("Bypass")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.monospaced().weight(.semibold))
                     .foregroundStyle(.white)
 
                 Text(isEnabled ? "On" : "Off")
-                    .font(.subheadline.weight(.bold))
+                    .font(.subheadline.monospaced().weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 7)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(isEnabled ? Color.orange.opacity(0.34) : Color.black.opacity(0.34))
+                            .fill(isEnabled ? Color.orange.opacity(0.3) : Color.black.opacity(0.34))
                     )
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 11)
             .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                Capsule(style: .continuous)
                     .fill(Color.black.opacity(0.28))
             )
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                Capsule(style: .continuous)
                     .strokeBorder(isEnabled ? Color.orange.opacity(0.55) : Color.white.opacity(0.2))
             }
         }
@@ -407,43 +425,64 @@ private struct DynamicGradeControlsCard: View {
     }
 
     var body: some View {
-        let trackballHeight = min(188, max(152, availableSize.height * 0.235))
+        let trackballHeight = min(252, max(182, availableSize.height * 0.34))
+        let sidePanelWidth = min(168, max(132, availableSize.width * 0.135))
+        let statusWidth = min(436, max(318, availableSize.width * 0.36))
 
-        VStack(alignment: .leading, spacing: 14) {
-            GradeStateDisplay(
-                grade: draftGrade,
-                previewFrameData: device.previewFrameData,
-                previewSource: device.pipelineState?.previewSource ?? .output,
-                resetRequiresConfirmation: resetRequiresConfirmation,
-                onEdit: { target in
-                    activeEditor = target
-                },
-                onResetAll: {
-                    emitButtonHaptic()
-                    performDiscreteGradeMutation(successHaptic: true) {
-                        draftGrade = .identity
-                        syncSurfaceStates(from: .identity)
+        VStack(spacing: 16) {
+            HStack(alignment: .top, spacing: 18) {
+                CompactPreviewPanel(
+                    imageData: device.previewFrameData,
+                    source: device.pipelineState?.previewSource ?? .output,
+                    onTogglePreviewSource: {
+                        let currentSource = device.pipelineState?.previewSource ?? .output
+                        let nextSource: ColorBoxPreviewSource = currentSource == .output ? .input : .output
+                        Task {
+                            await model.setPreviewSource(
+                                id: device.id,
+                                source: nextSource
+                            )
+                        }
+                    },
+                    onRefreshPreview: {
+                        Task {
+                            await model.refreshPreview(id: device.id)
+                        }
+                    },
+                    onShowPreviewOverlay: {
+                        isShowingPreviewOverlay = true
                     }
-                },
-                onTogglePreviewSource: {
-                    let currentSource = device.pipelineState?.previewSource ?? .output
-                    let nextSource: ColorBoxPreviewSource = currentSource == .output ? .input : .output
-                    Task {
-                        await model.setPreviewSource(
-                            id: device.id,
-                            source: nextSource
-                        )
+                )
+                .frame(width: sidePanelWidth)
+
+                Spacer(minLength: 0)
+
+                GradeStateDisplay(
+                    grade: draftGrade,
+                    modeText: model.isBeforeAfterActive(device.id) ? "Compare" : "Normal",
+                    onEdit: { target in
+                        activeEditor = target
                     }
-                },
-                onRefreshPreview: {
-                    Task {
-                        await model.refreshPreview(id: device.id)
+                )
+                .frame(width: statusWidth)
+
+                Spacer(minLength: 0)
+
+                CompactStatusPanel(
+                    connectionState: device.connectionState,
+                    gangSummary: model.gangStatusSummary(for: device.id),
+                    compareStatus: model.beforeAfterStatusText(for: device.id),
+                    resetRequiresConfirmation: resetRequiresConfirmation,
+                    onResetAll: {
+                        emitButtonHaptic()
+                        performDiscreteGradeMutation(successHaptic: true) {
+                            draftGrade = .identity
+                            syncSurfaceStates(from: .identity)
+                        }
                     }
-                },
-                onShowPreviewOverlay: {
-                    isShowingPreviewOverlay = true
-                }
-            )
+                )
+                .frame(width: sidePanelWidth)
+            }
 
             SaturationRollerView(
                 value: Double(draftGrade.saturation),
@@ -456,8 +495,9 @@ private struct DynamicGradeControlsCard: View {
                     }
                 }
             )
+            .frame(maxWidth: min(520, max(360, availableSize.width * 0.48)))
 
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .top, spacing: max(18, availableSize.width * 0.018)) {
                 TrackballClusterView(
                     title: "Lift",
                     kind: .lift,
@@ -537,8 +577,8 @@ private struct DynamicGradeControlsCard: View {
                 )
             }
         }
-        .padding(16)
-        .surfacePanelStyle(cornerRadius: 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 8)
         .accessibilityValue(Text(accessibilityGradeSummary))
         .accessibilityIdentifier("dynamic-grade-card")
         .sheet(item: $activeEditor) { target in
@@ -1365,83 +1405,76 @@ private struct ConnectionStateBadge: View {
 
 private struct GradeStateDisplay: View {
     let grade: ColorBoxGradeControlState
-    let previewFrameData: Data?
-    let previewSource: ColorBoxPreviewSource
-    let resetRequiresConfirmation: Bool
+    let modeText: String
     let onEdit: (GradeEditorTarget) -> Void
-    let onResetAll: () -> Void
-    let onTogglePreviewSource: () -> Void
-    let onRefreshPreview: () -> Void
-    let onShowPreviewOverlay: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Grade")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Mode: \(modeText)")
+                    .font(.headline.monospaced().weight(.semibold))
+                    .foregroundStyle(.white)
 
-                        Text("Tap a row for numeric entry.")
-                            .font(.footnote)
-                            .foregroundStyle(Color.white.opacity(0.78))
-                            .accessibilityHidden(true)
-                    }
+                Spacer(minLength: 10)
 
-                    Spacer(minLength: 8)
+                Text("Tap values to edit")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(Color.white.opacity(0.56))
+                    .accessibilityHidden(true)
+            }
 
-                    DoubleTapActionChip(
-                        title: "Reset All",
-                        tint: .orange,
-                        requiresExplicitLabel: resetRequiresConfirmation,
-                        identifier: "reset-all-chip",
-                        action: onResetAll
-                    )
-                }
+            Divider()
+                .overlay(Color.white.opacity(0.18))
 
-                NumericDisplayRow(
-                    label: "Lift",
-                    value: formatted(grade.lift),
+            HStack(spacing: 0) {
+                CompactVectorStatusButton(
+                    title: "Lift",
+                    vector: grade.lift,
                     identifier: "lift-state-row",
                     action: { onEdit(.lift) }
                 )
 
-                NumericDisplayRow(
-                    label: "Gamma",
-                    value: formatted(grade.gamma),
+                Divider()
+                    .overlay(Color.white.opacity(0.14))
+
+                CompactVectorStatusButton(
+                    title: "Gamma",
+                    vector: grade.gamma,
                     identifier: "gamma-state-row",
                     action: { onEdit(.gamma) }
                 )
 
-                NumericDisplayRow(
-                    label: "Gain",
-                    value: formatted(grade.gain),
+                Divider()
+                    .overlay(Color.white.opacity(0.14))
+
+                CompactVectorStatusButton(
+                    title: "Gain",
+                    vector: grade.gain,
                     identifier: "gain-state-row",
                     action: { onEdit(.gain) }
                 )
-
-                NumericDisplayRow(
-                    label: "Sat",
-                    value: formatted(grade.saturation),
-                    identifier: "sat-state-row",
-                    action: { onEdit(.saturation) }
-                )
             }
 
-            Spacer(minLength: 0)
+            Divider()
+                .overlay(Color.white.opacity(0.18))
 
-            PreviewThumbnail(
-                imageData: previewFrameData,
-                source: previewSource,
-                toggleAction: onTogglePreviewSource,
-                refreshAction: onRefreshPreview,
-                enlargeAction: onShowPreviewOverlay
+            CompactScalarStatusButton(
+                title: "Saturation",
+                value: formatted(grade.saturation),
+                identifier: "sat-state-row",
+                action: { onEdit(.saturation) }
             )
-            .frame(width: 136, height: 88)
         }
-        .padding(16)
-        .surfacePanelStyle(cornerRadius: 24)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.black.opacity(0.72))
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Grade state"))
         .accessibilityValue(Text(accessibilitySummary))
@@ -1463,6 +1496,177 @@ private struct GradeStateDisplay: View {
             "Gain \(formatted(grade.gain))",
             "Saturation \(formatted(grade.saturation))",
         ].joined(separator: ". ")
+    }
+}
+
+private struct CompactPreviewPanel: View {
+    let imageData: Data?
+    let source: ColorBoxPreviewSource
+    let onTogglePreviewSource: () -> Void
+    let onRefreshPreview: () -> Void
+    let onShowPreviewOverlay: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Preview")
+                .font(.caption.monospaced().weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.7))
+
+            PreviewThumbnail(
+                imageData: imageData,
+                source: source,
+                toggleAction: onTogglePreviewSource,
+                refreshAction: onRefreshPreview,
+                enlargeAction: onShowPreviewOverlay
+            )
+            .frame(height: 96)
+
+            Text("Tap to toggle input/output.")
+                .font(.caption2.monospaced())
+                .foregroundStyle(Color.white.opacity(0.5))
+                .lineLimit(2)
+                .accessibilityHidden(true)
+        }
+        .padding(12)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTogglePreviewSource)
+        .surfacePanelStyle(cornerRadius: 18)
+        .accessibilityIdentifier("grade-preview-thumbnail")
+    }
+}
+
+private struct CompactStatusPanel: View {
+    let connectionState: ConnectionState
+    let gangSummary: GangStatusSummary?
+    let compareStatus: String
+    let resetRequiresConfirmation: Bool
+    let onResetAll: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Status")
+                .font(.caption.monospaced().weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.7))
+
+            CompactStatusRow(label: "Link", value: connectionState.rawValue.capitalized)
+            CompactStatusRow(label: "Compare", value: compareStatus)
+
+            if let gangSummary {
+                CompactStatusRow(label: "Gang", value: gangValue(for: gangSummary))
+            }
+
+            Spacer(minLength: 0)
+
+            DoubleTapActionChip(
+                title: "Reset All",
+                tint: .orange,
+                requiresExplicitLabel: resetRequiresConfirmation,
+                identifier: "reset-all-chip",
+                action: onResetAll
+            )
+        }
+        .padding(12)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .surfacePanelStyle(cornerRadius: 18)
+    }
+
+    private func gangValue(for summary: GangStatusSummary) -> String {
+        switch summary.state {
+        case .synced:
+            return "Synced \(summary.totalDeviceCount)"
+        case .drift:
+            return "Drift"
+        case .waiting:
+            return "Waiting"
+        }
+    }
+}
+
+private struct CompactStatusRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption2.monospaced())
+                .foregroundStyle(Color.white.opacity(0.5))
+            Text(value)
+                .font(.subheadline.monospaced().weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(value)
+    }
+}
+
+private struct CompactVectorStatusButton: View {
+    let title: String
+    let vector: ColorBoxRGBVector
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.caption.monospaced().weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.72))
+
+                Text("R \(formatted(vector.red))")
+                Text("G \(formatted(vector.green))")
+                Text("B \(formatted(vector.blue))")
+            }
+            .font(.subheadline.monospaced().weight(.medium))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue("R \(formatted(vector.red)), G \(formatted(vector.green)), B \(formatted(vector.blue))")
+        .accessibilityHint("Opens the numeric editor for \(title).")
+        .accessibilityIdentifier(identifier)
+    }
+
+    private func formatted(_ value: Float) -> String {
+        String(format: "%.2f", Double(value))
+    }
+}
+
+private struct CompactScalarStatusButton: View {
+    let title: String
+    let value: String
+    let identifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                    .font(.caption.monospaced().weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.72))
+                Spacer()
+                Text(value)
+                    .font(.title3.monospaced().weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(value)
+        .accessibilityHint("Opens the numeric editor for \(title).")
+        .accessibilityIdentifier(identifier)
     }
 }
 
@@ -1640,15 +1844,30 @@ private struct TrackballClusterView: View {
     let onResetRing: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+        VStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 12) {
+                SurfaceResetButton(
+                    label: "B",
+                    identifier: "\(kind.rawValue)-reset-ball-chip",
+                    accessibilityLabel: "Reset \(title) ball",
+                    action: onResetBall
+                )
+
+                Spacer(minLength: 0)
+
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline.monospaced().weight(.semibold))
                     .foregroundStyle(.white)
-                Spacer()
-                Text("B \(ballSensitivity, specifier: "%.2fx")  R \(ringSensitivity, specifier: "%.2fx")")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    .textCase(.uppercase)
+
+                Spacer(minLength: 0)
+
+                SurfaceResetButton(
+                    label: "R",
+                    identifier: "\(kind.rawValue)-reset-ring-chip",
+                    accessibilityLabel: "Reset \(title) ring",
+                    action: onResetRing
+                )
             }
 
             GeometryReader { proxy in
@@ -1687,26 +1906,13 @@ private struct TrackballClusterView: View {
             }
             .frame(height: surfaceHeight)
 
-            HStack(spacing: 10) {
-                DoubleTapActionChip(
-                    title: "Reset Ball",
-                    tint: .cyan,
-                    requiresExplicitLabel: true,
-                    identifier: "\(kind.rawValue)-reset-ball-chip",
-                    action: onResetBall
-                )
-
-                DoubleTapActionChip(
-                    title: "Reset Ring",
-                    tint: .mint,
-                    requiresExplicitLabel: true,
-                    identifier: "\(kind.rawValue)-reset-ring-chip",
-                    action: onResetRing
-                )
-            }
+            Text(renderedSummary)
+                .font(.caption.monospaced())
+                .foregroundStyle(Color.white.opacity(0.6))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .accessibilityHidden(true)
         }
-        .padding(14)
-        .surfacePanelStyle(cornerRadius: 24)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -1723,16 +1929,30 @@ private struct TrackballClusterView: View {
         let ballRadius = innerRadius * 0.24
         let ringRadius = (outerRadius + innerRadius) * 0.5
 
-        let outerPath = Path(ellipseIn: CGRect(
+        let outerRect = CGRect(
             x: center.x - outerRadius,
             y: center.y - outerRadius,
             width: outerRadius * 2,
             height: outerRadius * 2
-        ))
+        )
+        let outerPath = Path(ellipseIn: outerRect)
+        context.fill(
+            outerPath,
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.22),
+                    Color(red: 0.43, green: 0.43, blue: 0.44),
+                    Color(red: 0.22, green: 0.22, blue: 0.23),
+                ]),
+                center: center,
+                startRadius: 8,
+                endRadius: outerRadius
+            )
+        )
         context.stroke(
             outerPath,
-            with: .color(Color.white.opacity(0.14)),
-            style: StrokeStyle(lineWidth: outerRadius - innerRadius, lineCap: .round)
+            with: .color(Color.black.opacity(0.45)),
+            style: StrokeStyle(lineWidth: 2)
         )
 
         let ringAngle = Angle(degrees: Double(state.ring.clamped(to: -1 ... 1)) * 150)
@@ -1770,8 +1990,8 @@ private struct TrackballClusterView: View {
             Path(ellipseIn: innerRect),
             with: .radialGradient(
                 Gradient(colors: [
-                    Color.white.opacity(0.08),
-                    Color.black.opacity(0.28),
+                    Color(red: 0.21, green: 0.18, blue: 0.18),
+                    Color(red: 0.08, green: 0.07, blue: 0.08),
                 ]),
                 center: center,
                 startRadius: 12,
@@ -1814,16 +2034,62 @@ private struct TrackballClusterView: View {
         )
     }
 
+    private var renderedSummary: String {
+        "R \(formatted(renderedVector.red))  G \(formatted(renderedVector.green))  B \(formatted(renderedVector.blue))"
+    }
+
+    private func formatted(_ value: Float) -> String {
+        String(format: "%.2f", Double(value))
+    }
+
     private func ballColor(for vector: ColorBoxRGBVector) -> Color {
-        let normalized: (Float) -> Double = { value in
-            Double((value + 1).clamped(to: 0 ... 2) / 2)
-        }
+        let energy = min(
+            1,
+            (abs(Double(vector.red)) + abs(Double(vector.green)) + abs(Double(vector.blue))) / 3
+        )
 
         return Color(
-            red: normalized(vector.red),
-            green: normalized(vector.green),
-            blue: normalized(vector.blue)
+            red: 0.76 + (0.12 * energy),
+            green: 0.05 + (0.08 * energy),
+            blue: 0.10 + (0.06 * energy)
         )
+    }
+}
+
+private struct SurfaceResetButton: View {
+    let label: String
+    let identifier: String
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline.monospaced().weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.26),
+                                    Color.gray.opacity(0.36),
+                                    Color.black.opacity(0.36),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay {
+                    Circle()
+                        .stroke(Color.black.opacity(0.45), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(identifier)
     }
 }
 
@@ -1837,21 +2103,17 @@ private struct SaturationRollerView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Saturation")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.monospaced().weight(.semibold))
                     .foregroundStyle(.white)
                 Spacer()
-                Text("\(sensitivity, specifier: "%.2fx")")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Color.white.opacity(0.6))
                 Text(String(format: "%.2f", value))
-                    .font(.subheadline.monospacedDigit())
+                    .font(.headline.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.white)
 
-                DoubleTapActionChip(
-                    title: "Reset",
-                    tint: .yellow,
-                    requiresExplicitLabel: true,
+                SurfaceResetButton(
+                    label: "R",
                     identifier: "saturation-reset-chip",
+                    accessibilityLabel: "Reset saturation",
                     action: onReset
                 )
             }
@@ -1861,15 +2123,15 @@ private struct SaturationRollerView: View {
                 let progress = CGFloat((value / 2).clamped(to: 0 ... 1))
 
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Color.black.opacity(0.2))
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Color.black.opacity(0.34))
 
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
-                                    .gray.opacity(0.5),
-                                    .orange.opacity(0.75),
+                                    Color(red: 0.38, green: 0.38, blue: 0.40),
+                                    Color(red: 0.79, green: 0.29, blue: 0.14),
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
@@ -1892,23 +2154,22 @@ private struct SaturationRollerView: View {
                 }
                 .contentShape(Rectangle())
             }
-            .frame(height: 68)
+            .frame(height: 54)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Saturation roller"))
             .accessibilityIdentifier("saturation-roller")
-
-            HStack {
-                Text("0.00")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Color.white.opacity(0.6))
-                Spacer()
-                Text("2.00")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(Color.white.opacity(0.6))
-            }
         }
-        .padding(14)
-        .surfacePanelStyle(cornerRadius: 24)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .surfacePanelStyle(cornerRadius: 18)
+        .overlay(alignment: .bottomLeading) {
+            Text("Sensitivity \(sensitivity, specifier: "%.2fx")")
+                .font(.caption2.monospaced())
+                .foregroundStyle(Color.white.opacity(0.45))
+                .padding(.leading, 14)
+                .padding(.bottom, 4)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -2491,11 +2752,20 @@ extension View {
     func surfacePanelStyle(cornerRadius: CGFloat) -> some View {
         background(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color(red: 0.1, green: 0.12, blue: 0.16).opacity(0.9))
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.18, green: 0.18, blue: 0.19).opacity(0.92),
+                            Color(red: 0.10, green: 0.10, blue: 0.11).opacity(0.94),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
         )
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
         }
     }
 

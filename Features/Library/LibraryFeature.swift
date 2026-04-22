@@ -28,7 +28,7 @@ struct LibraryFeatureView: View {
                         Section {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("ColorBox library slots are shown exactly by slot number. Import is enabled for 1D LUT, 3D LUT, Matrix, Image, and Overlay assets in this build.")
-                                Text("AMF remains browse / rename / delete only for now because the device uses the separate multi-file `/v2/uploadMultiple` path.")
+                                Text("AMF import now uses the ColorBox multi-file `/v2/uploadMultiple` path. Select the `.amf` file and any companion files together so the device stores the intended package.")
                             }
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -67,7 +67,7 @@ struct LibraryFeatureView: View {
                                 }
                             } footer: {
                                 if section.kind == .amf {
-                                    Text("AMF import is deferred to the dedicated multi-file upload path.")
+                                    Text("Choose the `.amf` file plus any companion files. TrackGrade uses the selected `.amf` file as the AMF package entry.")
                                 }
                             }
                             .accessibilityIdentifier("library-section-\(section.kind.id)")
@@ -99,7 +99,7 @@ struct LibraryFeatureView: View {
         .fileImporter(
             isPresented: isImportingBinding,
             allowedContentTypes: [.data],
-            allowsMultipleSelection: false
+            allowsMultipleSelection: importTarget?.kind.requiresMultipleImportFiles ?? false
         ) { result in
             guard let target = importTarget else {
                 return
@@ -108,16 +108,16 @@ struct LibraryFeatureView: View {
 
             switch result {
             case let .success(urls):
-                guard let url = urls.first else {
+                guard urls.isEmpty == false else {
                     return
                 }
                 Task {
                     await performMutation {
-                        await model.importLibraryAsset(
+                        await model.importLibraryAssets(
                             id: device.id,
                             kind: target.kind,
                             slot: target.slot,
-                            from: url
+                            from: urls
                         )
                     }
                 }

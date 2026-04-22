@@ -318,14 +318,34 @@ public actor DeviceManager {
         fileName: String,
         data: Data
     ) async throws -> [ColorBoxLibrarySection] {
+        try await uploadLibraryEntries(
+            id: id,
+            kind: kind,
+            slot: slot,
+            files: [
+                ColorBoxLibraryUploadFile(
+                    fileName: fileName,
+                    data: data
+                )
+            ]
+        )
+    }
+
+    public func uploadLibraryEntries(
+        id: UUID,
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        files: [ColorBoxLibraryUploadFile],
+        selectionFileName: String? = nil
+    ) async throws -> [ColorBoxLibrarySection] {
         do {
             let storedDevice = try requireDevice(id: id)
             let client = makeClient(for: storedDevice)
-            _ = try await client.uploadLibraryEntry(
+            _ = try await client.uploadLibraryEntries(
                 kind: kind,
                 slot: slot,
-                fileName: fileName,
-                data: data
+                files: files,
+                selectionFileName: selectionFileName
             )
             return try await refreshLibrariesAfterMutation(
                 id: id,

@@ -217,19 +217,66 @@ public struct ColorBoxAPIClient: Sendable {
         fileName: String,
         data: Data
     ) async throws -> [ColorBoxLibraryEntry] {
-        guard let uploadKind = kind.uploadKind else {
+        return try await uploadLibraryEntries(
+            kind: kind,
+            slot: slot,
+            files: [
+                ColorBoxLibraryUploadFile(
+                    fileName: fileName,
+                    data: data
+                )
+            ]
+        )
+    }
+
+    public func uploadLibraryEntries(
+        kind: ColorBoxLibraryKind,
+        slot: Int,
+        files: [ColorBoxLibraryUploadFile],
+        selectionFileName: String? = nil
+    ) async throws -> [ColorBoxLibraryEntry] {
+        guard let importMode = kind.importMode else {
             throw ColorBoxAPIError.unsupportedFeature(
-                "\(kind.title) import is not exposed through the single-file `/v2/upload` contract."
+                "\(kind.title) import is not available in this build."
             )
         }
 
-        try await performMultipartUploadRequest(
-            path: "v2/upload",
-            fileName: fileName,
-            data: data,
-            uploadKind: uploadKind,
-            entry: slot
-        )
+        guard files.isEmpty == false else {
+            throw ColorBoxAPIError.unsupportedFeature(
+                "\(kind.title) import requires at least one selected file."
+            )
+        }
+
+        switch importMode {
+        case let .singleFile(uploadKind):
+            guard let file = files.first else {
+                throw ColorBoxAPIError.unsupportedFeature(
+                    "\(kind.title) import requires a file payload."
+                )
+            }
+
+            try await performMultipartUploadRequest(
+                path: "v2/upload",
+                files: [file],
+                uploadKind: uploadKind,
+                entry: slot
+            )
+        case let .multipleFiles(uploadKind):
+            let resolvedSelection = selectionFileName ?? files.first?.fileName
+            guard let resolvedSelection, resolvedSelection.isEmpty == false else {
+                throw ColorBoxAPIError.unsupportedFeature(
+                    "\(kind.title) import requires a selected AMF file."
+                )
+            }
+
+            try await performMultipartUploadRequest(
+                path: "v2/uploadMultiple",
+                files: files,
+                uploadKind: uploadKind,
+                entry: slot,
+                selection: resolvedSelection
+            )
+        }
 
         return try await listLibrary(kind: kind)
     }
@@ -784,18 +831,18 @@ public struct ColorBoxAPIClient: Sendable {
 
     private func performMultipartUploadRequest(
         path: String,
-        fileName: String,
-        data: Data,
+        files: [ColorBoxLibraryUploadFile],
         uploadKind: String,
-        entry: Int
+        entry: Int,
+        selection: String? = nil
     ) async throws {
         let boundary = "TrackGradeBoundary-\(UUID().uuidString)"
         let body = multipartBody(
             boundary: boundary,
-            fileName: fileName,
-            fileData: data,
+            files: files,
             uploadKind: uploadKind,
-            entry: entry
+            entry: entry,
+            selection: selection
         )
         let request = try makeRequest(
             path: path,
@@ -865,10 +912,10 @@ public struct ColorBoxAPIClient: Sendable {
 
     private func multipartBody(
         boundary: String,
-        fileName: String,
-        fileData: Data,
+        files: [ColorBoxLibraryUploadFile],
         uploadKind: String,
-        entry: Int
+        entry: Int,
+        selection: String? = nil
     ) -> Data {
         var body = Data()
         let lineBreak = "\r\n"
@@ -885,11 +932,31 @@ public struct ColorBoxAPIClient: Sendable {
         append("Content-Disposition: form-data; name=\"entry\"\(lineBreak)\(lineBreak)")
         append("\(entry)\(lineBreak)")
 
-        append("--\(boundary)\(lineBreak)")
-        append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\(lineBreak)")
-        append("Content-Type: application/octet-stream\(lineBreak)\(lineBreak)")
-        body.append(fileData)
-        append(lineBreak)
+        if let selection, selection.isEmpty == false {
+            append("--\(boundary)\(lineBreak)")
+            append("Content-Disposition: form-data; name=\"selection\"\(lineBreak)\(lineBreak)")
+            append("\(selection)\(lineBreak)")
+        }
+
+        let orderedFiles: [ColorBoxLibraryUploadFile]
+        if let selection, selection.isEmpty == false {
+            orderedFiles = files.sorted { lhs, rhs in
+                let lhsIsSelection = lhs.fileName == selection
+                let rhsIsSelection = rhs.fileName == selection
+                return lhsIsSelection == false && rhsIsSelection == true
+            }
+        } else {
+            orderedFiles = files
+        }
+
+        for file in orderedFiles {
+            append("--\(boundary)\(lineBreak)")
+            append("Content-Disposition: form-data; name=\"file\"; filename=\"\(file.fileName)\"\(lineBreak)")
+            append("Content-Type: application/octet-stream\(lineBreak)\(lineBreak)")
+            body.append(file.data)
+            append(lineBreak)
+        }
+
         append("--\(boundary)--\(lineBreak)")
 
         return body
