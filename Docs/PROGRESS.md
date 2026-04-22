@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-- Phase 2 — Custom controls verification
+- Phase 6 — Release readiness and hardware verification follow-through
 
 ## Completed Items
 
@@ -43,10 +43,16 @@
 - The grading screen has now been refactored into a fixed landscape surface with no vertical scroll: compact device and pipeline telemetry flank a top-center LGG / Saturation state window, saturation sits above the trackballs, reset controls remain visible, and presets / secondary actions live in a slide-over drawer.
 - The offline fixture-backed UI suite was updated for the drawer flow and now explicitly rotates the simulator to landscape before assertions, keeping the automated checks aligned with the app’s landscape-only product shape.
 - A manual simulator sanity check confirmed the new static grading surface composes correctly in fixture mode without needing live ColorBox hardware.
+- Phase 4 offline workflow is now implemented in the app shell: TrackGrade persists local snapshots in SwiftData, supports undo / redo history for grade changes, provides A/B scratch slots, and exposes snapshot save / recall through the secondary workflow drawer.
+- The workflow drawer was reshaped into fixed Workflow / Presets / Device panels so the main grading surface stays static while secondary operations remain reachable without reintroducing scroll on the primary control surface.
+- The `-ui-test-fixture` path now seeds SwiftData-backed fixture devices and snapshots instead of relying on in-memory-only snapshot state, so offline snapshot save / recall exercises the same persistence path as the real app.
+- `xcodebuild test` now covers the full offline control-surface path: fixture launch, bypass, settings, preset save, snapshot save, and snapshot recall.
+- `swift test` and `xcodebuild test` both passed again after the offline snapshot workflow and drawer validation refactor.
 
 ## In-Flight Work
 
-- Closing the remaining Phase 2 acceptance gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live-hardware confirmation on an iPad paired to the ColorBox.
+- Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
+- Backfilling release-facing documentation and attribution files so the repo is ready for a cleaner public handoff.
 
 ## Blockers
 
@@ -55,7 +61,8 @@
 
 ## Next Steps
 
+- Finish the release-prep doc pass: `Docs/TEST-PLAN.md`, `NOTICES.md`, and README status alignment.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
-- Decide whether Phase 2 acceptance is satisfied with the new offline UI suite plus manual multi-touch validation, or whether another automation pass is needed before moving on.
+- Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

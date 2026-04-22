@@ -419,3 +419,55 @@ The static-layout refactor needed to preserve immediate access to the MVP-critic
 - The main grading surface stays fixed and uncluttered while still exposing the highest-priority show control.
 - Offline UI tests need to open the drawer before preset assertions instead of assuming all secondary actions remain visible at launch.
 - Real-hardware validation should focus on whether the drawer still feels fast enough during operation or whether any secondary controls need promotion back to the main surface.
+
+## 2026-04-21 — Use Fixed Drawer Panels For Workflow, Presets, And Device Actions
+
+### Context
+
+Once snapshots, scratch slots, presets, and device actions were all added to the secondary drawer, the drawer itself became too tall for a fixed-height live control surface. Reintroducing vertical scrolling there would have undermined the static-layout direction captured during the live UI review.
+
+### Decision
+
+Split the secondary drawer into three fixed panels selected by a segmented control:
+
+- `Workflow` for undo / redo, snapshots, and A/B scratch slots.
+- `Presets` for ColorBox-resident preset save / recall / delete.
+- `Device` for refresh / configure / connect actions and optional controls such as false color.
+
+### Consequences
+
+- The main grading surface and the secondary drawer can both stay fixed-height without hiding controls below the fold.
+- Offline UI tests now have an explicit, deterministic navigation path to each secondary function.
+- Real-hardware validation should confirm that segmented drawer switching still feels quick enough during operation.
+
+## 2026-04-21 — Seed Offline UI Fixtures Through SwiftData Instead Of Memory-Only Snapshot State
+
+### Context
+
+Phase 4 snapshot save writes through SwiftData, but the original offline fixture mode only populated snapshot data in memory. That mismatch meant fixture-based snapshot tests were not exercising the same persistence path as the real app.
+
+### Decision
+
+When the app launches with `-ui-test-fixture`, seed the fixture devices and snapshots into the SwiftData model container before the UI loads, then read them back through the normal fetch path.
+
+### Consequences
+
+- Snapshot save / recall tests now verify the same persistence flow used by the live app instead of a fixture-only shortcut.
+- Fixture launches become more durable across test cases because the app resets and reseeds its local store explicitly.
+- Future offline workflow features can rely on the same fixture persistence contract without adding more test-only branches.
+
+## 2026-04-21 — Expose The Current Grade Summary Through The Main Control-Surface Accessibility Contract
+
+### Context
+
+Row-level numeric state elements proved unstable as UI-test hooks because SwiftUI flattened their accessibility shape differently across runs. The grading surface itself already had a stable accessibility identifier.
+
+### Decision
+
+Publish the current LGG / Saturation summary as the accessibility value of the main `dynamic-grade-card` element, and use that as the automation contract for snapshot recall assertions.
+
+### Consequences
+
+- Snapshot recall tests can verify real grade-state changes without depending on fragile row-level accessibility behavior.
+- The app gains a more coherent high-level accessibility summary of the current grade state.
+- Future UI test work should prefer stable screen-level accessibility contracts when validating composite grading state.
