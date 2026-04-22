@@ -49,11 +49,12 @@
 - `xcodebuild test` now covers the full offline control-surface path: fixture launch, bypass, settings, preset save, snapshot save, and snapshot recall.
 - `swift test` and `xcodebuild test` both passed again after the offline snapshot workflow and drawer validation refactor.
 - Settings now includes a more release-ready About section with version, license, repository, and conduct-contact information, and the app bundle metadata now presents itself as `TrackGrade` version `0.1.0`.
+- `Docs/ARCHITECTURE.md`, `Docs/USER-GUIDE.md`, and `Docs/COLOR-SCIENCE.md` now describe the implemented app shell, offline fixture mode, live `/v2` grading path, and current limitations instead of remaining placeholders.
 
 ## In-Flight Work
 
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
-- Backfilling release-facing documentation and attribution files so the repo is ready for a cleaner public handoff.
+- Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 
 ## Blockers
 
@@ -66,4 +67,5 @@
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the new static layout still feels balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
+- Fill the remaining offline feature gaps that do not need hardware, especially library browse polish, accessibility tightening, and any realistic multi-device workflow progress.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

@@ -471,3 +471,24 @@ Publish the current LGG / Saturation summary as the accessibility value of the m
 - Snapshot recall tests can verify real grade-state changes without depending on fragile row-level accessibility behavior.
 - The app gains a more coherent high-level accessibility summary of the current grade state.
 - Future UI test work should prefer stable screen-level accessibility contracts when validating composite grading state.
+
+## 2026-04-21 — Publish Durable Docs Against The Implemented System, Not The Idealized End State
+
+### Context
+
+The repo already had a substantial real app shell, fixture workflow, and verified live `/v2` hardware path, but `Docs/ARCHITECTURE.md`, `Docs/USER-GUIDE.md`, and `Docs/COLOR-SCIENCE.md` were still placeholders. That weakened the durable-memory requirement and made the public repo look less trustworthy.
+
+### Decision
+
+Replace the placeholder docs with grounded documentation of the current system:
+
+- the SwiftUI app shell and `TrackGradeAppModel` orchestration
+- the offline fixture and mock-server workflow
+- the current direct `/v2/pipelineStages` grading path
+- the distinction between implemented behavior and later brief phases
+
+### Consequences
+
+- Future sessions can resume from truthful repo documentation without re-deriving core architecture from code.
+- Contributors get a realistic picture of what already works versus what remains planned.
+- The docs now clearly call out present limitations such as missing gang control and future LUT-baking work instead of implying those phases are already done.
