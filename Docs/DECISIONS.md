@@ -690,3 +690,21 @@ Render every supported device library as a padded 16-slot section in the app and
 - Operators now see the same slot-oriented mental model in TrackGrade that they see on the device.
 - The mock server and fixture mode must pad library sections the same way and support library mutation flows so offline development remains credible.
 - The library feature now satisfies the user-approved v1 import / write scope for the supported single-file asset kinds without forcing TrackGrade to guess at AMF multi-file semantics.
+
+## 2026-04-22 — Make Live ColorBox Validation Reversible And Repeatable In `swift test`
+
+### Context
+
+The repo already had strong mock coverage, but live hardware verification still depended on one-off manual probes. While wiring new live integration tests, TrackGrade also exposed a subtle package-only bug: the generated client must be pointed at `http://host/v2` without a trailing slash, otherwise requests become `/v2//...` and fail on real hardware even though the app-side fallback paths continue to work.
+
+### Decision
+
+- Fix the generated OpenAPI client bootstrap so package builds use `http://host/v2` as the server URL, not `http://host/v2/`
+- Add opt-in live integration tests gated by `TRACKGRADE_LIVE_COLORBOX_HOST`
+- Keep those live tests reversible by choosing empty slots when possible and restoring or deleting any temporary grade / preset / library state during cleanup
+
+### Consequences
+
+- `swift test` can now exercise the real ColorBox contract when a reference device is available, instead of relying only on ad hoc curl sessions.
+- The package build and the app build no longer diverge silently on generated-client URL behavior.
+- Future firmware or network regressions can be caught with a single repeatable command before spending scarce iPad validation time.

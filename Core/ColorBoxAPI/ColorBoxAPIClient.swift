@@ -899,7 +899,7 @@ public struct ColorBoxAPIClient: Sendable {
 #if canImport(ColorBoxOpenAPI)
 private extension ColorBoxAPIClient {
     func makeGeneratedClient() -> Client {
-        let serverURL = endpoint.baseURL.appendingPathComponent("v2", isDirectory: true)
+        let serverURL = endpoint.baseURL.appendingPathComponent("v2")
         let transport = URLSessionTransport(
             configuration: .init(session: urlSession)
         )

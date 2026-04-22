@@ -18,6 +18,14 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
   test
 ```
 
+When a reference ColorBox is reachable, run the reversible live integration checks with:
+
+```sh
+TRACKGRADE_LIVE_COLORBOX_HOST=172.29.14.51 \
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+swift test --filter TrackGradeIntegrationTests/testLiveColorBox
+```
+
 Phase 3 acceptance evidence is collected with:
 
 ```sh
@@ -41,6 +49,7 @@ Current automated coverage:
 - Color math coverage for CDL application, transfer functions, `.cube` parsing / serialization, LUT baking, and helper conversions
 - Mock-server integration for connect, preview, device library reads and mutations, bypass, presets, reconnect, and unsupported false color
 - Mock-server integration for identity LUT upload and last-write-wins queue coalescing
+- Opt-in live integration for grade / bypass / preview round-trips, preset lifecycle, and `3D LUT` library lifecycle against the reference ColorBox
 - Fixture-backed iPad UI flows for launch, bypass, Before / After compare, settings, preset save, snapshot save, snapshot recall, gang broadcast, and library management
 - Fixture-backed iPad UI flows for preview source toggle and enlarged preview presentation
 - Fixture-backed hit-region accessibility audit for the static control surface

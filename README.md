@@ -56,6 +56,14 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift run MockColorBox
 ```
 
+For reversible live hardware checks against the reference ColorBox:
+
+```sh
+TRACKGRADE_LIVE_COLORBOX_HOST=172.29.14.51 \
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+swift test --filter TrackGradeIntegrationTests/testLiveColorBox
+```
+
 ## Contributing
 
 Contribution guidelines live in [CONTRIBUTING.md](CONTRIBUTING.md). Please also review [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before opening issues or pull requests.

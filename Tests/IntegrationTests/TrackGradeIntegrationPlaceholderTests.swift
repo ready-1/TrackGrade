@@ -333,6 +333,213 @@ final class TrackGradeIntegrationTests: XCTestCase {
         XCTAssertTrue(deletedEntry.isEmpty)
     }
 
+    func testLiveColorBoxRoundTripsGradeBypassAndPreview() async throws {
+        let (manager, deviceID) = try await makeLiveManager()
+        let connectedDevice = try await manager.connect(id: deviceID)
+        let originalPipelineState = try XCTUnwrap(connectedDevice.pipelineState)
+        let originalBypass = originalPipelineState.bypassEnabled
+        let originalPreviewSource = originalPipelineState.previewSource
+        let originalGradeControl = originalPipelineState.gradeControl
+
+        let alternatePreviewSource: ColorBoxPreviewSource = originalPreviewSource == .output ? .input : .output
+        let testGrade = ColorBoxGradeControlState(
+            lift: ColorBoxRGBVector(red: 0.04, green: -0.01, blue: 0.02),
+            gamma: ColorBoxRGBVector(red: 0.08, green: -0.03, blue: 0.01),
+            gain: ColorBoxRGBVector(red: 1.05, green: 0.98, blue: 1.03),
+            saturation: 1.12
+        )
+
+        try await withAsyncCleanup {
+            _ = try? await manager.updateGradeControl(
+                id: deviceID,
+                gradeControl: originalGradeControl
+            )
+            _ = try? await manager.setPreviewSource(
+                id: deviceID,
+                source: originalPreviewSource
+            )
+            _ = try? await manager.setBypass(
+                id: deviceID,
+                enabled: originalBypass
+            )
+        } operation: {
+            let gradedDevice = try await manager.updateGradeControl(
+                id: deviceID,
+                gradeControl: testGrade
+            )
+            Self.assertGradeControl(
+                gradedDevice.pipelineState?.gradeControl,
+                matches: testGrade,
+                file: #filePath,
+                line: #line
+            )
+
+            let previewDevice = try await manager.setPreviewSource(
+                id: deviceID,
+                source: alternatePreviewSource
+            )
+            XCTAssertEqual(
+                previewDevice.pipelineState?.previewSource,
+                alternatePreviewSource
+            )
+            XCTAssertGreaterThan(previewDevice.previewByteCount, 0)
+
+            let bypassedDevice = try await manager.setBypass(
+                id: deviceID,
+                enabled: originalBypass == false
+            )
+            XCTAssertEqual(
+                bypassedDevice.pipelineState?.bypassEnabled,
+                originalBypass == false
+            )
+        }
+    }
+
+    func testLiveColorBoxSupportsPresetLifecycle() async throws {
+        let (manager, deviceID) = try await makeLiveManager()
+        let connectedDevice = try await manager.connect(id: deviceID)
+        let originalPipelineState = try XCTUnwrap(connectedDevice.pipelineState)
+        let originalGradeControl = originalPipelineState.gradeControl
+
+        let occupiedSlots = Set(connectedDevice.presets.map(\.slot))
+        guard let presetSlot = (1 ... 16).first(where: { occupiedSlots.contains($0) == false }) else {
+            throw XCTSkip("The live ColorBox has no empty preset slot available for a reversible test.")
+        }
+
+        let savedGrade = ColorBoxGradeControlState(
+            lift: ColorBoxRGBVector(red: 0.06, green: -0.02, blue: 0.01),
+            gamma: ColorBoxRGBVector(red: 0.09, green: 0.01, blue: -0.04),
+            gain: ColorBoxRGBVector(red: 1.08, green: 0.97, blue: 1.04),
+            saturation: 1.18
+        )
+        let alternateGrade = ColorBoxGradeControlState(
+            lift: ColorBoxRGBVector(red: -0.03, green: 0.01, blue: 0.02),
+            gamma: ColorBoxRGBVector(red: -0.05, green: 0.02, blue: 0.03),
+            gain: ColorBoxRGBVector(red: 0.96, green: 1.02, blue: 1.01),
+            saturation: 0.93
+        )
+        let presetName = "TrackGrade Live Preset \(presetSlot)"
+
+        try await withAsyncCleanup {
+            _ = try? await manager.deletePreset(id: deviceID, slot: presetSlot)
+            _ = try? await manager.updateGradeControl(
+                id: deviceID,
+                gradeControl: originalGradeControl
+            )
+        } operation: {
+            _ = try await manager.updateGradeControl(
+                id: deviceID,
+                gradeControl: savedGrade
+            )
+
+            let savedPresetDevice = try await manager.savePreset(
+                id: deviceID,
+                slot: presetSlot,
+                name: presetName
+            )
+            XCTAssertTrue(
+                savedPresetDevice.presets.contains(where: {
+                    $0.slot == presetSlot && $0.name == presetName
+                })
+            )
+
+            _ = try await manager.updateGradeControl(
+                id: deviceID,
+                gradeControl: alternateGrade
+            )
+
+            let recalledPresetDevice = try await manager.recallPreset(
+                id: deviceID,
+                slot: presetSlot
+            )
+            XCTAssertEqual(
+                recalledPresetDevice.pipelineState?.lastRecalledPresetSlot,
+                presetSlot
+            )
+            Self.assertGradeControl(
+                recalledPresetDevice.pipelineState?.gradeControl,
+                matches: savedGrade,
+                file: #filePath,
+                line: #line
+            )
+
+            let deletedPresetDevice = try await manager.deletePreset(
+                id: deviceID,
+                slot: presetSlot
+            )
+            XCTAssertFalse(
+                deletedPresetDevice.presets.contains(where: { $0.slot == presetSlot })
+            )
+        }
+    }
+
+    func testLiveColorBoxSupportsThreeDLUTLibraryLifecycle() async throws {
+        let (manager, deviceID) = try await makeLiveManager()
+        _ = try await manager.connect(id: deviceID)
+
+        let initialLibraries = try await manager.fetchLibraries(id: deviceID)
+        let initialThreeDLUTSection = try XCTUnwrap(
+            initialLibraries.first(where: { $0.kind == .threeDLUT })
+        )
+        guard let emptySlot = initialThreeDLUTSection.entries.first(where: \.isEmpty)?.slot else {
+            throw XCTSkip("The live ColorBox has no empty 3D LUT slot available for a reversible test.")
+        }
+
+        let uploadedFileName = "TrackGradeLiveSlot\(emptySlot).cube"
+        let renamedUserName = "TrackGrade Live Slot \(emptySlot)"
+
+        try await withAsyncCleanup {
+            _ = try? await manager.deleteLibraryEntry(
+                id: deviceID,
+                kind: .threeDLUT,
+                slot: emptySlot
+            )
+        } operation: {
+            let uploadedLibraries = try await manager.uploadLibraryEntry(
+                id: deviceID,
+                kind: .threeDLUT,
+                slot: emptySlot,
+                fileName: uploadedFileName,
+                data: Data(Self.simpleCubeText(title: "TrackGradeLive", value: 0.33).utf8)
+            )
+            let uploadedEntry = try XCTUnwrap(
+                uploadedLibraries
+                    .first(where: { $0.kind == .threeDLUT })?
+                    .entries
+                    .first(where: { $0.slot == emptySlot })
+            )
+            XCTAssertEqual(uploadedEntry.fileName, uploadedFileName)
+            XCTAssertFalse(uploadedEntry.isEmpty)
+
+            let renamedLibraries = try await manager.renameLibraryEntry(
+                id: deviceID,
+                kind: .threeDLUT,
+                slot: emptySlot,
+                name: renamedUserName
+            )
+            let renamedEntry = try XCTUnwrap(
+                renamedLibraries
+                    .first(where: { $0.kind == .threeDLUT })?
+                    .entries
+                    .first(where: { $0.slot == emptySlot })
+            )
+            XCTAssertEqual(renamedEntry.userName, renamedUserName)
+
+            let deletedLibraries = try await manager.deleteLibraryEntry(
+                id: deviceID,
+                kind: .threeDLUT,
+                slot: emptySlot
+            )
+            let deletedEntry = try XCTUnwrap(
+                deletedLibraries
+                    .first(where: { $0.kind == .threeDLUT })?
+                    .entries
+                    .first(where: { $0.slot == emptySlot })
+            )
+            XCTAssertTrue(deletedEntry.isEmpty)
+        }
+    }
+
     private func makeApplication(
         port: Int,
         password: String? = nil,
@@ -382,5 +589,64 @@ final class TrackGradeIntegrationTests: XCTestCase {
             "0.000000 \(formatted) \(formatted)",
             "\(formatted) \(formatted) \(formatted)",
         ].joined(separator: "\n") + "\n"
+    }
+
+    private func makeLiveManager() async throws -> (DeviceManager, UUID) {
+        let address = try liveColorBoxAddress()
+        let manager = DeviceManager(retryPolicy: .testing)
+        let deviceID = try await manager.registerDevice(
+            name: "Live ColorBox",
+            address: address
+        )
+        return (manager, deviceID)
+    }
+
+    private func liveColorBoxAddress() throws -> String {
+        let environment = ProcessInfo.processInfo.environment
+        if let address = environment["TRACKGRADE_LIVE_COLORBOX_HOST"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           address.isEmpty == false {
+            return address
+        }
+
+        throw XCTSkip(
+            "Set TRACKGRADE_LIVE_COLORBOX_HOST to run the reversible live hardware integration tests."
+        )
+    }
+
+    private func withAsyncCleanup(
+        cleanup: @escaping () async throws -> Void,
+        operation: @escaping () async throws -> Void
+    ) async throws {
+        do {
+            try await operation()
+        } catch {
+            try? await cleanup()
+            throw error
+        }
+
+        try await cleanup()
+    }
+
+    private static func assertGradeControl(
+        _ actual: ColorBoxGradeControlState?,
+        matches expected: ColorBoxGradeControlState,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard let actual else {
+            XCTFail("Expected a pipeline grade control value.", file: file, line: line)
+            return
+        }
+
+        XCTAssertEqual(actual.lift.red, expected.lift.red, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.lift.green, expected.lift.green, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.lift.blue, expected.lift.blue, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.gamma.red, expected.gamma.red, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.gamma.green, expected.gamma.green, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.gamma.blue, expected.gamma.blue, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.gain.red, expected.gain.red, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.gain.green, expected.gain.green, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.gain.blue, expected.gain.blue, accuracy: 0.0001, file: file, line: line)
+        XCTAssertEqual(actual.saturation, expected.saturation, accuracy: 0.0001, file: file, line: line)
     }
 }

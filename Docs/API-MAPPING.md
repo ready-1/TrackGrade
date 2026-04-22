@@ -8,6 +8,7 @@
 - The live contract uses server base `'/v2'`, which means the provisional `/system/info`-style paths in the handwritten mock and wrapper do not match the real device surface.
 - The document declares an API key security scheme named `app_id` carried in the `X-API-KEY` header.
 - TrackGrade now uses the generated `/v2` client for connect-time reads plus pipeline-node configuration and bypass writes, with the older handwritten endpoints retained as fallback compatibility paths.
+- Package-side generated-client validation must use a server URL shaped like `http://host/v2` without a trailing slash; using `http://host/v2/` produces broken `/v2//...` requests on real hardware.
 
 ## TODO
 
@@ -32,8 +33,8 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
 | 1D LUT library | `GET` | `/v2/1dLutLibrary` | Returns the 1D LUT slot array |
 | 3D LUT library | `GET` | `/v2/3dLutLibrary` | Returns the 3D LUT slot array |
-| Matrix library | `GET` | `/v2/mtxLibrary` | Returns the matrix slot array |
-| Image library | `GET` | `/v2/imgLibrary` | Returns the image slot array |
+| Matrix library | `GET` | `/v2/matrixLibrary` | Returns the matrix slot array |
+| Image library | `GET` | `/v2/imageLibrary` | Returns the image slot array |
 | Overlay library | `GET` | `/v2/overlayLibrary` | Returns the overlay slot array |
 | AMF library | `GET` | `/v2/amfLibrary` | Returns the AMF slot array |
 | Library control | `GET` / `PUT` | `/v2/libraryControl` | Verified live for preset save / rename / recall / delete |
@@ -104,6 +105,12 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - A successful cleanup probe uploaded an identity `.cube` file to slot 4, renamed it to `TrackGrade Live Probe`, verified the renamed slot in `GET /v2/3dLutLibrary`, and then deleted it cleanly.
 - The app now uses the same live-verified upload / rename / delete contract for 1D LUT, 3D LUT, matrix, image, and overlay libraries.
 - `GET /v2/amfLibrary` is also now part of TrackGrade’s surfaced library browser, but AMF import remains deferred because the device uses a separate multi-file upload contract.
+- Reversible live integration tests now pass against the reference box for:
+  - grade / bypass / preview round-trips
+  - preset save / recall / delete
+  - `3D LUT` library upload / rename / delete
+- A deeper probe also confirmed that `PUT /v2/pipelineStages` can switch `lut3d_1` into library-backed mode with `dynamic = false` and `libraryEntry = <slot>`, and the device reads that state back cleanly.
+- That same probe did not yield visual proof of effect, because the idle reference box currently returns identical preview hashes for `INPUT` and `OUTPUT`, so upload-based grading is still not promoted as the shipping control path.
 - `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24`, returns `200`, and remains part of the reliable MVP preset-save workflow for dynamic grade persistence.
 - The repo does now contain a working bake-and-queue path for `.cube` uploads against the mock server, including per-device last-write-wins coalescing and monotonic debug sequence IDs.
 - TrackGrade still does not use `/v2/upload` as the live grading path; the shipping control surface continues to write grade changes through `PUT /v2/pipelineStages` until a baked-upload grading workflow is intentionally adopted and verified end to end.

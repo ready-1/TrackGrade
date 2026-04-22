@@ -74,6 +74,9 @@
 - TrackGrade now uses the live `POST /v2/upload` plus `PUT /v2/libraryControl` flow for 1D LUT, 3D LUT, matrix, image, and overlay asset management, while AMF remains browse-first because the hardware uses a separate multi-file upload path.
 - Mock-server integration now covers upload / rename / delete library mutations, and the fixture-backed UI suite now covers empty-slot import affordances plus destructive library delete behavior.
 - A fresh live hardware probe confirmed that the app’s multipart upload shape works as shipped: `application/octet-stream` uploads create device library entries, `SetUserName` updates both visible name and filename, and `DeleteEntry` cleans the slot back to empty.
+- The package-side generated client now targets the live device correctly with a base URL of `http://host/v2` without a trailing slash, eliminating the broken `/v2//...` request shape that had been masking real hardware validation in `swift test`.
+- TrackGrade now includes opt-in reversible live integration tests for grade / bypass / preview round-trips, preset lifecycle, and `3D LUT` library upload / rename / delete against the reference ColorBox, and those checks passed on `2026-04-22`.
+- A follow-up live probe confirmed that TrackGrade can upload a `3D LUT` asset, point `lut3d_1` at a library slot with `dynamic = false`, and read that stage configuration back successfully, but the idle reference box currently returns identical preview hashes for `INPUT` and `OUTPUT`, so the uploaded-LUT grading path still lacks observable image-path proof.
 
 ## In-Flight Work
 
@@ -82,6 +85,7 @@
 - Choosing the next non-hardware polish slice after library management, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
 - Deciding how far to wire the bake/upload path into the live app shell now that library-import semantics are verified, while still keeping the shipping grading path conservative.
 - Using the restored production network window to finish as much live hardware validation as possible beyond the now-confirmed preset timing fix.
+- Using the restored production network window to finish the remaining iPad-only touch validation and any extra contract probing now that repeatable live backend tests exist in the repo.
 - Finishing the release-facing accessibility and documentation pass now that preview controls, diagnostics export, notices, and preset workflow polish are in place.
 - Deciding whether AMF multi-file import is worth implementing for the first release now that the single-file library workflow is live and stable.
 
@@ -91,6 +95,7 @@
 - True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
 - The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
 - The baked dynamic-LUT upload queue is still only mock-validated for live grading behavior, so the app continues to use the hardware-verified `pipelineStages` route for the control surface even though library asset import semantics are now verified on-device.
+- The idle reference box is not currently giving a preview signal that distinguishes `INPUT` from `OUTPUT`, which blocks objective verification that a library-selected uploaded LUT is affecting the image path.
 - AMF import is still deferred because the device expects a separate `/v2/uploadMultiple` workflow that is not yet implemented in TrackGrade.
 
 ## Next Steps
@@ -103,6 +108,7 @@
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
 - Finish the remaining release-collateral cleanup now that `NOTICES.md`, diagnostics export, and in-app notices are in place.
 - Re-run the manual hardware checklist with attention to preset-save timing, now that the app includes a one-second settle before `saveDynamicLutRequest`.
+- Re-run the new opt-in live integration tests whenever the reference firmware or network environment changes so hardware regressions are caught before manual iPad time.
 - Extend the passing accessibility audit work into broader VoiceOver / Dynamic Type / contrast verification beyond the current hit-region pass.
 - Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before a live grading workflow based on uploads is fully understood.
 - Decide whether to add AMF multi-file import now or leave AMF as browse / rename / delete only for the first release.
