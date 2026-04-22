@@ -708,3 +708,4 @@ The repo already had strong mock coverage, but live hardware verification still 
 - `swift test` can now exercise the real ColorBox contract when a reference device is available, instead of relying only on ad hoc curl sessions.
 - The package build and the app build no longer diverge silently on generated-client URL behavior.
 - Future firmware or network regressions can be caught with a single repeatable command before spending scarce iPad validation time.
+- Visual proof for upload-based grading still depends on the reference box having an active signal; identical preview hashes on an idle box should not be treated as proof that the uploaded LUT path is ineffective.

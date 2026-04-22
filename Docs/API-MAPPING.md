@@ -110,7 +110,7 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
   - preset save / recall / delete
   - `3D LUT` library upload / rename / delete
 - A deeper probe also confirmed that `PUT /v2/pipelineStages` can switch `lut3d_1` into library-backed mode with `dynamic = false` and `libraryEntry = <slot>`, and the device reads that state back cleanly.
-- That same probe did not yield visual proof of effect, because the idle reference box currently returns identical preview hashes for `INPUT` and `OUTPUT`, so upload-based grading is still not promoted as the shipping control path.
+- That same probe did not yield visual proof of effect, but the reference test box now appears to have no active signal, so identical `INPUT` and `OUTPUT` preview hashes are treated as an environment caveat rather than evidence that the uploaded LUT path is ineffective.
 - `POST /v2/saveDynamicLutRequest` is live on firmware `3.0.0.24`, returns `200`, and remains part of the reliable MVP preset-save workflow for dynamic grade persistence.
 - The repo does now contain a working bake-and-queue path for `.cube` uploads against the mock server, including per-device last-write-wins coalescing and monotonic debug sequence IDs.
 - TrackGrade still does not use `/v2/upload` as the live grading path; the shipping control surface continues to write grade changes through `PUT /v2/pipelineStages` until a baked-upload grading workflow is intentionally adopted and verified end to end.
