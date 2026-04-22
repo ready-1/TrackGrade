@@ -668,6 +668,7 @@ final class TrackGradeIntegrationTests: XCTestCase {
 
     private func makeLiveManager() async throws -> (DeviceManager, UUID) {
         let address = try liveColorBoxAddress()
+        try await preflightLiveColorBox(at: address)
         let manager = DeviceManager(retryPolicy: .testing)
         let deviceID = try await manager.registerDevice(
             name: "Live ColorBox",
@@ -686,6 +687,25 @@ final class TrackGradeIntegrationTests: XCTestCase {
         throw XCTSkip(
             "Set TRACKGRADE_LIVE_COLORBOX_HOST to run the reversible live hardware integration tests."
         )
+    }
+
+    private func preflightLiveColorBox(
+        at address: String
+    ) async throws {
+        guard let url = URL(string: "http://\(address)/v2/buildInfo") else {
+            throw XCTSkip("TRACKGRADE_LIVE_COLORBOX_HOST is not a valid host: \(address)")
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+
+        do {
+            _ = try await URLSession.shared.data(for: request)
+        } catch {
+            throw XCTSkip(
+                "Live ColorBox at \(address) is unreachable from this host: \(error.localizedDescription)"
+            )
+        }
     }
 
     private func withAsyncCleanup(

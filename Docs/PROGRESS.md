@@ -84,6 +84,7 @@
 - The main grading surface has now been reshaped toward that compact hardware-panel direction: matte industrial styling, a small centered LGG / saturation state window, compact preview and status side panels, visually dominant trackballs, and reduced on-surface telemetry while keeping the drawer-based workflow intact.
 - The compact-surface pass now presents direct Lift / Gamma / Gain control-state values (X / Y / Bias) instead of derived RGB telemetry in the center display, removes more duplicated information from the primary surface, and makes Ball / Bias / Saturation reset affordances explicit on the control layer.
 - The full simulator suite passed again after hardening the library delete UI test path for the current iOS simulator menu presentation behavior, so the compact-surface pass is now verified end-to-end.
+- The opt-in live integration tests now preflight `http://<host>/v2/buildInfo` with a short timeout and skip quickly when the reference ColorBox is unreachable, preventing long hangs when the network path is down.
 
 ## In-Flight Work
 
