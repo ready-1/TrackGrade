@@ -219,6 +219,26 @@ Implement device-native preset save / rename / recall / delete using:
 - `MockColorBox` must preserve the same `libraryControl` action flow so integration tests cover the real contract shape.
 - False color is now the only unresolved Phase 1 control-path mismatch from the original guessed routes.
 
+## 2026-04-22 — Favor Direct Control-State Readouts Over Derived Color Telemetry On The Main Surface
+
+### Context
+
+The user’s latest visual reference and iPad feedback both emphasize a compact, business-like hardware-panel feel. The main grade surface had already been compressed, but the centered state window still emphasized derived RGB vectors, which made the UI feel more diagnostic than operational.
+
+### Decision
+
+Keep the primary landscape surface focused on operator-facing controls and direct control-state readouts:
+
+- show Lift / Gamma / Gain X / Y / Bias values in the center display instead of derived RGB telemetry
+- keep ColorBox metadata and lower-priority diagnostics in the drawer
+- make Ball / Bias / Saturation reset affordances explicit on the primary control surface
+
+### Consequences
+
+- The main surface now communicates the live control state more like a physical grading panel and less like a debug dashboard.
+- Duplicate telemetry pressure on the landscape layout is reduced without removing important device details from the app entirely.
+- Manual hardware review still needs to confirm that the more explicit reset labels are obvious in hand while preserving a compact layout.
+
 ## 2026-04-21 — Land the Full Color-Math Core and Queue LUT Uploads Per Device While Keeping Live Grading on `pipelineStages`
 
 ### Context

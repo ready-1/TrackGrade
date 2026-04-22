@@ -300,7 +300,7 @@ final class TrackGradeUITests: XCTestCase {
         let actionsButton = fixtureElement("library-actions-threeDLUT-1", in: app)
         scrollToElement(actionsButton, in: app)
         XCTAssertTrue(actionsButton.waitForExistence(timeout: 5))
-        actionsButton.tap()
+        openLibraryEntryActions(actionsButton, in: app)
 
         let deleteMenuItem = app.menuItems["Delete"]
         if deleteMenuItem.waitForExistence(timeout: 5) {
@@ -421,6 +421,21 @@ final class TrackGradeUITests: XCTestCase {
     private func dismissDeviceDrawerByTappingOutside(in app: XCUIApplication) {
         let outsideCoordinate = app.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5))
         outsideCoordinate.tap()
+    }
+
+    private func openLibraryEntryActions(
+        _ actionsButton: XCUIElement,
+        in app: XCUIApplication
+    ) {
+        actionsButton.tap()
+
+        let deleteMenuItem = app.menuItems["Delete"]
+        let deleteButton = app.buttons["Delete"]
+        if deleteMenuItem.waitForExistence(timeout: 1) || deleteButton.waitForExistence(timeout: 1) {
+            return
+        }
+
+        actionsButton.press(forDuration: 0.8)
     }
 }
 

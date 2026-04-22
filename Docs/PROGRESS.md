@@ -82,6 +82,8 @@
 - TrackGrade now supports AMF library import through the dedicated multi-file `/v2/uploadMultiple` path in the app, client, and mock server, with package coverage proving AMF package upload and delete behavior offline.
 - A new live design reference from the user now sets the preferred visual direction for the grading surface: compact, business-like, control-first, with a centered status window, minimal chrome, and drawer-based access to secondary device details.
 - The main grading surface has now been reshaped toward that compact hardware-panel direction: matte industrial styling, a small centered LGG / saturation state window, compact preview and status side panels, visually dominant trackballs, and reduced on-surface telemetry while keeping the drawer-based workflow intact.
+- The compact-surface pass now presents direct Lift / Gamma / Gain control-state values (X / Y / Bias) instead of derived RGB telemetry in the center display, removes more duplicated information from the primary surface, and makes Ball / Bias / Saturation reset affordances explicit on the control layer.
+- The full simulator suite passed again after hardening the library delete UI test path for the current iOS simulator menu presentation behavior, so the compact-surface pass is now verified end-to-end.
 
 ## In-Flight Work
 
@@ -108,6 +110,7 @@
 - Finish the remaining release-prep pass around packaging polish, app-icon work, and any final README cleanup.
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the revised static layout and drawer dismissal feel balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
+- Validate that the new control-state center window and explicit reset labels read clearly at normal iPad operating distance without reintroducing visual clutter.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.

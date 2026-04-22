@@ -425,12 +425,12 @@ private struct DynamicGradeControlsCard: View {
     }
 
     var body: some View {
-        let trackballHeight = min(252, max(182, availableSize.height * 0.34))
-        let sidePanelWidth = min(168, max(132, availableSize.width * 0.135))
-        let statusWidth = min(436, max(318, availableSize.width * 0.36))
+        let trackballHeight = min(272, max(192, availableSize.height * 0.38))
+        let sidePanelWidth = min(150, max(116, availableSize.width * 0.12))
+        let statusWidth = min(500, max(340, availableSize.width * 0.42))
 
-        VStack(spacing: 16) {
-            HStack(alignment: .top, spacing: 18) {
+        VStack(spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
                 CompactPreviewPanel(
                     imageData: device.previewFrameData,
                     source: device.pipelineState?.previewSource ?? .output,
@@ -458,7 +458,10 @@ private struct DynamicGradeControlsCard: View {
                 Spacer(minLength: 0)
 
                 GradeStateDisplay(
-                    grade: draftGrade,
+                    liftState: liftState,
+                    gammaState: gammaState,
+                    gainState: gainState,
+                    saturation: draftGrade.saturation,
                     modeText: model.isBeforeAfterActive(device.id) ? "Compare" : "Normal",
                     onEdit: { target in
                         activeEditor = target
@@ -471,7 +474,6 @@ private struct DynamicGradeControlsCard: View {
                 CompactStatusPanel(
                     connectionState: device.connectionState,
                     gangSummary: model.gangStatusSummary(for: device.id),
-                    compareStatus: model.beforeAfterStatusText(for: device.id),
                     resetRequiresConfirmation: resetRequiresConfirmation,
                     onResetAll: {
                         emitButtonHaptic()
@@ -495,7 +497,7 @@ private struct DynamicGradeControlsCard: View {
                     }
                 }
             )
-            .frame(maxWidth: min(520, max(360, availableSize.width * 0.48)))
+            .frame(maxWidth: min(480, max(340, availableSize.width * 0.42)))
 
             HStack(alignment: .top, spacing: max(18, availableSize.width * 0.018)) {
                 TrackballClusterView(
@@ -578,7 +580,7 @@ private struct DynamicGradeControlsCard: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding(.top, 8)
+        .padding(.top, 4)
         .accessibilityValue(Text(accessibilityGradeSummary))
         .accessibilityIdentifier("dynamic-grade-card")
         .sheet(item: $activeEditor) { target in
@@ -1404,12 +1406,15 @@ private struct ConnectionStateBadge: View {
 }
 
 private struct GradeStateDisplay: View {
-    let grade: ColorBoxGradeControlState
+    let liftState: ColorBoxTrackballState
+    let gammaState: ColorBoxTrackballState
+    let gainState: ColorBoxTrackballState
+    let saturation: Float
     let modeText: String
     let onEdit: (GradeEditorTarget) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Mode: \(modeText)")
                     .font(.headline.monospaced().weight(.semibold))
@@ -1419,7 +1424,7 @@ private struct GradeStateDisplay: View {
 
                 Text("Tap values to edit")
                     .font(.caption.monospaced())
-                    .foregroundStyle(Color.white.opacity(0.56))
+                    .foregroundStyle(Color.white.opacity(0.44))
                     .accessibilityHidden(true)
             }
 
@@ -1427,9 +1432,9 @@ private struct GradeStateDisplay: View {
                 .overlay(Color.white.opacity(0.18))
 
             HStack(spacing: 0) {
-                CompactVectorStatusButton(
+                CompactControlStatusButton(
                     title: "Lift",
-                    vector: grade.lift,
+                    state: liftState,
                     identifier: "lift-state-row",
                     action: { onEdit(.lift) }
                 )
@@ -1437,9 +1442,9 @@ private struct GradeStateDisplay: View {
                 Divider()
                     .overlay(Color.white.opacity(0.14))
 
-                CompactVectorStatusButton(
+                CompactControlStatusButton(
                     title: "Gamma",
-                    vector: grade.gamma,
+                    state: gammaState,
                     identifier: "gamma-state-row",
                     action: { onEdit(.gamma) }
                 )
@@ -1447,9 +1452,9 @@ private struct GradeStateDisplay: View {
                 Divider()
                     .overlay(Color.white.opacity(0.14))
 
-                CompactVectorStatusButton(
+                CompactControlStatusButton(
                     title: "Gain",
-                    vector: grade.gain,
+                    state: gainState,
                     identifier: "gain-state-row",
                     action: { onEdit(.gain) }
                 )
@@ -1460,19 +1465,19 @@ private struct GradeStateDisplay: View {
 
             CompactScalarStatusButton(
                 title: "Saturation",
-                value: formatted(grade.saturation),
+                value: formatted(saturation),
                 identifier: "sat-state-row",
                 action: { onEdit(.saturation) }
             )
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.black.opacity(0.72))
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.black.opacity(0.76))
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.22), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
@@ -1491,10 +1496,10 @@ private struct GradeStateDisplay: View {
 
     private var accessibilitySummary: String {
         [
-            "Lift \(formatted(grade.lift))",
-            "Gamma \(formatted(grade.gamma))",
-            "Gain \(formatted(grade.gain))",
-            "Saturation \(formatted(grade.saturation))",
+            "Lift X \(formatted(liftState.ball.x)) Y \(formatted(liftState.ball.y)) Bias \(formatted(liftState.ring))",
+            "Gamma X \(formatted(gammaState.ball.x)) Y \(formatted(gammaState.ball.y)) Bias \(formatted(gammaState.ring))",
+            "Gain X \(formatted(gainState.ball.x)) Y \(formatted(gainState.ball.y)) Bias \(formatted(gainState.ring))",
+            "Saturation \(formatted(saturation))",
         ].joined(separator: ". ")
     }
 }
@@ -1507,10 +1512,16 @@ private struct CompactPreviewPanel: View {
     let onShowPreviewOverlay: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Preview")
-                .font(.caption.monospaced().weight(.semibold))
-                .foregroundStyle(Color.white.opacity(0.7))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Preview")
+                    .font(.caption.monospaced().weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.68))
+                Spacer(minLength: 8)
+                Text(source.displayName)
+                    .font(.caption2.monospaced().weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.48))
+            }
 
             PreviewThumbnail(
                 imageData: imageData,
@@ -1519,18 +1530,12 @@ private struct CompactPreviewPanel: View {
                 refreshAction: onRefreshPreview,
                 enlargeAction: onShowPreviewOverlay
             )
-            .frame(height: 96)
-
-            Text("Tap to toggle input/output.")
-                .font(.caption2.monospaced())
-                .foregroundStyle(Color.white.opacity(0.5))
-                .lineLimit(2)
-                .accessibilityHidden(true)
+            .frame(height: 82)
         }
-        .padding(12)
+        .padding(10)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTogglePreviewSource)
-        .surfacePanelStyle(cornerRadius: 18)
+        .surfacePanelStyle(cornerRadius: 16)
         .accessibilityIdentifier("grade-preview-thumbnail")
     }
 }
@@ -1538,18 +1543,16 @@ private struct CompactPreviewPanel: View {
 private struct CompactStatusPanel: View {
     let connectionState: ConnectionState
     let gangSummary: GangStatusSummary?
-    let compareStatus: String
     let resetRequiresConfirmation: Bool
     let onResetAll: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Status")
+        VStack(alignment: .leading, spacing: 8) {
+            Text("System")
                 .font(.caption.monospaced().weight(.semibold))
-                .foregroundStyle(Color.white.opacity(0.7))
+                .foregroundStyle(Color.white.opacity(0.68))
 
             CompactStatusRow(label: "Link", value: connectionState.rawValue.capitalized)
-            CompactStatusRow(label: "Compare", value: compareStatus)
 
             if let gangSummary {
                 CompactStatusRow(label: "Gang", value: gangValue(for: gangSummary))
@@ -1565,9 +1568,9 @@ private struct CompactStatusPanel: View {
                 action: onResetAll
             )
         }
-        .padding(12)
+        .padding(10)
         .frame(maxHeight: .infinity, alignment: .topLeading)
-        .surfacePanelStyle(cornerRadius: 18)
+        .surfacePanelStyle(cornerRadius: 16)
     }
 
     private func gangValue(for summary: GangStatusSummary) -> String {
@@ -1603,25 +1606,23 @@ private struct CompactStatusRow: View {
     }
 }
 
-private struct CompactVectorStatusButton: View {
+private struct CompactControlStatusButton: View {
     let title: String
-    let vector: ColorBoxRGBVector
+    let state: ColorBoxTrackballState
     let identifier: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .font(.caption.monospaced().weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.72))
 
-                Text("R \(formatted(vector.red))")
-                Text("G \(formatted(vector.green))")
-                Text("B \(formatted(vector.blue))")
+                controlRow(label: "X", value: state.ball.x)
+                controlRow(label: "Y", value: state.ball.y)
+                controlRow(label: "Bias", value: state.ring)
             }
-            .font(.subheadline.monospaced().weight(.medium))
-            .foregroundStyle(.white)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 8)
             .padding(.horizontal, 10)
@@ -1630,9 +1631,23 @@ private struct CompactVectorStatusButton: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
-        .accessibilityValue("R \(formatted(vector.red)), G \(formatted(vector.green)), B \(formatted(vector.blue))")
+        .accessibilityValue("X \(formatted(state.ball.x)), Y \(formatted(state.ball.y)), Bias \(formatted(state.ring))")
         .accessibilityHint("Opens the numeric editor for \(title).")
         .accessibilityIdentifier(identifier)
+    }
+
+    private func controlRow(label: String, value: Float) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.caption2.monospaced().weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.46))
+
+            Spacer(minLength: 0)
+
+            Text(formatted(value))
+                .font(.subheadline.monospaced().weight(.medium))
+                .foregroundStyle(.white)
+        }
     }
 
     private func formatted(_ value: Float) -> String {
@@ -1742,12 +1757,12 @@ private struct PreviewThumbnail: View {
             )
 
             Text("\(source.displayName) Preview")
-                .font(.callout.weight(.semibold))
+                .font(.caption.monospaced().weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 5)
+                .padding(.vertical, 4)
                 .background(Color.black.opacity(0.62), in: Capsule())
-                .padding(8)
+                .padding(6)
                 .minimumScaleFactor(0.75)
                 .accessibilityHidden(true)
                 .accessibilityIdentifier("preview-source-label")
@@ -1759,21 +1774,21 @@ private struct PreviewThumbnail: View {
                     Button(action: enlargeAction) {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
                             .font(.caption.weight(.bold))
-                            .frame(width: 44, height: 44)
+                            .frame(width: 34, height: 34)
                     }
                     .buttonStyle(.plain)
                     .background(Color.black.opacity(0.62), in: Circle())
-                    .padding(.top, 8)
+                    .padding(.top, 6)
                     .accessibilityIdentifier("expand-preview-button")
 
                     Button(action: refreshAction) {
                         Image(systemName: "arrow.clockwise")
                             .font(.caption.weight(.bold))
-                            .frame(width: 44, height: 44)
+                            .frame(width: 34, height: 34)
                     }
                     .buttonStyle(.plain)
                     .background(Color.black.opacity(0.62), in: Circle())
-                    .padding(8)
+                    .padding(6)
                     .accessibilityIdentifier("refresh-preview-button")
                 }
 
@@ -1844,10 +1859,10 @@ private struct TrackballClusterView: View {
     let onResetRing: () -> Void
 
     var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            HStack(spacing: 12) {
+        VStack(alignment: .center, spacing: 10) {
+            HStack(spacing: 10) {
                 SurfaceResetButton(
-                    label: "B",
+                    label: "Ball",
                     identifier: "\(kind.rawValue)-reset-ball-chip",
                     accessibilityLabel: "Reset \(title) ball",
                     action: onResetBall
@@ -1863,7 +1878,7 @@ private struct TrackballClusterView: View {
                 Spacer(minLength: 0)
 
                 SurfaceResetButton(
-                    label: "R",
+                    label: "Bias",
                     identifier: "\(kind.rawValue)-reset-ring-chip",
                     accessibilityLabel: "Reset \(title) ring",
                     action: onResetRing
@@ -1905,13 +1920,6 @@ private struct TrackballClusterView: View {
                 .accessibilityIdentifier(kind.accessibilityIdentifier)
             }
             .frame(height: surfaceHeight)
-
-            Text(renderedSummary)
-                .font(.caption.monospaced())
-                .foregroundStyle(Color.white.opacity(0.6))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2033,11 +2041,6 @@ private struct TrackballClusterView: View {
             lineWidth: 2
         )
     }
-
-    private var renderedSummary: String {
-        "R \(formatted(renderedVector.red))  G \(formatted(renderedVector.green))  B \(formatted(renderedVector.blue))"
-    }
-
     private func formatted(_ value: Float) -> String {
         String(format: "%.2f", Double(value))
     }
@@ -2065,11 +2068,12 @@ private struct SurfaceResetButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.subheadline.monospaced().weight(.bold))
+                .font(.caption.monospaced().weight(.bold))
                 .foregroundStyle(.white)
-                .frame(width: 42, height: 42)
+                .frame(minWidth: 52, minHeight: 34)
+                .padding(.horizontal, 8)
                 .background(
-                    Circle()
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: [
@@ -2083,7 +2087,7 @@ private struct SurfaceResetButton: View {
                         )
                 )
                 .overlay {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 17, style: .continuous)
                         .stroke(Color.black.opacity(0.45), lineWidth: 1)
                 }
         }
@@ -2100,7 +2104,7 @@ private struct SaturationRollerView: View {
     let onReset: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Saturation")
                     .font(.subheadline.monospaced().weight(.semibold))
@@ -2111,7 +2115,7 @@ private struct SaturationRollerView: View {
                     .foregroundStyle(.white)
 
                 SurfaceResetButton(
-                    label: "R",
+                    label: "Reset",
                     identifier: "saturation-reset-chip",
                     accessibilityLabel: "Reset saturation",
                     action: onReset
@@ -2159,9 +2163,9 @@ private struct SaturationRollerView: View {
             .accessibilityLabel(Text("Saturation roller"))
             .accessibilityIdentifier("saturation-roller")
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .surfacePanelStyle(cornerRadius: 18)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .surfacePanelStyle(cornerRadius: 16)
         .overlay(alignment: .bottomLeading) {
             Text("Sensitivity \(sensitivity, specifier: "%.2fx")")
                 .font(.caption2.monospaced())
