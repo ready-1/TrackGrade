@@ -106,7 +106,7 @@ struct SettingsFeatureView: View {
                 }
 
                 Section("Diagnostics") {
-                    Text("Phase 2 currently focuses on the touch surface. Device naming, auth, and gang membership stay on the Phase 1 path for now.")
+                    Text("The current build centers on the touch surface, workflow drawer, and live ColorBox grading path. Device auth remains optional on the reference hardware, and gang control is now managed from the device list.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

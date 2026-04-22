@@ -8,6 +8,7 @@ TrackGrade is a native iPadOS 18+ SwiftUI app that talks directly to one or more
 - configure the Dynamic 3D LUT node for TrackGrade
 - drive Lift / Gamma / Gain plus saturation through `/v2/pipelineStages`
 - save, recall, and delete device-native presets on the ColorBox
+- broadcast core grade actions from the focused device to linked gang peers
 - keep iPad-local snapshots, scratch A/B slots, and undo / redo for operator workflow
 
 The app is split into an iPad app target plus a shared SwiftPM package:
@@ -32,7 +33,7 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 ### Features
 
 - `Features/Connect`
-  - saved devices, discovery, manual add, auth updates
+  - saved devices, discovery, manual add, auth updates, gang linking
 - `Features/Grade`
   - fixed landscape grading surface
   - custom touch controls, telemetry, preview thumb, workflow drawer
@@ -110,6 +111,13 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 3. Preset recall refreshes pipeline state after the device-side recall action.
 4. Local snapshots are intentionally separate from device-native presets.
 
+### 5. Gang Broadcast Workflow
+
+1. The selected device remains the focus device shown in the grading surface.
+2. Any saved devices marked as ganged in the device list become linked peers.
+3. Grade changes, bypass, false color, pipeline configuration, and preset recall broadcast from the focused device to those linked peers.
+4. The grading header compares the focused device state to linked peers and surfaces a synced, waiting, or drifted badge.
+
 ## Persistence Model
 
 ### SwiftData
@@ -135,9 +143,9 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 When the app launches with `-ui-test-fixture`:
 
 - SwiftData uses an in-memory store
-- one connected fixture ColorBox is seeded
+- three connected fixture ColorBoxes are seeded
 - presets, snapshots, and bypass mutate locally
-- UI tests can validate the real grading shell without LAN or hardware
+- UI tests can validate the real grading shell and first-pass gang behavior without LAN or hardware
 
 This keeps the simulator and UI automation path close to the real app shell instead of using a completely separate demo mode.
 
@@ -151,7 +159,7 @@ This keeps the simulator and UI automation path close to the real app shell inst
 ## Current Architectural Constraints
 
 - The app currently drives live grade directly through `pipelineStages` instead of baking and uploading `.cube` LUTs.
-- Multi-device ganging is not implemented yet.
+- Gang control currently follows a focused-device-plus-linked-peers model; deeper workflow support such as per-device offsets and richer gang management is still future work.
 - The library area is still a limited shell rather than a full asset manager.
 - The project compiles shared sources in both the app target and the package; a later cleanup can consume the local package product more directly.
 

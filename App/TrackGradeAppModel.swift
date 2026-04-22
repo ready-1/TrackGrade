@@ -17,6 +17,21 @@ private struct GradeHistoryState {
     var redo: [ColorBoxGradeControlState] = []
 }
 
+enum GangSyncState: Sendable, Equatable {
+    case synced
+    case drift
+    case waiting
+}
+
+struct GangStatusSummary: Sendable, Equatable {
+    let peerCount: Int
+    let state: GangSyncState
+
+    var totalDeviceCount: Int {
+        peerCount + 1
+    }
+}
+
 @MainActor
 @Observable
 final class TrackGradeAppModel {
@@ -65,6 +80,10 @@ final class TrackGradeAppModel {
         return snapshots(for: selectedDeviceID)
     }
 
+    var gangedPeerCount: Int {
+        knownDevices.filter(\.isGanged).count
+    }
+
     func snapshots(for deviceID: UUID) -> [StoredGradeSnapshot] {
         return gradeSnapshots
             .filter { $0.deviceID == deviceID && $0.kind == .standard }
@@ -104,6 +123,59 @@ final class TrackGradeAppModel {
         default:
             return nil
         }
+    }
+
+    func isDeviceGanged(_ deviceID: UUID) -> Bool {
+        knownDevices.first { $0.id == deviceID }?.isGanged ?? false
+    }
+
+    func gangStatusSummary(
+        for focusDeviceID: UUID
+    ) -> GangStatusSummary? {
+        let peerIDs = knownDevices
+            .filter { $0.isGanged && $0.id != focusDeviceID }
+            .map(\.id)
+
+        guard peerIDs.isEmpty == false else {
+            return nil
+        }
+
+        guard let focusSnapshot = snapshots.first(where: { $0.id == focusDeviceID }),
+              focusSnapshot.connectionState == .connected,
+              let focusPipelineState = focusSnapshot.pipelineState else {
+            return GangStatusSummary(peerCount: peerIDs.count, state: .waiting)
+        }
+
+        let peerSnapshots = peerIDs.compactMap { peerID in
+            snapshots.first { $0.id == peerID }
+        }
+
+        guard peerSnapshots.count == peerIDs.count else {
+            return GangStatusSummary(peerCount: peerIDs.count, state: .waiting)
+        }
+
+        if peerSnapshots.contains(where: {
+            $0.connectionState != .connected || $0.pipelineState == nil
+        }) {
+            return GangStatusSummary(peerCount: peerIDs.count, state: .waiting)
+        }
+
+        let isDrifted = peerSnapshots.contains { peerSnapshot in
+            guard let peerPipelineState = peerSnapshot.pipelineState else {
+                return true
+            }
+
+            return peerPipelineState.bypassEnabled != focusPipelineState.bypassEnabled
+                || peerPipelineState.falseColorEnabled != focusPipelineState.falseColorEnabled
+                || peerPipelineState.dynamicLUTMode != focusPipelineState.dynamicLUTMode
+                || peerPipelineState.lastRecalledPresetSlot != focusPipelineState.lastRecalledPresetSlot
+                || peerPipelineState.gradeControl != focusPipelineState.gradeControl
+        }
+
+        return GangStatusSummary(
+            peerCount: peerIDs.count,
+            state: isDrifted ? .drift : .synced
+        )
     }
 
     func start(modelContext: ModelContext) async {
@@ -234,6 +306,46 @@ final class TrackGradeAppModel {
         }
     }
 
+    func setGangMembership(
+        deviceID: UUID,
+        isEnabled: Bool
+    ) async {
+        guard let record = knownDevices.first(where: { $0.id == deviceID }) else {
+            return
+        }
+
+        record.isGanged = isEnabled
+
+        do {
+            if let modelContext {
+                try modelContext.save()
+                knownDevices = try fetchKnownDevices()
+            }
+        } catch {
+            errorMessage = "Failed to update gang membership: \(error.localizedDescription)"
+        }
+    }
+
+    func clearGangMembership() async {
+        let gangedRecords = knownDevices.filter(\.isGanged)
+        guard gangedRecords.isEmpty == false else {
+            return
+        }
+
+        for record in gangedRecords {
+            record.isGanged = false
+        }
+
+        do {
+            if let modelContext {
+                try modelContext.save()
+                knownDevices = try fetchKnownDevices()
+            }
+        } catch {
+            errorMessage = "Failed to clear the current gang: \(error.localizedDescription)"
+        }
+    }
+
     func promptForAuthentication(deviceID: UUID) {
         guard let record = knownDevices.first(where: { $0.id == deviceID }) else {
             return
@@ -348,8 +460,9 @@ final class TrackGradeAppModel {
     }
 
     func configurePipeline(id: UUID) async {
+        let targetIDs = broadcastTargetIDs(for: id)
         if launchConfiguration.usesUITestFixture {
-            updateFixtureDevice(id: id) { snapshot in
+            updateFixtureDevices(ids: targetIDs) { snapshot in
                 let current = snapshot.pipelineState
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: current?.bypassEnabled ?? false,
@@ -362,11 +475,11 @@ final class TrackGradeAppModel {
             return
         }
 
-        do {
-            let snapshot = try await deviceManager.configurePipelineForTrackGrade(id: id)
-            handleAuthenticationPromptIfNeeded(for: snapshot)
-        } catch {
-            errorMessage = "Failed to configure the ColorBox pipeline: \(error.localizedDescription)"
+        await performManagedDeviceCommand(
+            targetIDs: targetIDs,
+            failurePrefix: "Failed to configure the ColorBox pipeline"
+        ) { targetID in
+            try await self.deviceManager.configurePipelineForTrackGrade(id: targetID)
         }
     }
 
@@ -374,8 +487,9 @@ final class TrackGradeAppModel {
         id: UUID,
         enabled: Bool
     ) async {
+        let targetIDs = broadcastTargetIDs(for: id)
         if launchConfiguration.usesUITestFixture {
-            updateFixtureDevice(id: id) { snapshot in
+            updateFixtureDevices(ids: targetIDs) { snapshot in
                 let current = snapshot.pipelineState
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: enabled,
@@ -388,11 +502,11 @@ final class TrackGradeAppModel {
             return
         }
 
-        do {
-            let snapshot = try await deviceManager.setBypass(id: id, enabled: enabled)
-            handleAuthenticationPromptIfNeeded(for: snapshot)
-        } catch {
-            errorMessage = "Failed to update bypass: \(error.localizedDescription)"
+        await performManagedDeviceCommand(
+            targetIDs: targetIDs,
+            failurePrefix: "Failed to update bypass"
+        ) { targetID in
+            try await self.deviceManager.setBypass(id: targetID, enabled: enabled)
         }
     }
 
@@ -400,8 +514,9 @@ final class TrackGradeAppModel {
         id: UUID,
         enabled: Bool
     ) async {
+        let targetIDs = broadcastTargetIDs(for: id)
         if launchConfiguration.usesUITestFixture {
-            updateFixtureDevice(id: id) { snapshot in
+            updateFixtureDevices(ids: targetIDs) { snapshot in
                 let current = snapshot.pipelineState
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: current?.bypassEnabled ?? false,
@@ -415,11 +530,11 @@ final class TrackGradeAppModel {
             return
         }
 
-        do {
-            let snapshot = try await deviceManager.setFalseColor(id: id, enabled: enabled)
-            handleAuthenticationPromptIfNeeded(for: snapshot)
-        } catch {
-            errorMessage = "Failed to update false color: \(error.localizedDescription)"
+        await performManagedDeviceCommand(
+            targetIDs: targetIDs,
+            failurePrefix: "Failed to update false color"
+        ) { targetID in
+            try await self.deviceManager.setFalseColor(id: targetID, enabled: enabled)
         }
     }
 
@@ -427,8 +542,9 @@ final class TrackGradeAppModel {
         id: UUID,
         gradeControl: ColorBoxGradeControlState
     ) async {
+        let targetIDs = broadcastTargetIDs(for: id)
         if launchConfiguration.usesUITestFixture {
-            updateFixtureDevice(id: id) { snapshot in
+            updateFixtureDevices(ids: targetIDs) { snapshot in
                 let current = snapshot.pipelineState
                 snapshot.pipelineState = ColorBoxPipelineState(
                     bypassEnabled: current?.bypassEnabled ?? false,
@@ -441,14 +557,14 @@ final class TrackGradeAppModel {
             return
         }
 
-        do {
-            let snapshot = try await deviceManager.updateGradeControl(
-                id: id,
+        await performManagedDeviceCommand(
+            targetIDs: targetIDs,
+            failurePrefix: "Failed to update the dynamic 3D LUT controls"
+        ) { targetID in
+            try await self.deviceManager.updateGradeControl(
+                id: targetID,
                 gradeControl: gradeControl
             )
-            handleAuthenticationPromptIfNeeded(for: snapshot)
-        } catch {
-            errorMessage = "Failed to update the dynamic 3D LUT controls: \(error.localizedDescription)"
         }
     }
 
@@ -507,26 +623,29 @@ final class TrackGradeAppModel {
         id: UUID,
         slot: Int
     ) async {
+        let targetIDs = broadcastTargetIDs(for: id)
         if launchConfiguration.usesUITestFixture {
-            let storedGrade = fixturePresetGrades[id]?[slot]
-            updateFixtureDevice(id: id) { snapshot in
-                let current = snapshot.pipelineState
-                snapshot.pipelineState = ColorBoxPipelineState(
-                    bypassEnabled: current?.bypassEnabled ?? false,
-                    falseColorEnabled: current?.falseColorEnabled ?? false,
-                    dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
-                    gradeControl: storedGrade ?? current?.gradeControl ?? .identity,
-                    lastRecalledPresetSlot: slot
-                )
+            for targetID in targetIDs {
+                let storedGrade = fixturePresetGrades[targetID]?[slot]
+                updateFixtureDevice(id: targetID) { snapshot in
+                    let current = snapshot.pipelineState
+                    snapshot.pipelineState = ColorBoxPipelineState(
+                        bypassEnabled: current?.bypassEnabled ?? false,
+                        falseColorEnabled: current?.falseColorEnabled ?? false,
+                        dynamicLUTMode: current?.dynamicLUTMode ?? "dynamic",
+                        gradeControl: storedGrade ?? current?.gradeControl ?? .identity,
+                        lastRecalledPresetSlot: slot
+                    )
+                }
             }
             return
         }
 
-        do {
-            let snapshot = try await deviceManager.recallPreset(id: id, slot: slot)
-            handleAuthenticationPromptIfNeeded(for: snapshot)
-        } catch {
-            errorMessage = "Failed to recall the preset: \(error.localizedDescription)"
+        await performManagedDeviceCommand(
+            targetIDs: targetIDs,
+            failurePrefix: "Failed to recall the preset"
+        ) { targetID in
+            try await self.deviceManager.recallPreset(id: targetID, slot: slot)
         }
     }
 
@@ -852,6 +971,7 @@ final class TrackGradeAppModel {
                 address: device.address,
                 username: device.username,
                 credentialReference: device.credentialReference,
+                isGanged: device.isGanged,
                 createdAt: device.createdAt
             )
             modelContext.insert(record)
@@ -884,6 +1004,15 @@ final class TrackGradeAppModel {
         }
 
         mutate(&snapshots[index])
+    }
+
+    private func updateFixtureDevices(
+        ids: [UUID],
+        mutate: (inout ManagedColorBoxDevice) -> Void
+    ) {
+        for id in ids {
+            updateFixtureDevice(id: id, mutate: mutate)
+        }
     }
 
     private func handleAuthenticationPromptIfNeeded(
@@ -934,6 +1063,55 @@ final class TrackGradeAppModel {
             id: deviceID,
             gradeControl: gradeControl
         )
+    }
+
+    private func broadcastTargetIDs(
+        for focusDeviceID: UUID
+    ) -> [UUID] {
+        var targetIDs = [focusDeviceID]
+        targetIDs.append(
+            contentsOf: knownDevices
+                .filter { $0.isGanged && $0.id != focusDeviceID }
+                .map(\.id)
+        )
+
+        var seen = Set<UUID>()
+        return targetIDs.filter { seen.insert($0).inserted }
+    }
+
+    private func performManagedDeviceCommand(
+        targetIDs: [UUID],
+        failurePrefix: String,
+        operation: @escaping @Sendable (UUID) async throws -> ManagedColorBoxDevice
+    ) async {
+        var failures: [String] = []
+
+        await withTaskGroup(of: Result<ManagedColorBoxDevice, Error>.self) { group in
+            for targetID in targetIDs {
+                group.addTask {
+                    do {
+                        return .success(try await operation(targetID))
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            }
+
+            for await result in group {
+                switch result {
+                case let .success(snapshot):
+                    handleAuthenticationPromptIfNeeded(for: snapshot)
+                case let .failure(error):
+                    failures.append(error.localizedDescription)
+                }
+            }
+        }
+
+        if failures.isEmpty == false {
+            errorMessage = failures.count == 1
+                ? "\(failurePrefix): \(failures[0])"
+                : "\(failurePrefix): \(failures.count) devices reported errors."
+        }
     }
 
     private func undoGrade(id: UUID) async {

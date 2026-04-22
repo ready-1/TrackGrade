@@ -36,6 +36,7 @@ final class StoredColorBoxDevice {
     var address: String
     var username: String
     var credentialReference: String?
+    var isGanged: Bool
     var createdAt: Date
 
     init(
@@ -44,6 +45,7 @@ final class StoredColorBoxDevice {
         address: String,
         username: String = "admin",
         credentialReference: String? = nil,
+        isGanged: Bool = false,
         createdAt: Date = .now
     ) {
         self.id = id
@@ -51,6 +53,7 @@ final class StoredColorBoxDevice {
         self.address = address
         self.username = username
         self.credentialReference = credentialReference
+        self.isGanged = isGanged
         self.createdAt = createdAt
     }
 }

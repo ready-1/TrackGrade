@@ -23,7 +23,7 @@ Current automated coverage:
 - Generated ColorBox client smoke tests
 - Trackball mapping and core grade-control helpers
 - Mock-server integration for connect, preview, bypass, presets, reconnect, and unsupported false color
-- Fixture-backed iPad UI flows for launch, bypass, settings, preset save, snapshot save, and snapshot recall
+- Fixture-backed iPad UI flows for launch, bypass, settings, preset save, snapshot save, snapshot recall, and gang broadcast
 
 ## Offline Simulator Validation
 
@@ -35,6 +35,7 @@ Manual simulator checks:
 - Verify saturation sits above the trackballs
 - Verify reset controls remain visible for Lift, Gamma, Gain, and Saturation
 - Open the drawer and confirm the `Workflow`, `Presets`, and `Device` panels switch cleanly
+- Link at least two fixture peers from the device list and confirm bypass mirrors to them
 - Save and recall a snapshot from fixture mode
 - Save a device preset from fixture mode
 
@@ -61,6 +62,13 @@ These checks still require a real iPad and the reference ColorBox.
 - Recall the saved preset on the hardware and confirm the grade state restores correctly
 - Delete a preset and confirm it disappears from the device library
 - Verify local snapshots and scratch slots do not interfere with device-native preset behavior
+
+### Gang Validation
+
+- Link at least two real ColorBox peers to the focused device
+- Confirm bypass and grade changes propagate to all linked peers
+- Confirm the sync badge reports drift if one linked peer is changed out-of-band
+- Confirm returning the drifted device to the same grade clears the drift indicator
 
 ## Release Gate
 

@@ -35,8 +35,11 @@ struct TrackGradeUITestFixture {
     let snapshotsData: [StoredGradeSnapshot]
 
     static func make() -> TrackGradeUITestFixture {
-        let deviceID = UUID(uuidString: "A0C95A0B-4B33-4A4B-A2D4-2A2BC4E4F001") ?? UUID()
-        let grade = ColorBoxGradeControlState(
+        let deviceAID = UUID(uuidString: "A0C95A0B-4B33-4A4B-A2D4-2A2BC4E4F001") ?? UUID()
+        let deviceBID = UUID(uuidString: "A0C95A0B-4B33-4A4B-A2D4-2A2BC4E4F002") ?? UUID()
+        let deviceCID = UUID(uuidString: "A0C95A0B-4B33-4A4B-A2D4-2A2BC4E4F003") ?? UUID()
+
+        let sharedGrade = ColorBoxGradeControlState(
             lift: ColorBoxRGBVector(red: 0.08, green: -0.02, blue: 0.03),
             gamma: ColorBoxRGBVector(red: 0.12, green: 0.02, blue: -0.07),
             gain: ColorBoxRGBVector(red: 1.08, green: 0.97, blue: 1.11),
@@ -52,21 +55,96 @@ struct TrackGradeUITestFixture {
             bypassEnabled: false,
             falseColorEnabled: false,
             dynamicLUTMode: "dynamic",
-            gradeControl: grade
+            gradeControl: sharedGrade
         )
         let previewData = Data(base64Encoded: Self.previewPNGBase64)
         let preset = ColorBoxPresetSummary(slot: 4, name: "House Look")
-        let snapshot = ManagedColorBoxDevice(
-            id: deviceID,
-            name: "Fixture ColorBox",
-            address: "mock://fixture-colorbox",
+        let snapshotA = makeSnapshot(
+            id: deviceAID,
+            name: "Fixture ColorBox A",
+            address: "mock://fixture-colorbox-a",
+            serialNumber: "FIXTURE-0001",
+            hostName: "Fixture-ColorBox-A",
+            pipelineState: pipelineState,
+            preset: preset,
+            previewData: previewData
+        )
+        let snapshotB = makeSnapshot(
+            id: deviceBID,
+            name: "Fixture ColorBox B",
+            address: "mock://fixture-colorbox-b",
+            serialNumber: "FIXTURE-0002",
+            hostName: "Fixture-ColorBox-B",
+            pipelineState: pipelineState,
+            preset: preset,
+            previewData: previewData
+        )
+        let snapshotC = makeSnapshot(
+            id: deviceCID,
+            name: "Fixture ColorBox C",
+            address: "mock://fixture-colorbox-c",
+            serialNumber: "FIXTURE-0003",
+            hostName: "Fixture-ColorBox-C",
+            pipelineState: pipelineState,
+            preset: preset,
+            previewData: previewData
+        )
+        let knownDeviceA = StoredColorBoxDevice(
+            id: deviceAID,
+            name: "Fixture ColorBox A",
+            address: "mock://fixture-colorbox-a"
+        )
+        let knownDeviceB = StoredColorBoxDevice(
+            id: deviceBID,
+            name: "Fixture ColorBox B",
+            address: "mock://fixture-colorbox-b"
+        )
+        let knownDeviceC = StoredColorBoxDevice(
+            id: deviceCID,
+            name: "Fixture ColorBox C",
+            address: "mock://fixture-colorbox-c"
+        )
+        let storedSnapshot = StoredGradeSnapshot(
+            deviceID: deviceAID,
+            deviceName: "Fixture ColorBox A",
+            name: "Lobby Warm-Up",
+            previewFrameData: previewData,
+            gradeControl: snapshotGrade
+        )
+
+        return TrackGradeUITestFixture(
+            knownDevices: [knownDeviceA, knownDeviceB, knownDeviceC],
+            snapshots: [snapshotA, snapshotB, snapshotC],
+            presetGrades: [
+                deviceAID: [preset.slot: sharedGrade],
+                deviceBID: [preset.slot: sharedGrade],
+                deviceCID: [preset.slot: sharedGrade],
+            ],
+            snapshotsData: [storedSnapshot]
+        )
+    }
+
+    private static func makeSnapshot(
+        id: UUID,
+        name: String,
+        address: String,
+        serialNumber: String,
+        hostName: String,
+        pipelineState: ColorBoxPipelineState,
+        preset: ColorBoxPresetSummary,
+        previewData: Data?
+    ) -> ManagedColorBoxDevice {
+        ManagedColorBoxDevice(
+            id: id,
+            name: name,
+            address: address,
             connectionState: .connected,
             systemInfo: ColorBoxSystemInfo(
                 productName: "AJA ColorBox",
                 modelName: "ColorBox",
-                serialNumber: "FIXTURE-0001",
-                deviceUUID: deviceID,
-                hostName: "Fixture-ColorBox"
+                serialNumber: serialNumber,
+                deviceUUID: id,
+                hostName: hostName
             ),
             firmwareInfo: ColorBoxFirmwareInfo(
                 version: "fixture-3.0.0.24",
@@ -77,29 +155,6 @@ struct TrackGradeUITestFixture {
             presets: [preset],
             previewFrameData: previewData,
             previewByteCount: previewData?.count ?? 0
-        )
-        let knownDevice = StoredColorBoxDevice(
-            id: deviceID,
-            name: "Fixture ColorBox",
-            address: "mock://fixture-colorbox"
-        )
-        let storedSnapshot = StoredGradeSnapshot(
-            deviceID: deviceID,
-            deviceName: "Fixture ColorBox",
-            name: "Lobby Warm-Up",
-            previewFrameData: previewData,
-            gradeControl: snapshotGrade
-        )
-
-        return TrackGradeUITestFixture(
-            knownDevices: [knownDevice],
-            snapshots: [snapshot],
-            presetGrades: [
-                deviceID: [
-                    preset.slot: grade
-                ]
-            ],
-            snapshotsData: [storedSnapshot]
         )
     }
 

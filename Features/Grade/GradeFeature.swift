@@ -67,6 +67,9 @@ struct GradeFeatureView: View {
 
                 HStack(spacing: 8) {
                     ConnectionStateBadge(state: device.connectionState)
+                    if let gangSummary = model.gangStatusSummary(for: device.id) {
+                        GangStatusBadge(summary: gangSummary)
+                    }
                     Text(device.address)
                         .font(.system(size: 15, weight: .regular, design: .monospaced))
                         .foregroundStyle(Color.white.opacity(0.72))
@@ -163,6 +166,71 @@ struct GradeFeatureView: View {
 
     private func drawerWidth(for size: CGSize) -> CGFloat {
         min(380, max(320, size.width * 0.4))
+    }
+}
+
+private struct GangStatusBadge: View {
+    let summary: GangStatusSummary
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(foregroundColor)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule(style: .continuous)
+                .fill(backgroundColor)
+        )
+        .accessibilityLabel(title)
+    }
+
+    private var title: String {
+        switch summary.state {
+        case .synced:
+            return "Gang \(summary.totalDeviceCount) synced"
+        case .drift:
+            return "Gang drift detected"
+        case .waiting:
+            return "Gang waiting"
+        }
+    }
+
+    private var systemImage: String {
+        switch summary.state {
+        case .synced:
+            return "link.badge.plus"
+        case .drift:
+            return "exclamationmark.triangle.fill"
+        case .waiting:
+            return "clock.badge.exclamationmark"
+        }
+    }
+
+    private var foregroundColor: Color {
+        switch summary.state {
+        case .synced:
+            return .green
+        case .drift:
+            return .yellow
+        case .waiting:
+            return .orange
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch summary.state {
+        case .synced:
+            return Color.green.opacity(0.18)
+        case .drift:
+            return Color.yellow.opacity(0.18)
+        case .waiting:
+            return Color.orange.opacity(0.18)
+        }
     }
 }
 

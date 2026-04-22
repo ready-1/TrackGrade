@@ -16,6 +16,33 @@ struct ConnectFeatureView: View {
                 .padding(.vertical, 8)
             }
 
+            if model.gangedPeerCount > 0 {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "link")
+                            .foregroundStyle(.orange)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Gang Active")
+                                .font(.headline)
+                            Text("The focused device will mirror grade, bypass, false color, and preset recall to \(model.gangedPeerCount) linked peer\(model.gangedPeerCount == 1 ? "" : "s").")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 12)
+
+                        Button("Clear") {
+                            Task {
+                                await model.clearGangMembership()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+
             Section("Saved Devices") {
                 if model.knownDevices.isEmpty {
                     ContentUnavailableView(
@@ -27,16 +54,33 @@ struct ConnectFeatureView: View {
                 } else {
                     ForEach(model.knownDevices) { device in
                         let snapshot = model.snapshots.first { $0.id == device.id }
-                        Button {
-                            model.selectedDeviceID = device.id
-                        } label: {
+                        HStack(spacing: 12) {
                             SavedDeviceRow(
                                 device: device,
                                 snapshot: snapshot,
                                 isSelected: model.selectedDeviceID == device.id
                             )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                model.selectedDeviceID = device.id
+                            }
+
+                            Button {
+                                Task {
+                                    await model.setGangMembership(
+                                        deviceID: device.id,
+                                        isEnabled: device.isGanged == false
+                                    )
+                                }
+                            } label: {
+                                Image(systemName: device.isGanged ? "link.circle.fill" : "link.circle")
+                                    .font(.title3)
+                                    .foregroundStyle(device.isGanged ? .orange : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(device.isGanged ? "Ungang \(device.name)" : "Gang \(device.name)")
                         }
-                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("saved-device-\(device.id.uuidString)")
                         .swipeActions {
                             Button("Auth") {
                                 model.promptForAuthentication(deviceID: device.id)
@@ -263,6 +307,11 @@ private struct SavedDeviceRow: View {
             }
 
             Spacer()
+
+            if device.isGanged {
+                Image(systemName: "link")
+                    .foregroundStyle(.orange)
+            }
 
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")

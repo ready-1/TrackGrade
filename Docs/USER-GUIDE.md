@@ -9,6 +9,7 @@ The current MVP focuses on:
 - direct LGG + saturation control
 - ColorBox-resident preset save / recall / delete
 - bypass toggle
+- focus-device gang broadcast to linked peer devices
 - local snapshots, A/B scratch slots, and undo / redo
 
 ## Hardware Requirements
@@ -30,6 +31,27 @@ If no device is available yet:
 5. Tap `Connect`.
 
 If a ColorBox is advertising over Bonjour, it can also appear in the discovery list and be saved from there.
+
+## Gang Control
+
+TrackGrade now supports a first-pass gang workflow from the saved-device list.
+
+1. Select the device you want to treat as the focus device.
+2. In the saved-device list, tap the link icon on any peer devices you want to follow that focus device.
+3. Work from the focused grading surface as usual.
+
+The focused device remains the one shown on the right, but these actions are mirrored to linked peers:
+
+- grade changes
+- bypass
+- false color, when supported
+- preset recall
+
+The grading header shows whether the linked peers are:
+
+- synced
+- waiting on connection/state
+- drifted out of sync
 
 ## Main Grading Surface
 
@@ -140,6 +162,7 @@ That seeds a connected fixture device so you can walk through:
 
 - grading UI
 - bypass
+- gang linking and gang broadcast
 - presets
 - snapshots
 - settings
@@ -164,7 +187,7 @@ The reference firmware used during development does not expose a working false-c
 
 ## Current Limitations
 
-- Multi-device gang control is not implemented yet.
 - The asset library browser is still limited.
 - The current grading path writes directly through `/v2/pipelineStages` rather than uploading baked LUTs.
+- Gang control currently focuses on mirroring a single focus device to linked peers; more advanced gang workflows can still be added later.
 - Final tactile tuning still needs real iPad + ColorBox validation.

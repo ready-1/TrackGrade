@@ -4,7 +4,7 @@ TrackGrade is an open-source native iPadOS 18+ control surface for live color gr
 
 ## Project Status
 
-TrackGrade is in active development, with the current build focused on a working MVP for live LGG plus saturation control, ColorBox-resident preset save, bypass, and offline simulator verification through the mock-backed fixture mode.
+TrackGrade is in active development, with the current build focused on a working MVP for live LGG plus saturation control, ColorBox-resident preset save, bypass, first-pass gang control, and offline simulator verification through the mock-backed fixture mode.
 
 ## Screenshots
 
@@ -16,14 +16,15 @@ Screenshots coming soon.
 - Saturation roller and live numeric state display
 - Direct LAN communication with AJA ColorBox hardware
 - Device discovery, ColorBox-resident preset save / recall / delete, and local snapshots / scratch slots
+- Focus-device gang broadcast to linked peer devices with sync / drift status
 - Fixed landscape control surface with drawer-based secondary controls
 - Mock ColorBox server for local development without hardware
 
 ## Planned Next
 
 - Final live-hardware sensitivity tuning on iPad
-- Additional workflow polish and release packaging
-- Later-phase LUT baking / upload, multi-device gang support, and broader library tooling
+- Additional workflow polish, library tooling, and release packaging
+- Later-phase LUT baking / upload and deeper multi-device validation
 
 ## Requirements
 

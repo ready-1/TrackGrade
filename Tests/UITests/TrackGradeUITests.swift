@@ -112,6 +112,30 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(recallButtons.count, 2)
     }
 
+    func testGangBroadcastsBypassToLinkedPeers() throws {
+        let app = launchFixtureApp()
+
+        let gangBButton = app.buttons["Gang Fixture ColorBox B"]
+        let gangCButton = app.buttons["Gang Fixture ColorBox C"]
+        XCTAssertTrue(gangBButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(gangCButton.waitForExistence(timeout: 5))
+
+        gangBButton.tap()
+        gangCButton.tap()
+
+        let bypassToggle = app.switches["bypass-toggle"]
+        XCTAssertTrue(bypassToggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(bypassToggle.value as? String, "0")
+        bypassToggle.tap()
+        XCTAssertEqual(bypassToggle.value as? String, "1")
+
+        app.staticTexts["Fixture ColorBox B"].tap()
+        XCTAssertEqual(bypassToggle.value as? String, "1")
+
+        app.staticTexts["Fixture ColorBox C"].tap()
+        XCTAssertEqual(bypassToggle.value as? String, "1")
+    }
+
     private func launchFixtureApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append("-ui-test-fixture")

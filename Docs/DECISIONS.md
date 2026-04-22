@@ -491,4 +491,20 @@ Replace the placeholder docs with grounded documentation of the current system:
 
 - Future sessions can resume from truthful repo documentation without re-deriving core architecture from code.
 - Contributors get a realistic picture of what already works versus what remains planned.
-- The docs now clearly call out present limitations such as missing gang control and future LUT-baking work instead of implying those phases are already done.
+- The docs now clearly call out present limitations such as future LUT-baking work and broader library tooling instead of implying those phases are already done.
+
+## 2026-04-21 — Model Ganging As A Focus Device Plus Linked Peer Devices
+
+### Context
+
+The brief calls for multi-device gang control, but the current app shell is still built around one selected detail device at a time. A full multi-focus design would have been too large for the current offline pass, while simple peer mirroring could still deliver meaningful gang behavior now.
+
+### Decision
+
+Keep one selected focus device in the grading surface and let the saved-device list mark additional devices as linked gang peers. Grade changes, bypass, false color, pipeline configuration, and preset recall initiated from the focus device broadcast to those linked peers, while the detail header reports synced, waiting, or drifted status.
+
+### Consequences
+
+- The existing single-device grading UI could grow into gang support without a full navigation redesign.
+- The current gang model is immediately useful for mirrored control, but it does not yet provide per-device offsets or richer gang management workflows.
+- Offline fixture tests can validate gang mirroring even before the next live multi-ColorBox session.
