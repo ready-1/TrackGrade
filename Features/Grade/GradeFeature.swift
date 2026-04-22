@@ -626,9 +626,9 @@ private struct DynamicGradeControlsCard: View {
 
     private var accessibilityGradeSummary: String {
         [
-            "Lift \(formatted(draftGrade.lift))",
-            "Gamma \(formatted(draftGrade.gamma))",
-            "Gain \(formatted(draftGrade.gain))",
+            "Lift X \(formatted(liftState.ball.x)) Y \(formatted(liftState.ball.y)) Bias \(formatted(liftState.ring))",
+            "Gamma X \(formatted(gammaState.ball.x)) Y \(formatted(gammaState.ball.y)) Bias \(formatted(gammaState.ring))",
+            "Gain X \(formatted(gainState.ball.x)) Y \(formatted(gainState.ball.y)) Bias \(formatted(gainState.ring))",
             "Saturation \(formatted(draftGrade.saturation))",
         ].joined(separator: ". ")
     }

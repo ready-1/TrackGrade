@@ -101,6 +101,7 @@
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
 - True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
 - The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
+- The reference ColorBox at `172.29.14.51` timed out again during the latest live-validation pass on 2026-04-22, so additional live API verification is currently blocked by host-to-device reachability rather than by a known TrackGrade code failure.
 - The baked dynamic-LUT upload queue is still only mock-validated for live grading behavior, so the app continues to use the hardware-verified `pipelineStages` route for the control surface even though library asset import semantics are now verified on-device.
 - Visual confirmation of a library-selected uploaded LUT still needs an active signal on the reference ColorBox, because the current test box appears to be idle and therefore produces identical `INPUT` / `OUTPUT` preview hashes.
 - Live AMF verification is still pending because the reference ColorBox timed out during the first `/v2/uploadMultiple` probe after the feature landed.
@@ -117,6 +118,7 @@
 - Finish the remaining release-collateral cleanup now that `NOTICES.md`, diagnostics export, and in-app notices are in place.
 - Re-run the manual hardware checklist with attention to preset-save timing, now that the app includes a one-second settle before `saveDynamicLutRequest`.
 - Re-run the new opt-in live integration tests whenever the reference firmware or network environment changes so hardware regressions are caught before manual iPad time.
+- Retry live hardware validation once this Mac can again reach `http://172.29.14.51/v2/buildInfo`, then use that window for the remaining AMF and live-device confirmation work.
 - Extend the passing accessibility audit work into broader VoiceOver / Dynamic Type / contrast verification beyond the current hit-region pass.
 - Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before a live grading workflow based on uploads is fully understood.
 - Validate AMF import against the real ColorBox as soon as the reference box is reachable again, using the committed official ACES sample package.

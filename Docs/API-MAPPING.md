@@ -10,7 +10,7 @@
 - TrackGrade now uses the generated `/v2` client for connect-time reads plus pipeline-node configuration and bypass writes, with the older handwritten endpoints retained as fallback compatibility paths.
 - Package-side generated-client validation must use a server URL shaped like `http://host/v2` without a trailing slash; using `http://host/v2/` produces broken `/v2//...` requests on real hardware.
 
-## TODO
+## Remaining Integration Decision
 
 - Decide whether the mock-validated baked dynamic-LUT upload path should remain internal until a live grading workflow based on uploads is intentionally adopted.
 
