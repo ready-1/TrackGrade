@@ -1,28 +1,32 @@
-Third-party notices for TrackGrade
-=================================
+# TrackGrade Open Source Notices
 
-TrackGrade includes or depends on the following third-party software:
+TrackGrade depends on the following third-party Swift packages:
 
 1. `swift-openapi-generator`
-   - Copyright Apple Inc. and the Swift OpenAPI Generator contributors
-   - License: Apache License 2.0
-   - Source: https://github.com/apple/swift-openapi-generator
+   License: Apache License 2.0
+   Source: <https://github.com/apple/swift-openapi-generator>
 
 2. `swift-openapi-runtime`
-   - Copyright Apple Inc. and the Swift OpenAPI Runtime contributors
-   - License: Apache License 2.0
-   - Source: https://github.com/apple/swift-openapi-runtime
+   License: Apache License 2.0
+   Source: <https://github.com/apple/swift-openapi-runtime>
 
 3. `swift-openapi-urlsession`
-   - Copyright Apple Inc. and the Swift OpenAPI URLSession contributors
-   - License: Apache License 2.0
-   - Source: https://github.com/apple/swift-openapi-urlsession
+   License: Apache License 2.0
+   Source: <https://github.com/apple/swift-openapi-urlsession>
 
 4. `Vapor`
-   - Copyright Vapor LLC and the Vapor contributors
-   - License: MIT License
-   - Source: https://github.com/vapor/vapor
+   License: MIT License
+   Source: <https://github.com/vapor/vapor>
 
-This file is provided for attribution and notice purposes under the Apache License 2.0 distribution requirements used by TrackGrade.
+Resolved package versions are recorded in [Package.resolved](/Users/bob/dev/TrackGrade/Package.resolved).
 
-TrackGrade is not affiliated with or endorsed by AJA Video Systems. AJA and ColorBox are trademarks of AJA Video Systems.
+During local development, upstream license and notice files are available under `.build/checkouts/`, including:
+
+- `.build/checkouts/swift-openapi-generator/LICENSE.txt`
+- `.build/checkouts/swift-openapi-generator/NOTICE.txt`
+- `.build/checkouts/swift-openapi-runtime/LICENSE.txt`
+- `.build/checkouts/swift-openapi-runtime/NOTICE.txt`
+- `.build/checkouts/swift-openapi-urlsession/LICENSE.txt`
+- `.build/checkouts/swift-openapi-urlsession/NOTICE.txt`
+- `.build/checkouts/vapor/LICENSE`
+- `.build/checkouts/vapor/NOTICES.txt`

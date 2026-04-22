@@ -44,6 +44,7 @@ final class TrackGradeAppModel {
     var discoveredDevices: [DiscoveredColorBoxDevice] = []
     var snapshots: [ManagedColorBoxDevice] = []
     var gradeSnapshots: [StoredGradeSnapshot] = []
+    var presetThumbnails: [StoredDevicePresetThumbnail] = []
     var librarySectionsByDeviceID: [UUID: [ColorBoxLibrarySection]] = [:]
     var selectedDeviceID: UUID?
     var isShowingAddDeviceSheet = false
@@ -109,6 +110,15 @@ final class TrackGradeAppModel {
         librarySectionsByDeviceID[deviceID] ?? []
     }
 
+    func presetThumbnailData(
+        for deviceID: UUID,
+        slot: Int
+    ) -> Data? {
+        presetThumbnails.first {
+            $0.deviceID == deviceID && $0.slot == slot
+        }?.previewFrameData
+    }
+
     func isBeforeAfterActive(
         _ deviceID: UUID
     ) -> Bool {
@@ -155,6 +165,69 @@ final class TrackGradeAppModel {
         default:
             return nil
         }
+    }
+
+    func diagnosticsReport(
+        for deviceID: UUID
+    ) -> String {
+        let generatedAt = Date.now.ISO8601Format()
+        guard let device = snapshots.first(where: { $0.id == deviceID }) else {
+            return """
+            TrackGrade Diagnostics
+            Generated: \(generatedAt)
+
+            Device \(deviceID.uuidString) is not currently loaded in the app model.
+            """
+        }
+
+        let pipelineState = device.pipelineState
+        let workingTransferFunction = workingTransferFunction(for: deviceID).displayName
+        let linkedPeerNames = knownDevices
+            .filter { $0.isGanged && $0.id != deviceID }
+            .map(\.name)
+            .sorted()
+        let librarySummary = librarySectionsByDeviceID[deviceID, default: []]
+            .map { "\($0.kind.title): \($0.entries.count)" }
+            .joined(separator: ", ")
+
+        return """
+        TrackGrade Diagnostics
+        Generated: \(generatedAt)
+
+        Device
+        - Name: \(device.name)
+        - Address: \(device.address)
+        - Connection: \(device.connectionState.rawValue)
+        - Product: \(device.systemInfo?.productName ?? "Unavailable")
+        - Host: \(device.systemInfo?.hostName ?? "Unavailable")
+        - Serial: \(device.systemInfo?.serialNumber ?? "Unavailable")
+        - Firmware: \(device.firmwareInfo?.version ?? "Unavailable")
+
+        Grade Surface
+        - Working Color Space: \(workingTransferFunction)
+        - Dynamic LUT Mode: \(pipelineState?.dynamicLUTMode ?? "Unavailable")
+        - Bypass: \((pipelineState?.bypassEnabled ?? false) ? "On" : "Off")
+        - False Color: \((pipelineState?.falseColorEnabled ?? false) ? "On" : "Off")
+        - Last Preset: \(pipelineState?.lastRecalledPresetSlot.map { "Slot \($0)" } ?? "None")
+        - Lift: \(formattedDiagnosticsVector(pipelineState?.gradeControl.lift))
+        - Gamma: \(formattedDiagnosticsVector(pipelineState?.gradeControl.gamma))
+        - Gain: \(formattedDiagnosticsVector(pipelineState?.gradeControl.gain))
+        - Saturation: \(formattedDiagnosticsScalar(pipelineState?.gradeControl.saturation))
+        - Preview Bytes: \(device.previewByteCount)
+
+        Workflow
+        - Device Presets Visible: \(device.presets.count)
+        - Local Snapshots: \(snapshots(for: deviceID).count)
+        - Scratch A Present: \(scratchSnapshot(for: deviceID, slot: .a) == nil ? "No" : "Yes")
+        - Scratch B Present: \(scratchSnapshot(for: deviceID, slot: .b) == nil ? "No" : "Yes")
+        - Linked Gang Peers: \(linkedPeerNames.isEmpty ? "None" : linkedPeerNames.joined(separator: ", "))
+        - Library Sections: \(librarySummary.isEmpty ? "Not loaded" : librarySummary)
+
+        App State
+        - Known Devices: \(knownDevices.count)
+        - Discovered Devices: \(discoveredDevices.count)
+        - Error Banner: \(errorMessage ?? "None")
+        """
     }
 
     func isDeviceGanged(_ deviceID: UUID) -> Bool {
@@ -228,6 +301,7 @@ final class TrackGradeAppModel {
         startSnapshotObservation()
         await reloadStoredDevices()
         await reloadStoredSnapshots()
+        await reloadStoredPresetThumbnails()
     }
 
     func refreshDiscovery() {
@@ -324,9 +398,18 @@ final class TrackGradeAppModel {
             for snapshot in relatedSnapshots {
                 modelContext.delete(snapshot)
             }
+            let relatedPresetThumbnails = try modelContext.fetch(
+                FetchDescriptor<StoredDevicePresetThumbnail>(
+                    predicate: #Predicate { $0.deviceID == id }
+                )
+            )
+            for presetThumbnail in relatedPresetThumbnails {
+                modelContext.delete(presetThumbnail)
+            }
             try modelContext.save()
             knownDevices = try fetchKnownDevices()
             gradeSnapshots = try fetchStoredSnapshots()
+            presetThumbnails = try fetchStoredPresetThumbnails()
             librarySectionsByDeviceID[id] = nil
             await deviceManager.removeDevice(id: id)
             gradeHistory[id] = nil
@@ -639,11 +722,30 @@ final class TrackGradeAppModel {
             updateFixtureDevice(id: id) { snapshot in
                 snapshot.previewByteCount = snapshot.previewFrameData?.count ?? 0
             }
+            if let snapshot = snapshots.first(where: { $0.id == id }),
+               let slot = snapshot.pipelineState?.lastRecalledPresetSlot {
+                try? upsertPresetThumbnail(
+                    deviceID: id,
+                    deviceName: snapshot.name,
+                    slot: slot,
+                    name: snapshot.presets.first(where: { $0.slot == slot })?.name ?? "Preset \(slot)",
+                    previewFrameData: snapshot.previewFrameData
+                )
+            }
             return
         }
 
         do {
             let snapshot = try await deviceManager.refreshPreview(id: id)
+            if let slot = snapshot.pipelineState?.lastRecalledPresetSlot {
+                try upsertPresetThumbnail(
+                    deviceID: id,
+                    deviceName: snapshot.name,
+                    slot: slot,
+                    name: snapshot.presets.first(where: { $0.slot == slot })?.name ?? "Preset \(slot)",
+                    previewFrameData: snapshot.previewFrameData
+                )
+            }
             handleAuthenticationPromptIfNeeded(for: snapshot)
         } catch {
             errorMessage = "Failed to refresh the preview frame: \(error.localizedDescription)"
@@ -686,6 +788,15 @@ final class TrackGradeAppModel {
                     snapshot.presets.sort { $0.slot < $1.slot }
                 }
             }
+            if let snapshot = snapshots.first(where: { $0.id == id }) {
+                try? upsertPresetThumbnail(
+                    deviceID: id,
+                    deviceName: snapshot.name,
+                    slot: slot,
+                    name: name,
+                    previewFrameData: snapshot.previewFrameData
+                )
+            }
             return
         }
 
@@ -695,9 +806,59 @@ final class TrackGradeAppModel {
                 slot: slot,
                 name: name
             )
+            try upsertPresetThumbnail(
+                deviceID: id,
+                deviceName: snapshot.name,
+                slot: slot,
+                name: name,
+                previewFrameData: snapshot.previewFrameData
+            )
             handleAuthenticationPromptIfNeeded(for: snapshot)
         } catch {
             errorMessage = "Failed to save the preset: \(error.localizedDescription)"
+        }
+    }
+
+    func renamePreset(
+        id: UUID,
+        slot: Int,
+        name: String
+    ) async {
+        if launchConfiguration.usesUITestFixture {
+            updateFixtureDevice(id: id) { snapshot in
+                guard let existingIndex = snapshot.presets.firstIndex(where: { $0.slot == slot }) else {
+                    return
+                }
+                snapshot.presets[existingIndex] = ColorBoxPresetSummary(slot: slot, name: name)
+            }
+            if let snapshot = snapshots.first(where: { $0.id == id }) {
+                try? upsertPresetThumbnail(
+                    deviceID: id,
+                    deviceName: snapshot.name,
+                    slot: slot,
+                    name: name,
+                    previewFrameData: nil
+                )
+            }
+            return
+        }
+
+        do {
+            let snapshot = try await deviceManager.renamePreset(
+                id: id,
+                slot: slot,
+                name: name
+            )
+            try upsertPresetThumbnail(
+                deviceID: id,
+                deviceName: snapshot.name,
+                slot: slot,
+                name: name,
+                previewFrameData: nil
+            )
+            handleAuthenticationPromptIfNeeded(for: snapshot)
+        } catch {
+            errorMessage = "Failed to rename the preset: \(error.localizedDescription)"
         }
     }
 
@@ -743,11 +904,13 @@ final class TrackGradeAppModel {
             updateFixtureDevice(id: id) { snapshot in
                 snapshot.presets.removeAll { $0.slot == slot }
             }
+            try? removePresetThumbnail(deviceID: id, slot: slot)
             return
         }
 
         do {
             let snapshot = try await deviceManager.deletePreset(id: id, slot: slot)
+            try removePresetThumbnail(deviceID: id, slot: slot)
             handleAuthenticationPromptIfNeeded(for: snapshot)
         } catch {
             errorMessage = "Failed to delete the preset: \(error.localizedDescription)"
@@ -933,6 +1096,11 @@ final class TrackGradeAppModel {
             for await snapshots in stream {
                 await MainActor.run {
                     self.snapshots = snapshots
+                    do {
+                        try self.reconcilePresetThumbnails(with: snapshots)
+                    } catch {
+                        self.errorMessage = "Failed to sync preset thumbnails: \(error.localizedDescription)"
+                    }
                     if self.selectedDeviceID == nil {
                         self.selectedDeviceID = snapshots.first?.id ?? self.knownDevices.first?.id
                     }
@@ -972,6 +1140,14 @@ final class TrackGradeAppModel {
         }
     }
 
+    private func reloadStoredPresetThumbnails() async {
+        do {
+            presetThumbnails = try fetchStoredPresetThumbnails()
+        } catch {
+            errorMessage = "Failed to load saved preset thumbnails: \(error.localizedDescription)"
+        }
+    }
+
     private func fetchKnownDevices() throws -> [StoredColorBoxDevice] {
         guard let modelContext else {
             return []
@@ -992,6 +1168,20 @@ final class TrackGradeAppModel {
             sortBy: [
                 SortDescriptor(\.updatedAt, order: .reverse),
                 SortDescriptor(\.createdAt, order: .reverse),
+            ]
+        )
+        return try modelContext.fetch(descriptor)
+    }
+
+    private func fetchStoredPresetThumbnails() throws -> [StoredDevicePresetThumbnail] {
+        guard let modelContext else {
+            return presetThumbnails
+        }
+
+        let descriptor = FetchDescriptor<StoredDevicePresetThumbnail>(
+            sortBy: [
+                SortDescriptor(\.deviceName),
+                SortDescriptor(\.slot),
             ]
         )
         return try modelContext.fetch(descriptor)
@@ -1018,9 +1208,11 @@ final class TrackGradeAppModel {
             try seedUITestPersistence(using: fixture)
             knownDevices = try fetchKnownDevices()
             gradeSnapshots = try fetchStoredSnapshots()
+            presetThumbnails = try fetchStoredPresetThumbnails()
         } catch {
             knownDevices = fixture.knownDevices
             gradeSnapshots = fixture.snapshotsData
+            presetThumbnails = fixture.presetThumbnailsData
             errorMessage = "Failed to seed the UI test fixture store: \(error.localizedDescription)"
         }
         snapshots = fixture.snapshots
@@ -1045,6 +1237,10 @@ final class TrackGradeAppModel {
         let existingSnapshots = try modelContext.fetch(FetchDescriptor<StoredGradeSnapshot>())
         for snapshot in existingSnapshots {
             modelContext.delete(snapshot)
+        }
+        let existingPresetThumbnails = try modelContext.fetch(FetchDescriptor<StoredDevicePresetThumbnail>())
+        for presetThumbnail in existingPresetThumbnails {
+            modelContext.delete(presetThumbnail)
         }
 
         for device in fixture.knownDevices {
@@ -1072,6 +1268,18 @@ final class TrackGradeAppModel {
                 updatedAt: snapshot.updatedAt,
                 previewFrameData: snapshot.previewFrameData,
                 gradeControl: snapshot.gradeControl
+            )
+            modelContext.insert(record)
+        }
+
+        for presetThumbnail in fixture.presetThumbnailsData {
+            let record = StoredDevicePresetThumbnail(
+                deviceID: presetThumbnail.deviceID,
+                deviceName: presetThumbnail.deviceName,
+                slot: presetThumbnail.slot,
+                name: presetThumbnail.name,
+                updatedAt: presetThumbnail.updatedAt,
+                previewFrameData: presetThumbnail.previewFrameData
             )
             modelContext.insert(record)
         }
@@ -1129,6 +1337,148 @@ final class TrackGradeAppModel {
         )
 
         return "\(device.name) \(timeStamp)"
+    }
+
+    private func formattedDiagnosticsScalar(
+        _ value: Float?
+    ) -> String {
+        guard let value else {
+            return "Unavailable"
+        }
+
+        return String(format: "%.4f", Double(value))
+    }
+
+    private func formattedDiagnosticsVector(
+        _ vector: ColorBoxRGBVector?
+    ) -> String {
+        guard let vector else {
+            return "Unavailable"
+        }
+
+        return "R \(formattedDiagnosticsScalar(vector.red)) G \(formattedDiagnosticsScalar(vector.green)) B \(formattedDiagnosticsScalar(vector.blue))"
+    }
+
+    private func upsertPresetThumbnail(
+        deviceID: UUID,
+        deviceName: String,
+        slot: Int,
+        name: String,
+        previewFrameData: Data?
+    ) throws {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedName = trimmedName.isEmpty ? "Preset \(slot)" : trimmedName
+
+        if let existing = presetThumbnails.first(where: { $0.deviceID == deviceID && $0.slot == slot }) {
+            existing.deviceName = deviceName
+            existing.name = resolvedName
+            existing.updatedAt = .now
+            if let previewFrameData {
+                existing.previewFrameData = previewFrameData
+            }
+        } else {
+            let record = StoredDevicePresetThumbnail(
+                deviceID: deviceID,
+                deviceName: deviceName,
+                slot: slot,
+                name: resolvedName,
+                previewFrameData: previewFrameData
+            )
+            if let modelContext {
+                modelContext.insert(record)
+            }
+            presetThumbnails.append(record)
+        }
+
+        if let modelContext {
+            try modelContext.save()
+            presetThumbnails = try fetchStoredPresetThumbnails()
+        }
+    }
+
+    private func removePresetThumbnail(
+        deviceID: UUID,
+        slot: Int
+    ) throws {
+        guard let existing = presetThumbnails.first(where: { $0.deviceID == deviceID && $0.slot == slot }) else {
+            return
+        }
+
+        if let modelContext {
+            modelContext.delete(existing)
+            try modelContext.save()
+            presetThumbnails = try fetchStoredPresetThumbnails()
+        } else {
+            presetThumbnails.removeAll { $0.id == existing.id }
+        }
+    }
+
+    private func reconcilePresetThumbnails(
+        with devices: [ManagedColorBoxDevice]
+    ) throws {
+        guard let modelContext else {
+            return
+        }
+
+        var needsSave = false
+        let expectedRecordIDs = Set(
+            devices.flatMap { device in
+                device.presets.map {
+                    StoredDevicePresetThumbnail.recordID(
+                        deviceID: device.id,
+                        slot: $0.slot
+                    )
+                }
+            }
+        )
+
+        for device in devices {
+            for preset in device.presets {
+                let recordID = StoredDevicePresetThumbnail.recordID(
+                    deviceID: device.id,
+                    slot: preset.slot
+                )
+
+                if let existing = presetThumbnails.first(where: { $0.id == recordID }) {
+                    if existing.name != preset.name || existing.deviceName != device.name {
+                        existing.name = preset.name
+                        existing.deviceName = device.name
+                        existing.updatedAt = .now
+                        needsSave = true
+                    }
+                } else {
+                    let record = StoredDevicePresetThumbnail(
+                        deviceID: device.id,
+                        deviceName: device.name,
+                        slot: preset.slot,
+                        name: preset.name
+                    )
+                    modelContext.insert(record)
+                    presetThumbnails.append(record)
+                    needsSave = true
+                }
+            }
+        }
+
+        let staleRecords = presetThumbnails.filter { thumbnail in
+            let deviceStillExists = devices.contains { $0.id == thumbnail.deviceID }
+            guard deviceStillExists else {
+                return false
+            }
+            return expectedRecordIDs.contains(thumbnail.id) == false
+        }
+
+        if staleRecords.isEmpty == false {
+            for staleRecord in staleRecords {
+                modelContext.delete(staleRecord)
+            }
+            needsSave = true
+        }
+
+        if needsSave {
+            try modelContext.save()
+            presetThumbnails = try fetchStoredPresetThumbnails()
+        }
     }
 
     private func applyStoredGrade(

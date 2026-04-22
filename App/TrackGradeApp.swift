@@ -16,6 +16,7 @@ struct TrackGradeApp: App {
             modelContainer = try ModelContainer(
                 for: StoredColorBoxDevice.self,
                 StoredGradeSnapshot.self,
+                StoredDevicePresetThumbnail.self,
                 configurations: configuration
             )
         } catch {

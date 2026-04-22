@@ -251,6 +251,38 @@ Persist the selected `TransferFunction` on each `StoredColorBoxDevice`, expose i
 - Future bake/upload work can use the same stored value without inventing another settings model later.
 - Simulator and packaged builds now present TrackGrade with a project-specific placeholder icon instead of the generic Xcode icon.
 
+## 2026-04-22 — Cache Preset Thumbnails Locally While Keeping Presets Device-Native
+
+### Context
+
+The brief calls for device-native presets with thumbnails and names, but the ColorBox preset list only provides slot and name metadata. The user also explicitly said the iPad should remain ephemeral relative to preset ownership, which rules out making iPad-local presets the source of truth.
+
+### Decision
+
+Keep preset ownership and recall semantics on the ColorBox, but store a lightweight local thumbnail cache per `deviceID + slot` in SwiftData so the preset drawer can show thumbnails, survive reconnects, and stay synced to device-side slot/name changes.
+
+### Consequences
+
+- Presets still live on the ColorBox and remain the only authoritative saved show states.
+- TrackGrade can present thumbnails, rename state, and overwrite affordances without pretending the iPad owns preset persistence.
+- Presets created or renamed outside TrackGrade still sync their slot/name data back into the app, while thumbnails remain best-effort local cache data.
+
+## 2026-04-22 — Add A Hardware-Only Settle Delay Before Dynamic-Preset Save
+
+### Context
+
+Live validation on the reference ColorBox (`3.0.0.24`) showed that direct `PUT /v2/pipelineStages` writes become visible immediately through `GET /v2/pipelineStages`, but `POST /v2/saveDynamicLutRequest` still snapshots the previous dynamic grade unless roughly one second elapses first.
+
+### Decision
+
+Before `saveDynamicLutRequest`, TrackGrade now waits one second on non-local hosts, then continues with `StoreEntry` and `SetUserName`.
+
+### Consequences
+
+- Device-native preset save on the reference hardware now captures the grade the operator most recently set instead of occasionally saving stale state.
+- Mock-backed tests remain fast because localhost endpoints skip the extra delay.
+- Preset save is slightly slower on real hardware, but correctness for the MVP is more important than instant completion.
+
 ## 2026-04-21 — Defer Authentication UX Work For The Reference ColorBox
 
 ### Context

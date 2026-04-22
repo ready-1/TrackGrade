@@ -56,7 +56,7 @@ These are the concrete mappings currently implemented in the codebase:
 | Configure node 4 dynamic | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` |
 | Update Lift / Gamma / Gain / Saturation | `GET /v2/pipelineStages` then `PUT /v2/pipelineStages` with `lut3d_1.colorCorrector` and `procAmp.sat` |
 | Bypass toggle | `GET /v2/routing` then `PUT /v2/routing` |
-| Preset save | `POST /v2/saveDynamicLutRequest`, then `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
+| Preset save | Wait ~1 second after the most recent direct `pipelineStages` grade write, then `POST /v2/saveDynamicLutRequest`, then `PUT /v2/libraryControl` with `StoreEntry`, then `SetUserName`, then `GET /v2/systemPresetLibrary` |
 | Preset recall | `PUT /v2/libraryControl` with `RecallEntry`, then refresh routing / pipeline state |
 | Preset delete | `PUT /v2/libraryControl` with `DeleteEntry`, then `GET /v2/systemPresetLibrary` |
 | Dynamic LUT upload queue | Mock-verified via `PUT /pipeline/aja/nodes/3dlut/dynamic` with `X-TrackGrade-Sequence`; retained as an offline / compatibility path while live `/v2/upload` semantics remain unresolved |
@@ -69,6 +69,7 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 - `StoreEntry` alone writes the slot contents but does not make a friendly preset name visible in `GET /v2/systemPresetLibrary`.
 - `SetUserName` on the same slot is required to surface the saved preset name in the library listing.
 - `POST /v2/saveDynamicLutRequest` must be called before `StoreEntry` when the current dynamic Lift / Gamma / Gain / Saturation state should survive preset recall.
+- On firmware `3.0.0.24`, direct `pipelineStages` writes need about one second of settle time before `saveDynamicLutRequest` reliably snapshots the updated dynamic grade.
 - `RecallEntry` successfully restores saved pipeline state when the slot contains a valid stored preset.
 - `DeleteEntry` removes the preset from the library listing cleanly.
 - `RecallEntry` against the pre-existing slot 1 (`current-show`) returned a device-side error on this box: `"Internal problems recalling preset"`, which suggests that not every listed preset is necessarily recallable.

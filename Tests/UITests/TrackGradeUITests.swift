@@ -80,6 +80,46 @@ final class TrackGradeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Offline Save"].exists)
     }
 
+    func testPresetRecallShowsConfirmationBeforeApplying() throws {
+        let app = launchFixtureApp()
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Presets", in: app)
+
+        let recallButton = app.buttons["Recall"].firstMatch
+        XCTAssertTrue(recallButton.waitForExistence(timeout: 5))
+        recallButton.tap()
+
+        let confirmButton = app.buttons["Recall Slot 4"]
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        confirmButton.tap()
+
+        XCTAssertFalse(confirmButton.waitForExistence(timeout: 1))
+    }
+
+    func testPresetRenameUpdatesFixturePresetName() throws {
+        let app = launchFixtureApp()
+
+        let controlsButton = app.buttons["secondary-controls-button"]
+        XCTAssertTrue(controlsButton.waitForExistence(timeout: 5))
+        controlsButton.tap()
+        selectDrawerPanel(named: "Presets", in: app)
+
+        let presetTile = fixtureElement("preset-slot-4", in: app)
+        XCTAssertTrue(presetTile.waitForExistence(timeout: 5))
+        presetTile.press(forDuration: 1.1)
+        app.buttons["Rename"].tap()
+
+        let nameField = app.textFields["preset-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        nameField.replaceText(with: "Cue B")
+        app.buttons["Rename"].tap()
+
+        XCTAssertTrue(app.staticTexts["Cue B"].waitForExistence(timeout: 5))
+    }
+
     func testSnapshotRecallAppliesStoredSnapshotGrade() throws {
         let app = launchFixtureApp()
         let gradeStateDisplay = fixtureElement("dynamic-grade-card", in: app)

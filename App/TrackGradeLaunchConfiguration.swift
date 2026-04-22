@@ -34,6 +34,7 @@ struct TrackGradeUITestFixture {
     let presetGrades: [UUID: [Int: ColorBoxGradeControlState]]
     let librarySections: [UUID: [ColorBoxLibrarySection]]
     let snapshotsData: [StoredGradeSnapshot]
+    let presetThumbnailsData: [StoredDevicePresetThumbnail]
 
     static func make() -> TrackGradeUITestFixture {
         let deviceAID = UUID(uuidString: "A0C95A0B-4B33-4A4B-A2D4-2A2BC4E4F001") ?? UUID()
@@ -112,6 +113,27 @@ struct TrackGradeUITestFixture {
             previewFrameData: previewData,
             gradeControl: snapshotGrade
         )
+        let presetThumbnailA = StoredDevicePresetThumbnail(
+            deviceID: deviceAID,
+            deviceName: "Fixture ColorBox A",
+            slot: preset.slot,
+            name: preset.name,
+            previewFrameData: previewData
+        )
+        let presetThumbnailB = StoredDevicePresetThumbnail(
+            deviceID: deviceBID,
+            deviceName: "Fixture ColorBox B",
+            slot: preset.slot,
+            name: preset.name,
+            previewFrameData: previewData
+        )
+        let presetThumbnailC = StoredDevicePresetThumbnail(
+            deviceID: deviceCID,
+            deviceName: "Fixture ColorBox C",
+            slot: preset.slot,
+            name: preset.name,
+            previewFrameData: previewData
+        )
 
         return TrackGradeUITestFixture(
             knownDevices: [knownDeviceA, knownDeviceB, knownDeviceC],
@@ -126,7 +148,8 @@ struct TrackGradeUITestFixture {
                 deviceBID: fixtureLibrarySections(),
                 deviceCID: fixtureLibrarySections(),
             ],
-            snapshotsData: [storedSnapshot]
+            snapshotsData: [storedSnapshot],
+            presetThumbnailsData: [presetThumbnailA, presetThumbnailB, presetThumbnailC]
         )
     }
 

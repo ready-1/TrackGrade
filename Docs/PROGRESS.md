@@ -63,14 +63,17 @@
 - The release-only `LUTBakerPerformanceTests` timing check passed locally with a `33^3` identity bake completing well under the brief’s `< 16 ms` threshold.
 - `StoredColorBoxDevice` now persists a per-device working color space selection, and the settings sheet exposes `Rec.709 SDR` vs `Rec.709 HLG` as a real segmented control instead of a placeholder label.
 - The app target now includes a real placeholder app icon asset catalog under `App/Assets.xcassets`, so the project no longer ships with the generic Xcode icon in simulator builds and future packaged builds.
+- Device-native presets now have a more complete operator workflow: TrackGrade keeps a durable local thumbnail cache per device slot, shows preset thumbnails in the drawer, confirms recall before applying it, and exposes long-press rename / overwrite actions instead of only save / delete buttons.
+- Settings now exports a shareable diagnostics report for the focused device, exposes in-app open-source notices, and the repo now includes a top-level `NOTICES.md`.
+- Live hardware validation on firmware `3.0.0.24` found that `POST /v2/saveDynamicLutRequest` needs about one second of settle time after direct `PUT /v2/pipelineStages` grade changes before a preset save reliably captures the new state; TrackGrade now applies that delay on non-local hosts before saving a device-native preset.
 
 ## In-Flight Work
 
 - Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
 - Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
 - Choosing the next non-hardware polish slice after the library browser, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
-- Deciding how far to wire the bake/upload path into the live app shell before hardware is back, given that real firmware `3.0.0.24` still exposes unresolved `/v2/upload` persistence semantics.
-- Deciding whether to spend the next offline pass on more workflow polish, such as preset overwrite / rename ergonomics, or on release packaging items such as tagging and final README cleanup.
+- Deciding how far to wire the bake/upload path into the live app shell before hardware is fully trusted, given that real firmware `3.0.0.24` still exposes unresolved `/v2/upload` persistence semantics.
+- Using the restored production network window to finish as much live hardware validation as possible beyond the now-confirmed preset timing fix.
 
 ## Blockers
 
@@ -86,5 +89,7 @@
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
+- Finish the remaining release-collateral cleanup now that `NOTICES.md`, diagnostics export, and in-app notices are in place.
+- Re-run the manual hardware checklist with attention to preset-save timing, now that the app includes a one-second settle before `saveDynamicLutRequest`.
 - Decide whether to expose the new bake/upload path as an experimental or mock-only workflow before the live hardware upload path is fully understood.
 - Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.

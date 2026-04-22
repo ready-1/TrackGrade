@@ -56,6 +56,8 @@ struct GradeFeatureView: View {
         .sheet(isPresented: $isShowingSettings) {
             SettingsFeatureView(
                 deviceName: device.name,
+                diagnosticsReport: model.diagnosticsReport(for: device.id),
+                noticesText: TrackGradeOpenSourceNotices.fullText,
                 workingTransferFunction: model.workingTransferFunction(for: device.id),
                 onWorkingTransferFunctionChanged: { transferFunction in
                     model.setWorkingTransferFunction(

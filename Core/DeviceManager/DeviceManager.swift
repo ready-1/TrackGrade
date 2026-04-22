@@ -228,6 +228,21 @@ public actor DeviceManager {
     }
 
     @discardableResult
+    public func renamePreset(
+        id: UUID,
+        slot: Int,
+        name: String
+    ) async throws -> ManagedColorBoxDevice {
+        do {
+            let storedDevice = try requireDevice(id: id)
+            let presets = try await makeClient(for: storedDevice).renamePreset(slot: slot, name: name)
+            return try updatePresets(id: id, presets: presets)
+        } catch {
+            return try await handleFailure(id: id, error: error)
+        }
+    }
+
+    @discardableResult
     public func refreshPreview(id: UUID) async throws -> ManagedColorBoxDevice {
         do {
             let storedDevice = try requireDevice(id: id)

@@ -135,8 +135,10 @@ Tap `Controls` to open the slide-over drawer.
 ### Presets
 
 - Save Preset
-- Recall device-native presets
+- Recall device-native presets with confirmation
+- Long-press any preset tile to rename it or overwrite it from the current grade
 - Delete device-native presets
+- View the current local thumbnail cache for each device-native preset slot
 
 ### Device
 
@@ -166,6 +168,8 @@ The settings sheet currently exposes:
 - per-control sensitivities
 - haptics enable / disable
 - reset-confirmation behavior
+- diagnostics export for the focused device
+- in-app open-source notices
 - an About section with version, license, repository, and conduct-contact details
 
 ## Offline Simulator Workflow

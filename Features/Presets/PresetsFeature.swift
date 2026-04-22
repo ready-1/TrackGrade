@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum PresetsFeatureStyle {
     case card
@@ -10,7 +11,9 @@ struct PresetsFeatureView: View {
     let device: ManagedColorBoxDevice
     let style: PresetsFeatureStyle
 
-    @State private var isShowingSaveSheet = false
+    @State private var activeEditorRequest: PresetEditorRequest?
+    @State private var pendingRecallPreset: ColorBoxPresetSummary?
+    @State private var pendingDeletionPreset: ColorBoxPresetSummary?
 
     private let cardColumns = [
         GridItem(.adaptive(minimum: 150), spacing: 12)
@@ -35,19 +38,83 @@ struct PresetsFeatureView: View {
                 drawerContent
             }
         }
-        .sheet(isPresented: $isShowingSaveSheet) {
+        .sheet(item: $activeEditorRequest) { request in
             SavePresetSheet(
                 deviceName: device.name,
-                onSave: { slot, name in
+                request: request,
+                onSave: { mode, slot, name in
                     Task {
-                        await model.savePreset(
-                            id: device.id,
-                            slot: slot,
-                            name: name
-                        )
+                        switch mode {
+                        case .save, .overwrite:
+                            await model.savePreset(
+                                id: device.id,
+                                slot: slot,
+                                name: name
+                            )
+                        case .rename:
+                            await model.renamePreset(
+                                id: device.id,
+                                slot: slot,
+                                name: name
+                            )
+                        }
                     }
                 }
             )
+        }
+        .confirmationDialog(
+            pendingRecallPreset == nil ? "Recall Preset" : "Recall \(pendingRecallPreset?.name ?? "Preset")?",
+            isPresented: Binding(
+                get: { pendingRecallPreset != nil },
+                set: { isPresented in
+                    if isPresented == false {
+                        pendingRecallPreset = nil
+                    }
+                }
+            ),
+            presenting: pendingRecallPreset
+        ) { preset in
+            Button("Recall Slot \(preset.slot)") {
+                Task {
+                    await model.recallPreset(
+                        id: device.id,
+                        slot: preset.slot
+                    )
+                }
+                pendingRecallPreset = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingRecallPreset = nil
+            }
+        } message: { preset in
+            Text("Apply \(preset.name) from slot \(preset.slot) on the ColorBox?")
+        }
+        .confirmationDialog(
+            pendingDeletionPreset == nil ? "Delete Preset" : "Delete \(pendingDeletionPreset?.name ?? "Preset")?",
+            isPresented: Binding(
+                get: { pendingDeletionPreset != nil },
+                set: { isPresented in
+                    if isPresented == false {
+                        pendingDeletionPreset = nil
+                    }
+                }
+            ),
+            presenting: pendingDeletionPreset
+        ) { preset in
+            Button("Delete Slot \(preset.slot)", role: .destructive) {
+                Task {
+                    await model.deletePreset(
+                        id: device.id,
+                        slot: preset.slot
+                    )
+                }
+                pendingDeletionPreset = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDeletionPreset = nil
+            }
+        } message: { preset in
+            Text("Remove \(preset.name) from slot \(preset.slot) on the ColorBox?")
         }
     }
 
@@ -97,14 +164,20 @@ struct PresetsFeatureView: View {
 
     private func header(foregroundStyle: Color) -> some View {
         HStack {
-            Text("Presets")
-                .font(style == .card ? .title3.weight(.bold) : .headline.weight(.semibold))
-                .foregroundStyle(foregroundStyle)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Presets")
+                    .font(style == .card ? .title3.weight(.bold) : .headline.weight(.semibold))
+                    .foregroundStyle(foregroundStyle)
+
+                Text("Tap to recall with confirmation. Long-press a tile to rename or overwrite.")
+                    .font(.caption)
+                    .foregroundStyle(style == .drawer ? Color.white.opacity(0.58) : .secondary)
+            }
 
             Spacer()
 
             Button("Save Preset") {
-                isShowingSaveSheet = true
+                activeEditorRequest = defaultSaveRequest
             }
             .buttonStyle(.borderedProminent)
             .tint(style == .drawer ? .orange : .accentColor)
@@ -116,16 +189,24 @@ struct PresetsFeatureView: View {
         for preset: ColorBoxPresetSummary
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
+            PresetThumbnailView(
+                imageData: model.presetThumbnailData(for: device.id, slot: preset.slot),
+                cornerRadius: 18
+            )
+            .frame(height: 82)
+            .accessibilityIdentifier("preset-slot-\(preset.slot)-thumbnail")
+
             Text("Slot \(preset.slot)")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Text(preset.name)
                 .font(.headline)
+                .lineLimit(2)
 
             HStack(spacing: 10) {
                 recallButton(for: preset)
-                deleteButton(for: preset, iconOnly: false)
+                actionsMenu(for: preset)
             }
         }
         .padding(16)
@@ -134,6 +215,9 @@ struct PresetsFeatureView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color(uiColor: .tertiarySystemGroupedBackground))
         )
+        .contextMenu {
+            presetContextMenu(for: preset)
+        }
         .accessibilityIdentifier("preset-slot-\(preset.slot)")
     }
 
@@ -141,6 +225,13 @@ struct PresetsFeatureView: View {
         for preset: ColorBoxPresetSummary
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
+            PresetThumbnailView(
+                imageData: model.presetThumbnailData(for: device.id, slot: preset.slot),
+                cornerRadius: 14
+            )
+            .frame(height: 68)
+            .accessibilityIdentifier("preset-slot-\(preset.slot)-thumbnail")
+
             Text("Slot \(preset.slot)")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.white.opacity(0.62))
@@ -154,7 +245,7 @@ struct PresetsFeatureView: View {
             HStack(spacing: 8) {
                 recallButton(for: preset)
                     .tint(.orange)
-                deleteButton(for: preset, iconOnly: true)
+                actionsMenu(for: preset)
             }
         }
         .padding(12)
@@ -167,6 +258,9 @@ struct PresetsFeatureView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color.white.opacity(0.06), lineWidth: 1)
         }
+        .contextMenu {
+            presetContextMenu(for: preset)
+        }
         .accessibilityIdentifier("preset-slot-\(preset.slot)")
     }
 
@@ -174,46 +268,131 @@ struct PresetsFeatureView: View {
         for preset: ColorBoxPresetSummary
     ) -> some View {
         Button("Recall") {
-            Task {
-                await model.recallPreset(
-                    id: device.id,
-                    slot: preset.slot
-                )
-            }
+            pendingRecallPreset = preset
         }
         .buttonStyle(.borderedProminent)
         .accessibilityIdentifier("preset-slot-\(preset.slot)-recall")
     }
 
-    private func deleteButton(
-        for preset: ColorBoxPresetSummary,
-        iconOnly: Bool
+    private func actionsMenu(
+        for preset: ColorBoxPresetSummary
     ) -> some View {
-        Group {
-            if iconOnly {
-                Button(role: .destructive) {
-                    Task {
-                        await model.deletePreset(
-                            id: device.id,
-                            slot: preset.slot
-                        )
-                    }
-                } label: {
-                    Image(systemName: "trash")
-                }
-            } else {
-                Button("Delete", role: .destructive) {
-                    Task {
-                        await model.deletePreset(
-                            id: device.id,
-                            slot: preset.slot
-                        )
-                    }
-                }
-            }
+        Menu {
+            presetContextMenu(for: preset)
+        } label: {
+            Label("Actions", systemImage: "ellipsis.circle")
+                .labelStyle(.iconOnly)
         }
         .buttonStyle(.bordered)
-        .accessibilityIdentifier("preset-slot-\(preset.slot)-delete")
+        .accessibilityIdentifier("preset-slot-\(preset.slot)-actions")
+    }
+
+    @ViewBuilder
+    private func presetContextMenu(
+        for preset: ColorBoxPresetSummary
+    ) -> some View {
+        Button("Rename") {
+            activeEditorRequest = renameRequest(for: preset)
+        }
+
+        Button("Overwrite From Current Grade") {
+            activeEditorRequest = overwriteRequest(for: preset)
+        }
+
+        Button("Delete", role: .destructive) {
+            pendingDeletionPreset = preset
+        }
+    }
+
+    private var defaultSaveRequest: PresetEditorRequest {
+        let slot = nextAvailableSlot
+        return PresetEditorRequest(
+            mode: .save,
+            slot: slot,
+            name: "TrackGrade Preset \(slot)",
+            previewFrameData: device.previewFrameData
+        )
+    }
+
+    private func renameRequest(
+        for preset: ColorBoxPresetSummary
+    ) -> PresetEditorRequest {
+        PresetEditorRequest(
+            mode: .rename,
+            slot: preset.slot,
+            name: preset.name,
+            previewFrameData: model.presetThumbnailData(for: device.id, slot: preset.slot)
+        )
+    }
+
+    private func overwriteRequest(
+        for preset: ColorBoxPresetSummary
+    ) -> PresetEditorRequest {
+        PresetEditorRequest(
+            mode: .overwrite,
+            slot: preset.slot,
+            name: preset.name,
+            previewFrameData: device.previewFrameData ?? model.presetThumbnailData(for: device.id, slot: preset.slot)
+        )
+    }
+
+    private var nextAvailableSlot: Int {
+        let usedSlots = Set(device.presets.map(\.slot))
+        return (1 ... 10).first(where: { usedSlots.contains($0) == false }) ?? 1
+    }
+}
+
+private struct PresetEditorRequest: Identifiable {
+    enum Mode: String {
+        case save
+        case rename
+        case overwrite
+    }
+
+    let mode: Mode
+    let slot: Int
+    let name: String
+    let previewFrameData: Data?
+
+    var id: String {
+        "\(mode.rawValue)-\(slot)"
+    }
+
+    var title: String {
+        switch mode {
+        case .save:
+            return "Save Preset"
+        case .rename:
+            return "Rename Preset"
+        case .overwrite:
+            return "Overwrite Preset"
+        }
+    }
+
+    var actionTitle: String {
+        switch mode {
+        case .save:
+            return "Save"
+        case .rename:
+            return "Rename"
+        case .overwrite:
+            return "Overwrite"
+        }
+    }
+
+    var allowsSlotEditing: Bool {
+        mode == .save
+    }
+
+    var helperText: String {
+        switch mode {
+        case .save:
+            return "Store the current dynamic grade on the ColorBox."
+        case .rename:
+            return "Update the user-visible preset name on the ColorBox."
+        case .overwrite:
+            return "Replace the ColorBox preset slot with the current grade and thumbnail."
+        }
     }
 }
 
@@ -221,23 +400,53 @@ private struct SavePresetSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let deviceName: String
-    let onSave: (Int, String) -> Void
+    let request: PresetEditorRequest
+    let onSave: (PresetEditorRequest.Mode, Int, String) -> Void
 
-    @State private var slot = 1
-    @State private var name = ""
+    @State private var slot: Int
+    @State private var name: String
+
+    init(
+        deviceName: String,
+        request: PresetEditorRequest,
+        onSave: @escaping (PresetEditorRequest.Mode, Int, String) -> Void
+    ) {
+        self.deviceName = deviceName
+        self.request = request
+        self.onSave = onSave
+        _slot = State(initialValue: request.slot)
+        _name = State(initialValue: request.name)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Save preset for \(deviceName)") {
-                    Stepper(value: $slot, in: 1 ... 10) {
-                        Text("Slot \(slot)")
+                Section(request.title) {
+                    if request.allowsSlotEditing {
+                        Stepper(value: $slot, in: 1 ... 10) {
+                            Text("Slot \(slot)")
+                        }
+                    } else {
+                        LabeledContent("Slot", value: "\(slot)")
                     }
+
                     TextField("Preset name", text: $name)
                         .accessibilityIdentifier("preset-name-field")
                 }
+
+                Section("Preview") {
+                    PresetThumbnailView(
+                        imageData: request.previewFrameData,
+                        cornerRadius: 18
+                    )
+                    .frame(height: 112)
+
+                    Text(request.helperText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .navigationTitle("Save Preset")
+            .navigationTitle(request.title)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -246,13 +455,61 @@ private struct SavePresetSheet: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave(slot, name.isEmpty ? "TrackGrade Preset \(slot)" : name)
+                    Button(request.actionTitle) {
+                        let resolvedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        onSave(
+                            request.mode,
+                            slot,
+                            resolvedName.isEmpty ? "TrackGrade Preset \(slot)" : resolvedName
+                        )
                         dismiss()
                     }
                 }
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+private struct PresetThumbnailView: View {
+    let imageData: Data?
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        Group {
+            if let imageData,
+               let image = UIImage(data: imageData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.orange.opacity(0.22),
+                                    Color.white.opacity(0.08),
+                                    Color.blue.opacity(0.18),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    VStack(spacing: 6) {
+                        Image(systemName: "photo")
+                            .font(.title3.weight(.semibold))
+                        Text("No thumbnail")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(.white.opacity(0.82))
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        }
     }
 }

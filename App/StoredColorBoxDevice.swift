@@ -166,3 +166,38 @@ final class StoredGradeSnapshot {
         }
     }
 }
+
+@Model
+final class StoredDevicePresetThumbnail {
+    @Attribute(.unique) var id: String
+    var deviceID: UUID
+    var deviceName: String
+    var slot: Int
+    var name: String
+    var updatedAt: Date
+    var previewFrameData: Data?
+
+    init(
+        deviceID: UUID,
+        deviceName: String,
+        slot: Int,
+        name: String,
+        updatedAt: Date = .now,
+        previewFrameData: Data? = nil
+    ) {
+        self.id = Self.recordID(deviceID: deviceID, slot: slot)
+        self.deviceID = deviceID
+        self.deviceName = deviceName
+        self.slot = slot
+        self.name = name
+        self.updatedAt = updatedAt
+        self.previewFrameData = previewFrameData
+    }
+
+    static func recordID(
+        deviceID: UUID,
+        slot: Int
+    ) -> String {
+        "\(deviceID.uuidString.lowercased())-preset-\(slot)"
+    }
+}

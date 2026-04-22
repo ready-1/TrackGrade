@@ -190,6 +190,7 @@ public struct ColorBoxAPIClient: Sendable {
 
     public func savePreset(slot: Int, name: String) async throws -> [ColorBoxPresetSummary] {
         do {
+            try await awaitPresetSaveSettleDelayIfNeeded()
             try await saveDynamicLutRequestV2()
             try await performLibraryActionV2(
                 library: "systemPreset",
@@ -252,6 +253,23 @@ public struct ColorBoxAPIClient: Sendable {
                 path: "presets/\(slot)",
                 method: "DELETE"
             )
+        }
+    }
+
+    public func renamePreset(
+        slot: Int,
+        name: String
+    ) async throws -> [ColorBoxPresetSummary] {
+        do {
+            try await performLibraryActionV2(
+                library: "systemPreset",
+                entry: slot,
+                action: "SetUserName",
+                data: name
+            )
+            return try await listPresetsV2()
+        } catch {
+            return try await savePreset(slot: slot, name: name)
         }
     }
 
@@ -542,6 +560,24 @@ public struct ColorBoxAPIClient: Sendable {
 
         return data
         #endif
+    }
+
+    private func awaitPresetSaveSettleDelayIfNeeded() async throws {
+        guard requiresPresetSaveSettleDelay else {
+            return
+        }
+
+        // Firmware 3.0.0.24 needs time to internalize direct pipeline-stage writes
+        // before saveDynamicLutRequest snapshots them into a device preset.
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+    }
+
+    private var requiresPresetSaveSettleDelay: Bool {
+        guard let host = endpoint.baseURL.host?.lowercased() else {
+            return true
+        }
+
+        return host != "127.0.0.1" && host != "localhost"
     }
 
     private func normalizedHostName(from candidate: String?) -> String {

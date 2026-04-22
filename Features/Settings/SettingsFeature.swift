@@ -57,6 +57,8 @@ extension TrackGradeControlSensitivity {
 
 struct SettingsFeatureView: View {
     let deviceName: String
+    let diagnosticsReport: String
+    let noticesText: String
     let onWorkingTransferFunctionChanged: (TransferFunction) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -72,13 +74,18 @@ struct SettingsFeatureView: View {
     @AppStorage(TrackGradeSettingsKey.autoRefreshInterval) private var autoRefreshInterval = 0.0
     @AppStorage(TrackGradeSettingsKey.resetRequiresConfirmation) private var resetRequiresConfirmation = true
     @State private var selectedWorkingTransferFunction: TransferFunction
+    @State private var isShowingNotices = false
 
     init(
         deviceName: String,
+        diagnosticsReport: String,
+        noticesText: String,
         workingTransferFunction: TransferFunction,
         onWorkingTransferFunctionChanged: @escaping (TransferFunction) -> Void
     ) {
         self.deviceName = deviceName
+        self.diagnosticsReport = diagnosticsReport
+        self.noticesText = noticesText
         self.onWorkingTransferFunctionChanged = onWorkingTransferFunctionChanged
         _selectedWorkingTransferFunction = State(initialValue: workingTransferFunction)
     }
@@ -128,6 +135,11 @@ struct SettingsFeatureView: View {
                 }
 
                 Section("Diagnostics") {
+                    ShareLink(item: diagnosticsReport) {
+                        Label("Export Diagnostics", systemImage: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("export-diagnostics-link")
+
                     Text("The current build centers on the touch surface, workflow drawer, and live ColorBox grading path. Device auth remains optional on the reference hardware, and gang control is now managed from the device list.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -148,6 +160,11 @@ struct SettingsFeatureView: View {
                         destination: URL(string: "mailto:info@getready1.com")!
                     )
 
+                    Button("Open Source Notices") {
+                        isShowingNotices = true
+                    }
+                    .accessibilityIdentifier("open-source-notices-button")
+
                     Text("TrackGrade is not affiliated with or endorsed by AJA Video Systems. AJA and ColorBox are trademarks of AJA Video Systems.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -165,6 +182,9 @@ struct SettingsFeatureView: View {
         .presentationDetents([.large])
         .onChange(of: selectedWorkingTransferFunction) { _, newValue in
             onWorkingTransferFunctionChanged(newValue)
+        }
+        .sheet(isPresented: $isShowingNotices) {
+            OpenSourceNoticesSheet(noticesText: noticesText)
         }
     }
 
@@ -204,4 +224,62 @@ struct SettingsFeatureView: View {
         }
         .padding(.vertical, 4)
     }
+}
+
+private struct OpenSourceNoticesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let noticesText: String
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(noticesText)
+                    .font(.footnote.monospaced())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+            }
+            .navigationTitle("Open Source Notices")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+enum TrackGradeOpenSourceNotices {
+    static let fullText = """
+    TrackGrade Open Source Notices
+
+    TrackGrade depends on the following third-party Swift packages:
+
+    1. swift-openapi-generator
+       Copyright The Swift OpenAPI Generator project authors
+       License: Apache License 2.0
+       Source: https://github.com/apple/swift-openapi-generator
+
+    2. swift-openapi-runtime
+       Copyright The Swift OpenAPI Generator project authors
+       License: Apache License 2.0
+       Source: https://github.com/apple/swift-openapi-runtime
+
+    3. swift-openapi-urlsession
+       Copyright The Swift OpenAPI Generator project authors
+       License: Apache License 2.0
+       Source: https://github.com/apple/swift-openapi-urlsession
+
+    4. Vapor
+       Copyright Vapor and contributors
+       License: MIT License
+       Source: https://github.com/vapor/vapor
+
+    Additional transitive dependency versions are recorded in Package.resolved.
+    Upstream license and notice files are available in the local SwiftPM checkout cache under:
+    .build/checkouts/
+    """
 }

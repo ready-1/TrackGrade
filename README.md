@@ -61,7 +61,7 @@ Contribution guidelines live in [CONTRIBUTING.md](CONTRIBUTING.md). Please also 
 
 ## License
 
-TrackGrade is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
+TrackGrade is licensed under the Apache License 2.0. See [LICENSE](LICENSE) and [NOTICES.md](NOTICES.md).
 
 ## Disclaimer
 
