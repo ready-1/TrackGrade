@@ -95,6 +95,10 @@ public struct ColorBoxAPIClient: Sendable {
     public func updateGradeControl(
         _ gradeControl: ColorBoxGradeControlState
     ) async throws -> ColorBoxPipelineState {
+        guard usesLegacyHTTPDynamicLUTUploadTransport else {
+            return try await fetchPipelineStateV2()
+        }
+
         var currentStages: V2PipelineStages = try await performJSONRequest(path: "v2/pipelineStages")
         var updatedStage = currentStages.lut3d1 ?? V2Stage()
         updatedStage.enabled = true
@@ -535,22 +539,50 @@ public struct ColorBoxAPIClient: Sendable {
         let currentStages = try (try await client.getPipelineStages()).ok.body.json
 
         var updatedStages = currentStages
+        var disabledStage = Components.Schemas.Stage()
+        disabledStage.enabled = false
+        disabledStage.dynamic = false
         var updatedStage = currentStages.lut3d1 ?? Components.Schemas.Stage()
         updatedStage.dynamic = true
         updatedStage.enabled = true
         updatedStage.libraryEntry = 0
+        updatedStages.lut1d1 = disabledStage
+        updatedStages.lut1d2 = disabledStage
+        updatedStages.lut1d3 = disabledStage
+        updatedStages.lut1d4 = disabledStage
         updatedStages.lut3d1 = updatedStage
+        updatedStages.inColorimetry = updatedStages.inColorimetry ?? .bt_709
+        updatedStages.inRange = updatedStages.inRange ?? .smpteNarrow
+        updatedStages.outColorimetry = updatedStages.outColorimetry ?? .bt_709
+        updatedStages.outRange = updatedStages.outRange ?? .smpteNarrow
+        updatedStages.transferCharacteristic = updatedStages.transferCharacteristic ?? .sdr
 
         _ = try (try await client.setPipelineStages(
             body: .json(updatedStages)
         )).ok
         #else
         var currentStages: V2PipelineStages = try await performJSONRequest(path: "v2/pipelineStages")
+        let disabledStage = V2Stage(
+            enabled: false,
+            dynamic: false,
+            libraryEntry: nil,
+            colorCorrector: nil,
+            procAmp: nil
+        )
         var updatedStage = currentStages.lut3d1 ?? V2Stage()
         updatedStage.dynamic = true
         updatedStage.enabled = true
         updatedStage.libraryEntry = 0
+        currentStages.lut1d1 = disabledStage
+        currentStages.lut1d2 = disabledStage
+        currentStages.lut1d3 = disabledStage
+        currentStages.lut1d4 = disabledStage
         currentStages.lut3d1 = updatedStage
+        currentStages.inColorimetry = currentStages.inColorimetry ?? "BT.709"
+        currentStages.inRange = currentStages.inRange ?? "SMPTENARROW"
+        currentStages.outColorimetry = currentStages.outColorimetry ?? "BT.709"
+        currentStages.outRange = currentStages.outRange ?? "SMPTENARROW"
+        currentStages.transferCharacteristic = currentStages.transferCharacteristic ?? "SDR"
         let body = try JSONEncoder().encode(currentStages)
         try await performNoContentRequest(
             path: "v2/pipelineStages",
@@ -737,6 +769,7 @@ public struct ColorBoxAPIClient: Sendable {
             try await withDynamicLUTUploadTimeout {
                 try await webSocketTask.send(.data(payload))
             }
+            try await awaitDynamicLUTUploadSettleDelay()
         } catch {
             webSocketTask.cancel(with: .goingAway, reason: nil)
             throw error
@@ -772,6 +805,10 @@ public struct ColorBoxAPIClient: Sendable {
             _ = try await group.next()
             group.cancelAll()
         }
+    }
+
+    private func awaitDynamicLUTUploadSettleDelay() async throws {
+        try await Task.sleep(nanoseconds: 100_000_000)
     }
 
     private static func previewSource(
@@ -1131,8 +1168,9 @@ private struct V2BuildInfo: Decodable {
     let appVersion: String?
 }
 
-private struct V2SystemConfig: Decodable {
+private struct V2SystemConfig: Codable {
     let hostName: String?
+    let transformMode: String?
 }
 
 private struct V2SystemStatus: Decodable {

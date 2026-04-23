@@ -232,7 +232,20 @@ public actor DeviceManager {
                 throw error
             }
 
-            let pipelineState = try await client.updateGradeControl(gradeControl)
+            let pipelineState: ColorBoxPipelineState
+            if usesLocalDynamicLUTMetadataSync(for: storedDevice.endpoint) {
+                pipelineState = try await client.updateGradeControl(gradeControl)
+            } else {
+                let currentPipelineState = storedDevice.snapshot.pipelineState
+                pipelineState = ColorBoxPipelineState(
+                    bypassEnabled: currentPipelineState?.bypassEnabled ?? false,
+                    falseColorEnabled: currentPipelineState?.falseColorEnabled ?? false,
+                    previewSource: currentPipelineState?.previewSource ?? .output,
+                    dynamicLUTMode: "dynamic",
+                    gradeControl: gradeControl,
+                    lastRecalledPresetSlot: currentPipelineState?.lastRecalledPresetSlot
+                )
+            }
             return try await updatePipelineState(id: id, pipelineState: pipelineState)
         } catch {
             return try await handleFailure(id: id, error: error)
@@ -525,7 +538,11 @@ public actor DeviceManager {
     ) async throws -> ManagedColorBoxDevice {
         let currentSnapshot = try requireDevice(id: id)
         var updated = currentSnapshot
-        updated.snapshot.pipelineState = pipelineState
+        updated.snapshot.pipelineState = mergedPipelineState(
+            incoming: pipelineState,
+            previous: currentSnapshot.snapshot.pipelineState,
+            endpoint: currentSnapshot.endpoint
+        )
         updated.snapshot.supportsFalseColor = supportsFalseColor ?? updated.snapshot.supportsFalseColor
         updated.snapshot.connectionState = .connected
         updated.snapshot.lastErrorDescription = nil
@@ -599,6 +616,45 @@ public actor DeviceManager {
         }
 
         return storedDevice.snapshot
+    }
+
+    private func usesLocalDynamicLUTMetadataSync(
+        for endpoint: ColorBoxEndpoint
+    ) -> Bool {
+        guard let host = endpoint.baseURL.host?.lowercased() else {
+            return false
+        }
+
+        return host == "127.0.0.1" || host == "localhost"
+    }
+
+    private func mergedPipelineState(
+        incoming: ColorBoxPipelineState,
+        previous: ColorBoxPipelineState?,
+        endpoint: ColorBoxEndpoint
+    ) -> ColorBoxPipelineState {
+        guard usesLocalDynamicLUTMetadataSync(for: endpoint) == false,
+              incoming.dynamicLUTMode == "dynamic",
+              let previous else {
+            return incoming
+        }
+
+        let shouldPreservePreviousGrade =
+            incoming.gradeControl == .identity
+            || (previous.dynamicLUTMode == "dynamic" && incoming.gradeControl == previous.gradeControl)
+
+        guard shouldPreservePreviousGrade else {
+            return incoming
+        }
+
+        return ColorBoxPipelineState(
+            bypassEnabled: incoming.bypassEnabled,
+            falseColorEnabled: incoming.falseColorEnabled,
+            previewSource: incoming.previewSource,
+            dynamicLUTMode: incoming.dynamicLUTMode,
+            gradeControl: previous.gradeControl,
+            lastRecalledPresetSlot: incoming.lastRecalledPresetSlot
+        )
     }
 
     private func startReconnectLoopIfNeeded(for id: UUID) {

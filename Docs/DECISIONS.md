@@ -239,6 +239,27 @@ Keep the primary landscape surface focused on operator-facing controls and direc
 - Duplicate telemetry pressure on the landscape layout is reduced without removing important device details from the app entirely.
 - Manual hardware review still needs to confirm that the more explicit reset labels are obvious in hand while preserving a compact layout.
 
+## 2026-04-22 — Treat Real-Host Dynamic LUT Uploads As Authoritative And Match The Proven WebSocket Send Cadence
+
+### Context
+
+The earlier `colobox-control` prototype and AJA’s `DynamicLutLoad` demo both point to the same pattern on real ColorBox hardware: REST configures the active dynamic stage, then a binary LUT payload is sent over `ws://<host>:5000`. Direct black-box probes on `172.29.14.51` also proved that explicit `3DL1` payloads change the live output preview hash, while TrackGrade’s iPad build was still showing no visible grade response on the scope.
+
+### Decision
+
+For real ColorBox hosts:
+
+- configure `lut3d_1` as the active dynamic stage and disable competing `lut1d_*` stages
+- treat the WebSocket dynamic-LUT upload as the authoritative real-time grade path instead of immediately mirroring every grade mutation back into `/v2/pipelineStages`
+- preserve the requested grade locally in app state for UI continuity
+- keep the WebSocket open briefly after sending the LUT payload, matching the known-good prototype’s roughly 100 ms settle window instead of closing immediately after `send`
+
+### Consequences
+
+- Real-host live grade behavior is now closer to the known-good prototype and AJA’s public example.
+- `/v2/pipelineStages` remains useful for configuration, preset-related workflow, and readback, but it is no longer treated as the source of truth for every live grade mutation on real hardware.
+- The latest socket-timing change still needs live iPad revalidation against bars and the downstream scope before it can be considered a confirmed fix.
+
 ## 2026-04-21 — Land the Full Color-Math Core and Queue LUT Uploads Per Device While Keeping Live Grading on `pipelineStages`
 
 ### Context
