@@ -124,6 +124,8 @@
 - The current Mac session in the hotel room cannot reach `172.29.14.51` over HTTP, so the latest real-host WebSocket timing fix is not yet live-verified from this session.
 - Although the latest app bundle is installed on the connected iPad, `devicectl` launch is currently denied because the development profile has not yet been explicitly trusted on-device.
 - A direct retry on 2026-04-22 still returned the same `SBMainWorkspace` security denial for `com.getready1.trackgrade`, so the iPad trust step is still blocking hardware validation even though install continues to succeed.
+- A later retry succeeded: `devicectl` can now launch `com.getready1.trackgrade` on the connected iPad, which means the earlier on-device trust / launch block is resolved.
+- The remaining live-hardware blocker is now host-to-ColorBox reachability from this Mac. `curl http://172.29.14.51/v2/buildInfo` still fails, and the opt-in live integration test skips after timing out against that address.
 
 ## Next Steps
 
