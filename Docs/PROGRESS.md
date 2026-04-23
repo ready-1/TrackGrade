@@ -96,6 +96,8 @@
 - A follow-up code pass aligned TrackGrade more closely with the older working prototype and AJA’s demo behavior for real hosts: real-time dynamic-LUT uploads now configure `lut3d_1` as the active dynamic stage, stop mirroring every live grade change back into `/v2/pipelineStages`, and preserve the requested grade locally for UI continuity instead.
 - TrackGrade now keeps the real-host `ws://<host>:5000` connection open for roughly 100 ms after sending the binary LUT payload, matching the known-good prototype’s send cadence instead of closing the socket immediately after `send`.
 - `swift test` passed again after the real-host stage/synchronization cleanup and WebSocket settle-delay fix.
+- A full `xcodebuild test` pass also succeeded again on the simulator after the real-host transport cleanup.
+- The current `Debug` device build now succeeds for the connected iPad, and the latest `TrackGrade.app` bundle was installed onto the device from this Mac.
 
 ## In-Flight Work
 
@@ -120,6 +122,7 @@
 - Visual confirmation of a library-selected uploaded LUT still needs an active signal on the reference ColorBox, because the current test box appears to be idle and therefore produces identical `INPUT` / `OUTPUT` preview hashes.
 - Live AMF verification is still pending because `/v2/uploadMultiple` has not yet been re-probed successfully against the current reachable reference box.
 - The current Mac session in the hotel room cannot reach `172.29.14.51` over HTTP, so the latest real-host WebSocket timing fix is not yet live-verified from this session.
+- Although the latest app bundle is installed on the connected iPad, `devicectl` launch is currently denied because the development profile has not yet been explicitly trusted on-device.
 
 ## Next Steps
 
@@ -130,6 +133,7 @@
 - Diff TrackGrade's WebSocket grading behavior against `/Users/bob/dev/colobox-control/server/index.js` and `/Users/bob/dev/colobox-control/server/lutGenerator.js`, including payload bytes, connect/send cadence, and any additional commands around the dynamic node.
 - Compare TrackGrade’s generated LUT bytes against AJA’s `DynamicLutLoad` ordering and against the direct identity / black probes that changed the live preview hash.
 - Re-test the latest real-host WebSocket timing and stage-selection changes on the iPad against bars and the downstream scope; if live image change still does not appear, compare TrackGrade’s baked payload bytes directly against the known-good identity / black probes.
+- Trust the current development signing profile on the connected iPad, then launch the freshly installed build and re-run the bars-to-scope validation against the ColorBox.
 - Re-test any revised live grade path on the iPad against bars and the downstream scope; do not treat API round-trips alone as proof of real image change.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
