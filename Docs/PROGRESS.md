@@ -85,10 +85,11 @@
 - The compact-surface pass now presents direct Lift / Gamma / Gain control-state values (X / Y / Bias) instead of derived RGB telemetry in the center display, removes more duplicated information from the primary surface, and makes Ball / Bias / Saturation reset affordances explicit on the control layer.
 - The full simulator suite passed again after hardening the library delete UI test path for the current iOS simulator menu presentation behavior, so the compact-surface pass is now verified end-to-end.
 - The opt-in live integration tests now preflight `http://<host>/v2/buildInfo` with a short timeout and skip quickly when the reference ColorBox is unreachable, preventing long hangs when the network path is down.
-- A hardware debugging pass against the older working `colobox-control` prototype showed that real-time grade changes on ColorBox are driven by a baked dynamic-LUT payload sent over `ws://<host>:5000`, not by `PUT /v2/pipelineStages` alone.
-- TrackGrade now bakes the current Lift / Gamma / Gain / Saturation state into a `33^3` LUT, uploads it over the ColorBox dynamic-LUT WebSocket transport for real hosts, and still mirrors the same values into `pipelineStages` for device readback, preset-save compatibility, and app synchronization.
-- The new live dynamic-grade path is verified on the reference ColorBox: `TRACKGRADE_LIVE_COLORBOX_HOST=172.29.14.51 swift test --filter TrackGradeIntegrationTests/testLiveColorBoxRoundTripsGradeBypassAndPreview` passed on `2026-04-22`, and the mock-backed integration suite now asserts that grade writes produce a dynamic-LUT upload.
+- A hardware debugging pass against the older working `colobox-control` prototype showed that its real-time grade changes appear to be driven by a baked dynamic-LUT payload sent over `ws://<host>:5000`, not by `PUT /v2/pipelineStages` alone.
+- TrackGrade now bakes the current Lift / Gamma / Gain / Saturation state into a `33^3` LUT, uploads it over the candidate ColorBox dynamic-LUT WebSocket transport for real hosts, and still mirrors the same values into `pipelineStages` for device readback, preset-save compatibility, and app synchronization.
+- The revised transport is accepted by the reference ColorBox in automated reversible testing: `TRACKGRADE_LIVE_COLORBOX_HOST=172.29.14.51 swift test --filter TrackGradeIntegrationTests/testLiveColorBoxRoundTripsGradeBypassAndPreview` passed on `2026-04-22`, and the mock-backed integration suite now asserts that grade writes produce a dynamic-LUT upload.
 - The full Xcode simulator suite passed again after the transport fix; one preview-overlay UI test remains intentionally skipped because the current iOS simulator build is flaky for that interaction even though the feature remains available in the app for manual verification.
+- A follow-up real iPad bars-to-scope validation still showed no visible response from Lift / Gamma / Gain / Saturation while bypass continued to work, so live color control remains unresolved despite the successful transport-level round-trip tests.
 
 ## In-Flight Work
 
@@ -99,12 +100,14 @@
 - Using the restored production network window to finish the remaining iPad-only touch validation and any extra contract probing now that repeatable live backend tests exist in the repo.
 - Finishing the release-facing accessibility and documentation pass now that preview controls, diagnostics export, notices, and preset workflow polish are in place.
 - Re-running live hardware probes for `/v2/uploadMultiple` and any remaining library paths while the reference ColorBox is reachable again.
+- Comparing TrackGrade's WebSocket dynamic-LUT payload, timing, and any follow-up device actions against the older `colobox-control` implementation now that the first transport-matching attempt still does not move the real scope.
 
 ## Blockers
 
 - Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
 - True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
 - The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
+- Real hardware still shows no visible image change from TrackGrade's Lift / Gamma / Gain / Saturation controls with bars feeding the ColorBox and the output observed on a scope, even though bypass works and the current transport path is accepted by the device.
 - Visual confirmation of a library-selected uploaded LUT still needs an active signal on the reference ColorBox, because the current test box appears to be idle and therefore produces identical `INPUT` / `OUTPUT` preview hashes.
 - Live AMF verification is still pending because `/v2/uploadMultiple` has not yet been re-probed successfully against the current reachable reference box.
 
@@ -114,7 +117,8 @@
 - Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
 - Validate that the revised static layout and drawer dismissal feel balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
 - Validate that the new control-state center window and explicit reset labels read clearly at normal iPad operating distance without reintroducing visual clutter.
-- Re-test the corrected live grade path on the iPad against bars and the downstream scope now that TrackGrade is driving the dynamic-LUT transport instead of relying on `pipelineStages` alone.
+- Diff TrackGrade's WebSocket grading behavior against `/Users/bob/dev/colobox-control/server/index.js` and `/Users/bob/dev/colobox-control/server/lutGenerator.js`, including payload bytes, connect/send cadence, and any additional commands around the dynamic node.
+- Re-test any revised live grade path on the iPad against bars and the downstream scope; do not treat API round-trips alone as proof of real image change.
 - Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
 - Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
 - Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.

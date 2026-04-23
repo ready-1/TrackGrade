@@ -802,7 +802,7 @@ Real iPad hardware testing showed a critical mismatch: bypass visibly affected t
 
 ### Decision
 
-For real hosts, TrackGrade now:
+For real hosts, TrackGrade now attempts to follow that candidate path by:
 
 - bakes the current control state into a `33^3` LUT
 - serializes it into the ColorBox dynamic payload format with a `3DL1` header and `UInt16` little-endian RGB triplets
@@ -813,10 +813,27 @@ For localhost / mock hosts, TrackGrade keeps the earlier HTTP compatibility rout
 
 ### Consequences
 
-- Live grading now matches the transport that actually changes the image on the reference ColorBox instead of treating `pipelineStages` writes as sufficient.
+- TrackGrade no longer treats `pipelineStages` writes as sufficient for live grading and now exercises the most promising transport candidate discovered from the older prototype.
 - The earlier “keep live grading on `pipelineStages` until uploads are proven” stance is superseded for the real-time grading path; `pipelineStages` remains important, but as synchronization metadata rather than the sole live-image mechanism.
 - Mock and live transport now diverge intentionally, so the repo documentation and tests must keep both paths explicit.
-- Live reversible integration tests can now verify grade / bypass / preview behavior against the real device without depending on ad hoc manual probes.
+- Live reversible integration tests can now verify grade / bypass / preview API behavior against the real device without depending on ad hoc manual probes.
+- Visual scope validation is still required before claiming that this transport actually affects the live image.
+
+## 2026-04-22 — Treat Visual Signal-Path Validation As The Acceptance Bar For Live Grade Control
+
+### Context
+
+After the first WebSocket-based dynamic-LUT implementation landed, the automated live tests passed and the device accepted the grading traffic, but a real iPad session with bars feeding the ColorBox and the output observed on a scope still showed no visible response from Lift / Gamma / Gain / Saturation. Bypass continued to work. That means transport acceptance and readback are not enough to claim that the grading path is truly correct.
+
+### Decision
+
+TrackGrade will treat live image change on a signaled ColorBox, observed on real output instrumentation, as the source of truth for grade-control correctness. API round-trips, stage readback, and transport acceptance are necessary but not sufficient.
+
+### Consequences
+
+- The current WebSocket-based dynamic-LUT path should be treated as an unresolved candidate, not as a completed live-grading solution.
+- Repo docs and test descriptions must avoid calling live grade control “verified” until a real scope/image test shows visible response.
+- The next debugging pass should compare TrackGrade’s payload bytes, connection lifecycle, and any follow-up actions against the older `colobox-control` implementation before trying broader UI or tuning changes.
 
 ## 2026-04-22 — Keep The Preview Overlay Feature But Skip One Simulator-Only UI Assertion
 
