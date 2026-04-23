@@ -1,5 +1,21 @@
 # Decisions
 
+## 2026-04-23 — Lock The Current Hardware-Verified Feature Set As The MVP Baseline
+
+### Context
+
+Real iPad testing against the ColorBox hardware has now confirmed that TrackGrade’s live Lift / Gamma / Gain plus saturation control path is working on hardware. The project’s highest-priority MVP goals are satisfied: live grading works, presets live on the ColorBox, and bypass works in the field.
+
+### Decision
+
+Lock the current hardware-verified feature set as the MVP baseline and increment the app version to `0.2.0` (`build 2`).
+
+### Consequences
+
+- The current hardware-verified behavior becomes the baseline to preserve as future work continues.
+- Remaining work such as AMF verification, broader gang validation, packaging polish, and release collateral is now post-MVP follow-on work instead of a blocker for the baseline build.
+- Future bug-fix updates should generally ship as `0.2.x` unless scope expands enough to justify a larger version bump.
+
 ## 2026-04-21 — Adopt TrackGrade Brief v1.0 as Project Specification
 
 ### Context

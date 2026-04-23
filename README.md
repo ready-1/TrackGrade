@@ -4,7 +4,7 @@ TrackGrade is an open-source native iPadOS 18+ control surface for live color gr
 
 ## Project Status
 
-TrackGrade is in active development, with the current build focused on a working MVP for live LGG plus saturation control, ColorBox-resident preset save, bypass, first-pass gang control, and offline simulator verification through the mock-backed fixture mode.
+TrackGrade `v0.2.0` is the locked MVP baseline. Real iPad + ColorBox hardware validation has now confirmed live Lift / Gamma / Gain plus saturation control, ColorBox-resident preset save, and bypass on hardware, with the current app surface and workflow preserved as the baseline from here.
 
 ## Screenshots
 
@@ -27,12 +27,12 @@ Current grading surface in simulator fixture mode:
 - Mock ColorBox server for local development without hardware
 - Phase 3 color-math core with CDL, transfer functions, `.cube` baking, and a queued dynamic-LUT upload path validated against the mock
 
-## Planned Next
+## Post-MVP Backlog
 
-- Final live-hardware sensitivity tuning on iPad
-- Additional workflow polish, final live AMF verification, and release packaging
-- Final live verification of a grading workflow based on baked LUT uploads if TrackGrade ever moves beyond the current `pipelineStages` grading path
+- Additional workflow polish and release packaging
+- Final live AMF verification
 - Deeper multi-device validation on real ColorBox peers
+- Future evaluation of whether TrackGrade should move beyond the current verified dynamic-LUT grading path
 
 ## Requirements
 

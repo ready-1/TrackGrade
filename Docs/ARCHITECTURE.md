@@ -6,7 +6,7 @@ TrackGrade is a native iPadOS 18+ SwiftUI app that talks directly to one or more
 
 - connect to a ColorBox over LAN
 - configure the Dynamic 3D LUT node for TrackGrade
-- drive Lift / Gamma / Gain plus saturation through `/v2/pipelineStages`
+- drive Lift / Gamma / Gain plus saturation through the verified dynamic-LUT WebSocket path on real hosts, with `/v2/pipelineStages` used for stage configuration and readback
 - save, recall, and delete device-native presets on the ColorBox
 - broadcast core grade actions from the focused device to linked gang peers
 - keep iPad-local snapshots, scratch A/B slots, and undo / redo for operator workflow
@@ -105,13 +105,13 @@ The app is split into an iPad app target plus a shared SwiftPM package:
 1. `GradeFeatureView` renders a fixed landscape surface.
 2. Touch gestures mutate local draft grade state immediately for responsive UI feedback.
 3. Changes are coalesced and sent through `TrackGradeAppModel.updateGradeControl`.
-4. `DeviceManager` writes the current LGG/S state to `/v2/pipelineStages`.
+4. `DeviceManager` configures the dynamic stage as needed, bakes the current control state into a dynamic LUT, and sends it over the real-host WebSocket ingest path while preserving the requested grade locally for UI continuity.
 5. The distinct `Before / After` compare control temporarily flips bypass, remembers the original device state, and restores it when compare mode ends.
 6. Undo / redo checkpoints are recorded at interaction boundaries instead of every touch sample.
 
 ### 3a. Dynamic LUT Bake And Upload Path
 
-The repo now also contains the Phase 3 bake/upload path even though it is not yet the default live grading route:
+This bake/upload path is now the verified live grading route on real ColorBox hosts:
 
 1. `ColorBoxGradeControlState` converts to `GradeState`
 2. `GradeState` converts to `CDLValues`
@@ -120,7 +120,7 @@ The repo now also contains the Phase 3 bake/upload path even though it is not ye
 5. `DeviceManager` enqueues that payload into a per-device `DynamicLUTUploadQueue`
 6. the queue keeps only the newest pending payload while one upload is in flight
 
-This keeps the UI-side architecture ready for the brief’s intended dynamic-LUT workflow without forcing the unresolved live firmware upload path into the shipping hardware route prematurely.
+This keeps the UI-side architecture aligned with the real hardware path while still letting localhost/mock continue through the compatibility endpoint.
 
 ### 4. Preset Workflow
 
@@ -177,7 +177,7 @@ This keeps the simulator and UI automation path close to the real app shell inst
 
 ## Current Architectural Constraints
 
-- The app currently drives live grade directly through `pipelineStages` instead of routing live iPad gestures through the baked `.cube` upload path, because the reference firmware’s `/v2/upload` materialization semantics are still unresolved.
+- Real hosts now use the dynamic-LUT WebSocket ingest as the live grading path, while localhost/mock still relies on the older compatibility endpoint because the mock does not emulate the binary ingest service.
 - Gang control currently follows a focused-device-plus-linked-peers model; deeper workflow support such as per-device offsets and richer gang management is still future work.
 - Single-file device library management is live-verified for 1D LUT, 3D LUT, matrix, image, and overlay assets.
 - AMF import is wired through the committed `/v2/uploadMultiple` contract and validated against the mock server, but successful hardware verification is still pending because the reference box is not currently reachable from this host.

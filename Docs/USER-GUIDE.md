@@ -12,6 +12,8 @@ The current MVP focuses on:
 - focus-device gang broadcast to linked peer devices
 - local snapshots, A/B scratch slots, and undo / redo
 
+This MVP has now been validated on a real iPad driving ColorBox hardware.
+
 ## Hardware Requirements
 
 - iPad running iPadOS 18 or later

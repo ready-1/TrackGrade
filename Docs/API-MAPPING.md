@@ -11,8 +11,8 @@
 - Package-side generated-client validation must use a server URL shaped like `http://host/v2` without a trailing slash; using `http://host/v2/` produces broken `/v2//...` requests on real hardware.
 - Live grading no longer relies on `PUT /v2/pipelineStages` alone: real hosts now receive a baked dynamic-LUT payload over `ws://<host>:5000`, while TrackGrade keeps the requested grade in local app state instead of mirroring every live mutation back into `pipelineStages`.
 - A live reversible integration run verified that the reference ColorBox accepts this transport on `2026-04-22` against `172.29.14.51`: grade, bypass, and preview round-trips all passed after the transport switch.
-- A later real iPad validation with bars feeding the ColorBox and the output on a scope still showed no visible response from Lift / Gamma / Gain / Saturation, so this transport remains only a candidate for the true image-affecting grade path.
-- A direct follow-up probe then proved that the WebSocket path itself does affect the live image on this box: explicit identity and black `3DL1` payloads produced different `OUTPUT` preview hashes, so the unresolved issue is now TrackGrade-specific rather than a generic socket-ingest failure.
+- A direct follow-up probe proved that the WebSocket path itself affects the live image on this box: explicit identity and black `3DL1` payloads produced different `OUTPUT` preview hashes, so the socket-ingest path is real.
+- Real iPad-to-ColorBox validation on 2026-04-23 then confirmed that TrackGrade’s live Lift / Gamma / Gain / Saturation controls visibly affect the hardware output, so the WebSocket-backed dynamic-LUT flow is now the verified MVP grading path.
 - TrackGrade now also keeps the URLSession WebSocket open for roughly 100 ms after `send`, matching the earlier working prototype’s cadence instead of closing immediately.
 
 ## Remaining Integration Decision
@@ -127,14 +127,13 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
 
 ## Dynamic Grade Control Status
 
-- The original `PUT /v2/pipelineStages` path is still valuable for stage readback and preset-related synchronization, but real iPad hardware testing showed that it is not sufficient by itself to change the live image on the reference ColorBox.
+- The original `PUT /v2/pipelineStages` path is still valuable for stage configuration, readback, and preset-related synchronization, but it is not the authoritative real-time image path on the reference ColorBox.
 - TrackGrade now treats the live grading path on real hosts as:
   - configure `lut3d_1` as the active dynamic stage through `PUT /v2/pipelineStages`
   - bake and send the dynamic LUT payload over `ws://<host>:5000`
   - keep the socket open briefly after send so the frame is not torn down immediately on Apple’s WebSocket stack
 - Localhost/mock flows still mirror grade metadata into stage writes because the mock server does not emulate the binary socket ingest.
-- A follow-up real output test with bars and a downstream scope still showed no visible change from Lift / Gamma / Gain / Saturation, so the true image-affecting grading contract is still unresolved.
-- Because direct identity / black `3DL1` probes do change the live `OUTPUT` preview hash on the same box, the remaining unresolved piece is TrackGrade’s payload generation or post-upload flow rather than the ColorBox’s WebSocket ingest itself.
+- Real iPad hardware validation on 2026-04-23 confirmed that this flow does produce visible live-image changes on the ColorBox.
 - The mock server continues to emulate the dynamic payload path with the earlier HTTP compatibility endpoint so offline tests can assert upload sequencing without standing up the binary ingest service.
 
 ## Preset Save Requirement For Dynamic Grade

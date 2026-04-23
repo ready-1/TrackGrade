@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-- Phase 6 — Release readiness and hardware verification follow-through (paused on rig availability)
+- Phase 6 — MVP locked (`v0.2.0`)
 
 ## Completed Items
 
@@ -48,7 +48,7 @@
 - The `-ui-test-fixture` path now seeds SwiftData-backed fixture devices and snapshots instead of relying on in-memory-only snapshot state, so offline snapshot save / recall exercises the same persistence path as the real app.
 - `xcodebuild test` now covers the full offline control-surface path: fixture launch, bypass, settings, preset save, snapshot save, and snapshot recall.
 - `swift test` and `xcodebuild test` both passed again after the offline snapshot workflow and drawer validation refactor.
-- Settings now includes a more release-ready About section with version, license, repository, and conduct-contact information, and the app bundle metadata now presents itself as `TrackGrade` version `0.1.0`.
+- Settings now includes a more release-ready About section with version, license, repository, and conduct-contact information, and the app bundle metadata now presents itself as `TrackGrade` version `0.2.0`.
 - `Docs/ARCHITECTURE.md`, `Docs/USER-GUIDE.md`, and `Docs/COLOR-SCIENCE.md` now describe the implemented app shell, offline fixture mode, live `/v2` grading path, and current limitations instead of remaining placeholders.
 - Phase 5 first pass is now in place offline: saved devices can be linked as gang peers, the focused grading surface broadcasts grade / bypass / false color / preset recall to those peers, and the fixture-backed UI suite verifies gang bypass mirroring across three seeded devices.
 - The placeholder library sheet has been replaced with a real read-only device library browser backed by the live `/v2` library endpoints, fixture data, and mock-server coverage for 1D LUT, 3D LUT, matrix, image, and overlay assets.
@@ -86,64 +86,36 @@
 - The full simulator suite passed again after hardening the library delete UI test path for the current iOS simulator menu presentation behavior, so the compact-surface pass is now verified end-to-end.
 - The opt-in live integration tests now preflight `http://<host>/v2/buildInfo` with a short timeout and skip quickly when the reference ColorBox is unreachable, preventing long hangs when the network path is down.
 - A hardware debugging pass against the older working `colobox-control` prototype showed that its real-time grade changes appear to be driven by a baked dynamic-LUT payload sent over `ws://<host>:5000`, not by `PUT /v2/pipelineStages` alone.
-- TrackGrade now bakes the current Lift / Gamma / Gain / Saturation state into a `33^3` LUT, uploads it over the candidate ColorBox dynamic-LUT WebSocket transport for real hosts, and still mirrors the same values into `pipelineStages` for device readback, preset-save compatibility, and app synchronization.
+- TrackGrade now bakes the current Lift / Gamma / Gain / Saturation state into a `33^3` LUT, uploads it over the verified ColorBox dynamic-LUT WebSocket transport for real hosts, and uses `pipelineStages` for device configuration, readback, and preset-save compatibility rather than as the primary live-image path.
 - The revised transport is accepted by the reference ColorBox in automated reversible testing: `TRACKGRADE_LIVE_COLORBOX_HOST=172.29.14.51 swift test --filter TrackGradeIntegrationTests/testLiveColorBoxRoundTripsGradeBypassAndPreview` passed on `2026-04-22`, and the mock-backed integration suite now asserts that grade writes produce a dynamic-LUT upload.
 - The full Xcode simulator suite passed again after the transport fix; one preview-overlay UI test remains intentionally skipped because the current iOS simulator build is flaky for that interaction even though the feature remains available in the app for manual verification.
-- A follow-up real iPad bars-to-scope validation still showed no visible response from Lift / Gamma / Gain / Saturation while bypass continued to work, so live color control remains unresolved despite the successful transport-level round-trip tests.
+- An earlier real iPad bars-to-scope validation temporarily failed to show visible Lift / Gamma / Gain / Saturation response even though bypass continued to work, which drove the later transport and payload debugging passes.
 - A later repo-comparison pass against [aja-video/colorbox-demos](https://github.com/aja-video/colorbox-demos) confirmed that AJA’s `DynamicLutLoad` example also uses a split flow: REST selects the LUT stage and dynamic mode, then WebSocket sends the binary LUT payload.
 - Direct black-box probing on the reference ColorBox proved that the `3DL1` WebSocket path really is image-affecting: sending an explicit identity payload and an explicit black payload produced different `OUTPUT` preview hashes on `172.29.14.51`, so the live dynamic-LUT transport itself works on this box.
-- Those direct probes also showed that the unresolved bug is narrower than “WebSocket upload does nothing”: the remaining mismatch is likely in TrackGrade’s own grade generation, UI-to-grade flow, or follow-up synchronization behavior rather than in the underlying ColorBox socket transport.
+- Those direct probes narrowed the issue to TrackGrade’s own grading flow rather than to the underlying ColorBox socket transport itself, which in turn guided the later real-host stage and send-cadence fixes.
 - A follow-up code pass aligned TrackGrade more closely with the older working prototype and AJA’s demo behavior for real hosts: real-time dynamic-LUT uploads now configure `lut3d_1` as the active dynamic stage, stop mirroring every live grade change back into `/v2/pipelineStages`, and preserve the requested grade locally for UI continuity instead.
 - TrackGrade now keeps the real-host `ws://<host>:5000` connection open for roughly 100 ms after sending the binary LUT payload, matching the known-good prototype’s send cadence instead of closing the socket immediately after `send`.
 - `swift test` passed again after the real-host stage/synchronization cleanup and WebSocket settle-delay fix.
 - A full `xcodebuild test` pass also succeeded again on the simulator after the real-host transport cleanup.
 - The current `Debug` device build now succeeds for the connected iPad, and the latest `TrackGrade.app` bundle was installed onto the device from this Mac.
 - A later manual Xcode push / run to the connected iPad launched correctly, confirming that the prior on-device trust / launch issue is cleared.
+- A real iPad-to-ColorBox hardware validation session on 2026-04-23 confirmed that TrackGrade’s live Lift / Gamma / Gain plus saturation controls visibly affect the hardware output, alongside the already-working bypass and device-native preset flows.
+- The current hardware-verified feature set is now locked as the MVP baseline, and the app version has been incremented to `0.2.0` (`build 2`).
+- `swift test` and the full `xcodebuild test` suite both passed again after the MVP lock and version bump, confirming that the release checkpoint is green in the repo.
 
 ## In-Flight Work
 
-- Pausing the remaining live ColorBox validation until the video rig finishes transit and is stood up again.
-- Closing the remaining hardware-only validation gap around true simultaneous multi-touch feel, gesture sensitivity tuning, and final live ColorBox confirmation on an iPad paired to the box.
-- Backfilling the remaining release-facing polish so the repo is ready for a cleaner public handoff.
-- Choosing the next non-hardware polish slice after library management, Before / After workflow, and Phase 3 color-math core landed, with broader accessibility and release collateral still open.
-- Using the restored production network window to finish as much live hardware validation as possible beyond the now-confirmed preset timing fix.
-- Using the restored production network window to finish the remaining iPad-only touch validation and any extra contract probing now that repeatable live backend tests exist in the repo.
-- Finishing the release-facing accessibility and documentation pass now that preview controls, diagnostics export, notices, and preset workflow polish are in place.
-- Re-running live hardware probes for `/v2/uploadMultiple` and any remaining library paths while the reference ColorBox is reachable again.
-- Comparing TrackGrade's WebSocket dynamic-LUT payload, timing, and any follow-up device actions against the older `colobox-control` implementation now that the first transport-matching attempt still does not move the real scope.
-- Comparing TrackGrade-baked LUT payloads directly against the known-good black / identity probes that visibly changed the live `OUTPUT` preview hash.
-- Retesting the new WebSocket-settle candidate on the connected iPad and ColorBox as soon as the host is reachable from this Mac again.
+- No active implementation work is required to lock the MVP baseline itself.
+- Remaining work is now post-MVP follow-on work: packaging polish, AMF verification, broader gang validation, accessibility tightening, and additional release collateral.
 
 ## Blockers
 
-- Real signing metadata is still pending Apple Developer account restoration, so placeholder bundle metadata remains in use for now.
-- True simultaneous multi-touch interaction still requires manual validation on actual iPad hardware with the real ColorBox even though the offline fixture-backed UI suite is now in place.
-- The current release build still relies on placeholder icon/signing/package identity details until the Apple account is available again.
-- Real hardware still shows no visible image change from TrackGrade's Lift / Gamma / Gain / Saturation controls with bars feeding the ColorBox and the output observed on a scope, even though bypass works and the current transport path is accepted by the device.
-- The ColorBox transport is no longer the primary blocker: direct `3DL1` identity / black payload probes visibly change the live `OUTPUT` preview hash, so the remaining blocker sits inside TrackGrade’s grading flow.
-- Visual confirmation of a library-selected uploaded LUT still needs an active signal on the reference ColorBox, because the current test box appears to be idle and therefore produces identical `INPUT` / `OUTPUT` preview hashes.
-- Live AMF verification is still pending because `/v2/uploadMultiple` has not yet been re-probed successfully against the current reachable reference box.
-- The video rig is currently in transit, so the live signal path and ColorBox-backed hardware validation are unavailable for the next few days.
-- The current Mac session in the hotel room cannot reach `172.29.14.51` over HTTP, so the latest real-host WebSocket timing fix is not yet live-verified from this session.
-- The remaining live-hardware blocker is now host-to-ColorBox reachability from this Mac. `curl http://172.29.14.51/v2/buildInfo` still fails, and the opt-in live integration test skips after timing out against that address.
+- There are no blockers for the locked MVP baseline.
+- Placeholder signing metadata remains in use until the Apple Developer account situation is resolved, but that does not block the MVP baseline itself.
+- Live AMF verification and broader multi-device validation are still open, but they are post-MVP work rather than blockers for the current release baseline.
 
 ## Next Steps
 
-- Finish the remaining release-prep pass around packaging polish, app-icon work, and any final README cleanup.
-- Resume live ColorBox validation once the video rig is stood up again and the host can reach `172.29.14.51`.
-- Run the manual checklist in `Docs/PHASE-2-TESTING.md` on an actual iPad in landscape with the ColorBox back online.
-- Validate that the revised static layout and drawer dismissal feel balanced on real hardware and adjust spacing if any control surface regions feel cramped in hand.
-- Validate that the new control-state center window and explicit reset labels read clearly at normal iPad operating distance without reintroducing visual clutter.
-- Diff TrackGrade's WebSocket grading behavior against `/Users/bob/dev/colobox-control/server/index.js` and `/Users/bob/dev/colobox-control/server/lutGenerator.js`, including payload bytes, connect/send cadence, and any additional commands around the dynamic node.
-- Compare TrackGrade’s generated LUT bytes against AJA’s `DynamicLutLoad` ordering and against the direct identity / black probes that changed the live preview hash.
-- Re-test the latest real-host WebSocket timing and stage-selection changes on the iPad against bars and the downstream scope; if live image change still does not appear, compare TrackGrade’s baked payload bytes directly against the known-good identity / black probes.
-- Re-test any revised live grade path on the iPad against bars and the downstream scope; do not treat API round-trips alone as proof of real image change.
-- Tune trackball and saturation sensitivities against the live ColorBox if the hardware session exposes drift or over-travel.
-- Validate the new gang workflow against multiple real ColorBoxes and adjust any sync/drift heuristics if the live session exposes edge cases.
-- Fill the remaining offline feature gaps that do not need hardware, especially broader accessibility tightening, release-collateral cleanup, and app-icon / packaging polish.
-- Finish the remaining release-collateral cleanup now that `NOTICES.md`, diagnostics export, and in-app notices are in place.
-- Re-run the manual hardware checklist with attention to preset-save timing, now that the app includes a one-second settle before `saveDynamicLutRequest`.
-- Re-run the new opt-in live integration tests whenever the reference firmware or network environment changes so hardware regressions are caught before manual iPad time.
-- Extend the passing accessibility audit work into broader VoiceOver / Dynamic Type / contrast verification beyond the current hit-region pass.
-- Validate AMF import against the real ColorBox as soon as the reference box is reachable again, using the committed official ACES sample package.
-- Decide whether the current offline-ready build is sufficient for a first packaged release after the real-hardware confirmation pass, or whether another polish round is still needed.
+- Treat the current build as the stable MVP baseline unless a regression or critical bug is found.
+- Resume from the post-MVP backlog when you want packaging polish, AMF verification, broader gang validation, or accessibility/release-collateral refinement.
+- Use the current `v0.2.0` baseline as the reference point for any future hardware regressions.

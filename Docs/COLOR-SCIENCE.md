@@ -2,19 +2,19 @@
 
 ## Current State
 
-TrackGrade now has two color-processing layers in the repo:
+TrackGrade now has two closely related color-processing layers in the repo:
 
-1. A real hardware-backed MVP path that writes Lift / Gamma / Gain and saturation directly to `lut3d_1.colorCorrector` and `procAmp.sat` through `PUT /v2/pipelineStages`
-2. A full offline and mock-verified Phase 3 color-math path that converts TrackGrade control state into ASC-CDL values, bakes a `.cube` LUT, and queues last-write-wins dynamic LUT uploads per device
+1. A real hardware-backed MVP path that configures the dynamic 3D LUT stage, converts live control state into ASC-CDL values, bakes a `.cube` LUT, and sends that payload over `ws://<host>:5000`
+2. A full offline and mock-verified Phase 3 color-math path that exercises the same control-state-to-CDL-to-LUT pipeline while using the compatibility HTTP endpoint instead of the real socket ingest
 
-That means the app is already usable on the reference ColorBox today, while the fuller bake/upload path exists in durable code and tests even though the live firmware upload semantics are still unresolved.
+That means the app is already usable on the reference ColorBox today, and the same bake/upload path exists in durable code and tests for offline validation.
 
 For the current build:
 
-- live Lift / Gamma / Gain and saturation control is real and hardware-verified
+- live Lift / Gamma / Gain and saturation control is real and hardware-verified on iPad + ColorBox hardware
 - device-native preset save is real and hardware-verified
 - LUT baking and queued upload are implemented in `Core/ColorMath` and `Core/DeviceManager`
-- the app shell still defaults to the hardware-verified direct-device path instead of switching live grading over to `/v2/upload`
+- the app shell uses the hardware-verified dynamic-LUT WebSocket path on real hosts instead of trying to grade through `/v2/upload`
 
 ## Grade Representation
 
@@ -32,7 +32,7 @@ Identity is:
 - gain = `(1, 1, 1)`
 - saturation = `1.0`
 
-This mirrors the way the current ColorBox `/v2/pipelineStages` surface represents the live grade controls that TrackGrade is writing.
+This mirrors the way TrackGrade represents the live grade controls that it converts into a dynamic LUT for real-host playback and into mock-compatible metadata for offline testing.
 
 `GradeState` in `Core/ColorMath/CDL.swift` is the bridge from that interactive control model into formal CDL values:
 
@@ -162,14 +162,13 @@ Current tests cover:
 
 ## Device Pipeline Mapping
 
-The live grade path currently writes:
+The live grade path currently:
 
-- Lift to `lut3d_1.colorCorrector.black*`
-- Gamma to `lut3d_1.colorCorrector.gamma*`
-- Gain to `lut3d_1.colorCorrector.gain*`
-- Saturation to `lut3d_1.procAmp.sat`
-
-TrackGrade first ensures that the 3D LUT stage is configured for dynamic mode, then keeps writing the grade state back through `/v2/pipelineStages`.
+- configures `lut3d_1` as the active dynamic stage through `/v2/pipelineStages`
+- converts `ColorBoxGradeControlState` into `GradeState` / `CDLValues`
+- bakes a `33^3` LUT
+- sends the binary payload over `ws://<host>:5000`
+- preserves the requested grade locally in app state for UI continuity and uses stage reads for configuration/readback
 
 In parallel, `DeviceManager` now also exposes a `DynamicLUTUploadQueue` for per-device queued `.cube` uploads:
 
@@ -178,7 +177,7 @@ In parallel, `DeviceManager` now also exposes a `DynamicLUTUploadQueue` for per-
 - `flush()` waits until the queue is drained
 - each upload carries a monotonic `X-TrackGrade-Sequence` header for debugging
 
-This matches the brief’s last-write-wins upload model even though the live hardware route is not yet the active grading path.
+This matches the brief’s last-write-wins upload model and now also backs the verified real-host grading route.
 
 ## Preset Persistence Implication
 
@@ -192,13 +191,13 @@ Without the `saveDynamicLutRequest` step, recalling a preset can return identity
 
 ## Live Upload Status
 
-The remaining gap is not the math or queueing code. It is the real firmware upload behavior:
+The remaining live-upload gap is specifically about library-style `POST /v2/upload` asset management, not about real-time grading:
 
 - the reference ColorBox accepts `POST /v2/upload`
-- the device web UI uses the same route
-- successful uploads on firmware `3.0.0.24` still do not materialize predictably in `GET /v2/3dLutLibrary`
+- the device web UI uses the same route for library asset import
+- TrackGrade’s real-time grading path does not depend on that library-materialization behavior
 
-Because of that unresolved device behavior, TrackGrade currently keeps the shipping hardware path on the already verified `pipelineStages` route while retaining the bake/upload path for offline and mock-backed validation.
+The shipping grading path is the hardware-verified WebSocket dynamic-LUT ingest, while `POST /v2/upload` remains relevant for library management and future deeper validation.
 
 ## Testing Expectations
 
