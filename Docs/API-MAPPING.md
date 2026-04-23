@@ -12,6 +12,7 @@
 - Live grading no longer relies on `PUT /v2/pipelineStages` alone: real hosts now receive a baked dynamic-LUT payload over `ws://<host>:5000`, with `pipelineStages` updated afterward for state synchronization and preset compatibility.
 - A live reversible integration run verified that the reference ColorBox accepts this transport on `2026-04-22` against `172.29.14.51`: grade, bypass, and preview round-trips all passed after the transport switch.
 - A later real iPad validation with bars feeding the ColorBox and the output on a scope still showed no visible response from Lift / Gamma / Gain / Saturation, so this transport remains only a candidate for the true image-affecting grade path.
+- A direct follow-up probe then proved that the WebSocket path itself does affect the live image on this box: explicit identity and black `3DL1` payloads produced different `OUTPUT` preview hashes, so the unresolved issue is now TrackGrade-specific rather than a generic socket-ingest failure.
 
 ## Remaining Integration Decision
 
@@ -32,7 +33,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 | Routing / bypass state | `GET` / `PUT` | `/v2/routing` | Contains `pipelineBypassButton` and `pipelineBypassUser` |
 | Pipeline stage configuration | `GET` / `PUT` | `/v2/pipelineStages` | Includes `lut3d_1.dynamic`, `enabled`, library entry, `colorCorrector`, and `procAmp` |
 | Preview image | `GET` | `/v2/preview` | Returns JSON `Preview` object with base64 image data |
-| Live dynamic grade ingest | WebSocket send | `ws://<host>:5000` | Binary payload with `3DL1` target header followed by 16-bit little-endian RGB cube data; this matches the older working prototype, but is still only a candidate until a real signal-path test shows visible grade response |
+| Live dynamic grade ingest | WebSocket send | `ws://<host>:5000` | Binary payload with `3DL1` target header followed by 16-bit little-endian RGB cube data; direct identity / black probes changed the real `OUTPUT` preview hash on `172.29.14.51`, so the ingest path is live and working |
 | Preset library list | `GET` | `/v2/systemPresetLibrary` | Returns `LibraryEntry` array |
 | 1D LUT library | `GET` | `/v2/1dLutLibrary` | Returns the 1D LUT slot array |
 | 3D LUT library | `GET` | `/v2/3dLutLibrary` | Returns the 3D LUT slot array |
@@ -52,6 +53,7 @@ The following endpoints are the real hardware routes currently relevant to Track
 - Preview fetches are JSON objects with base64 image payloads, not raw image bytes from `/preview/frame`.
 - Presets are exposed as a library array and are controlled through `GET/PUT /v2/libraryControl`, not `GET/POST/DELETE /presets/*`.
 - The older working prototype suggests that real-time dynamic grade replacement uses the legacy WebSocket ingest on port `5000`, not `PUT /v2/pipelineStages` alone.
+- AJA’s `colorbox-demos` `DynamicLutLoad` example confirms the same split model: REST sets the LUT choice and dynamic state, then WebSocket transfers the binary LUT payload.
 - TrackGrade still uses the older `PUT /pipeline/aja/nodes/3dlut/dynamic` route only as a localhost/mock compatibility path because the mock server does not emulate the binary WebSocket ingest.
 
 ## TrackGrade Mappings In Code
@@ -130,6 +132,7 @@ TrackGrade now has live-verified behavior for device-native presets on firmware 
   - mirror the same Lift / Gamma / Gain / Saturation values into `PUT /v2/pipelineStages`
 - The reference hardware accepts this combined path and reads the mirrored state back successfully through the reversible integration test suite.
 - A follow-up real output test with bars and a downstream scope still showed no visible change from Lift / Gamma / Gain / Saturation, so the true image-affecting grading contract is still unresolved.
+- Because direct identity / black `3DL1` probes do change the live `OUTPUT` preview hash on the same box, the remaining unresolved piece is TrackGrade’s payload generation or post-upload flow rather than the ColorBox’s WebSocket ingest itself.
 - The mock server continues to emulate the dynamic payload path with the earlier HTTP compatibility endpoint so offline tests can assert upload sequencing without standing up the binary ingest service.
 
 ## Preset Save Requirement For Dynamic Grade

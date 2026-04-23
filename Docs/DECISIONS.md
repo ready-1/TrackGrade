@@ -835,6 +835,22 @@ TrackGrade will treat live image change on a signaled ColorBox, observed on real
 - Repo docs and test descriptions must avoid calling live grade control “verified” until a real scope/image test shows visible response.
 - The next debugging pass should compare TrackGrade’s payload bytes, connection lifecycle, and any follow-up actions against the older `colobox-control` implementation before trying broader UI or tuning changes.
 
+## 2026-04-22 — Treat Direct Identity / Black `3DL1` Probes As The Live Baseline For Grade Debugging
+
+### Context
+
+After the scope test showed that TrackGrade still produced no visible color change, a follow-up comparison against AJA’s `colorbox-demos` repo showed that their `DynamicLutLoad` demo also uses the LUT-stage-selection-plus-WebSocket pattern. Direct probes on the reference ColorBox then confirmed that explicit identity and black `3DL1` payloads do change the live `OUTPUT` preview hash on `172.29.14.51`.
+
+### Decision
+
+Use the direct `3DL1` identity/black probes as the known-good live baseline for future debugging. TrackGrade should be compared against that proven transport behavior before assuming that the remaining problem is in the device or the network.
+
+### Consequences
+
+- The remaining live-grading bug is now scoped to TrackGrade’s own grade generation, UI-to-grade flow, or post-upload synchronization behavior.
+- Future experiments should start from a payload comparison against the known-good direct probe rather than by re-proving that WebSocket ingest exists.
+- The AJA demo repo and the older `colobox-control` prototype are now both primary references for narrowing the mismatch.
+
 ## 2026-04-22 — Keep The Preview Overlay Feature But Skip One Simulator-Only UI Assertion
 
 ### Context
