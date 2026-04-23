@@ -123,6 +123,7 @@
 - Live AMF verification is still pending because `/v2/uploadMultiple` has not yet been re-probed successfully against the current reachable reference box.
 - The current Mac session in the hotel room cannot reach `172.29.14.51` over HTTP, so the latest real-host WebSocket timing fix is not yet live-verified from this session.
 - Although the latest app bundle is installed on the connected iPad, `devicectl` launch is currently denied because the development profile has not yet been explicitly trusted on-device.
+- A direct retry on 2026-04-22 still returned the same `SBMainWorkspace` security denial for `com.getready1.trackgrade`, so the iPad trust step is still blocking hardware validation even though install continues to succeed.
 
 ## Next Steps
 
