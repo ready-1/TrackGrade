@@ -8,17 +8,17 @@
 
 /* Begin PBXBuildFile section */
 		0F1E2D3C4B5A69788796A5B4 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F708192A3B4C5 /* LaunchScreen.storyboard */; };
+		1C7E5F2B9A4D41C1A0B1C2D3 /* CDL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5643DBB9C9225A716F1E0DC6 /* CDL.swift */; };
 		1F3A6E5B9C4D7A8E1B2C3D4E /* TrackGradeLaunchConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B4C5D6E7F8091A2B3C4D5E6 /* TrackGradeLaunchConfiguration.swift */; };
 		1FA6C6D98A7E4D75A6B5D8E2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4B55F75D9C264FC1A9F5D7C2 /* Assets.xcassets */; };
-		1C7E5F2B9A4D41C1A0B1C2D3 /* CDL.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5643DBB9C9225A716F1E0DC6 /* CDL.swift */; };
 		20191BD5DBB39584F98F3567 /* TrackGradeKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83FE92E3B46E2EDD25D6A84F /* TrackGradeKeychainStore.swift */; };
 		2A4B6C8D0E1F23456789ABCD /* TrackGradeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FC308DD55BD72E143130C7F /* TrackGradeUITests.swift */; };
 		2AFFEB6486133495102E5BA6 /* DeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F0E651F44C3F9FEE012E08 /* DeviceManager.swift */; };
 		3C0A5E4E6F7A8B9C0D1E2F30 /* DynamicLUTUploadQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C0A5E4E6F7A8B9C0D1E2F31 /* DynamicLUTUploadQueue.swift */; };
 		4D8E1A2B3C4D5E6F708192A1 /* CubeLUT.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1B2C3D4E5F60718293A4B5 /* CubeLUT.swift */; };
 		530D388C6345EA01B97ABAE5 /* XcodeProjectSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A6780C1AABDDEC3A2A90702 /* XcodeProjectSmokeTests.swift */; };
-		5E9F2A3B4C5D6E7F8091A2B3 /* LUTBaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2C3D4E5F60718293A4B5C6 /* LUTBaker.swift */; };
 		5AA977163540DCD6DE9061FE /* ConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B6294B91BE0853F9A3EEA7 /* ConnectionState.swift */; };
+		5E9F2A3B4C5D6E7F8091A2B3 /* LUTBaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B2C3D4E5F60718293A4B5C6 /* LUTBaker.swift */; };
 		688052382D49724F90EBF3FF /* PreviewFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25A9D3DCFC12BD1C603FFC5 /* PreviewFeature.swift */; };
 		68F0D84C3A9B4A6D8E2F1137 /* LibraryFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E00400E123FC2A110808CFF /* LibraryFeature.swift */; };
 		6BF5BA10FBAA57D7FAA72966 /* StoredColorBoxDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB117576B1B29427F7C93BF2 /* StoredColorBoxDevice.swift */; };
@@ -75,8 +75,8 @@
 		69F8B8852A2033AE42972067 /* SettingsFeature.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsFeature.swift; sourceTree = "<group>"; };
 		6A1B2C3D4E5F60718293A4B5 /* CubeLUT.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CubeLUT.swift; sourceTree = "<group>"; };
 		728C3F7A6F09144E6F651500 /* TransferFunction.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TransferFunction.swift; sourceTree = "<group>"; };
-		7B2C3D4E5F60718293A4B5C6 /* LUTBaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LUTBaker.swift; sourceTree = "<group>"; };
 		78B35BC4B94955A0E950CF9E /* TrackGradeCorePlaceholderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrackGradeCorePlaceholderTests.swift; sourceTree = "<group>"; };
+		7B2C3D4E5F60718293A4B5C6 /* LUTBaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LUTBaker.swift; sourceTree = "<group>"; };
 		7C102F609CA5746C3FDCB3A0 /* PersistenceModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PersistenceModels.swift; sourceTree = "<group>"; };
 		83FE92E3B46E2EDD25D6A84F /* TrackGradeKeychainStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrackGradeKeychainStore.swift; sourceTree = "<group>"; };
 		8C6EF12F301DAD65E1C33A2F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -596,7 +596,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = GWKPUBB74W;
+				DEVELOPMENT_TEAM = X2KDS99U62;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
@@ -624,7 +624,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = GWKPUBB74W;
+				DEVELOPMENT_TEAM = X2KDS99U62;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";

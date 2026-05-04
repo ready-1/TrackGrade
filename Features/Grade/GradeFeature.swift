@@ -173,6 +173,15 @@ struct GradeFeatureView: View {
         return "False color is not exposed by this ColorBox firmware."
     }
 
+    private func controlMovementScale(for inputKind: SimultaneousTouchInputKind) -> Float {
+        switch inputKind {
+        case .direct:
+            return 1
+        case .pencil:
+            return 0.3
+        }
+    }
+
     private func emitButtonHaptic() {
         Task { @MainActor in
             HapticsCoordinator.shared.emitButtonPress(isEnabled: hapticsEnabled)
@@ -750,15 +759,16 @@ private struct DynamicGradeControlsCard: View {
             beginTouchInteraction()
             ballAnchors[kind] = state.wrappedValue.ball
 
-        case let .changed(_, _, translation):
+        case let .changed(_, _, translation, inputKind):
             guard let anchor = ballAnchors[kind] else {
                 return
             }
 
+            let movementScale = controlMovementScale(for: inputKind)
             let previous = state.wrappedValue.ball
             let next = ColorBoxControlPoint(
-                x: anchor.x + Float(translation.width / travel) * Float(sensitivity),
-                y: anchor.y - Float(translation.height / travel) * Float(sensitivity)
+                x: anchor.x + Float(translation.width / travel) * Float(sensitivity) * movementScale,
+                y: anchor.y - Float(translation.height / travel) * Float(sensitivity) * movementScale
             ).clampedToUnitDisk()
 
             state.wrappedValue.ball = next
@@ -784,7 +794,7 @@ private struct DynamicGradeControlsCard: View {
             beginTouchInteraction()
             ringAnchors[kind] = state.wrappedValue.ring
 
-        case let .changed(start, location, _):
+        case let .changed(start, location, _, inputKind):
             guard let anchor = ringAnchors[kind] else {
                 return
             }
@@ -793,8 +803,9 @@ private struct DynamicGradeControlsCard: View {
             let startAngle = atan2(start.y - center.y, start.x - center.x)
             let currentAngle = atan2(location.y - center.y, location.x - center.x)
             let delta = wrappedAngleDelta(currentAngle - startAngle)
+            let movementScale = controlMovementScale(for: inputKind)
             let previous = state.wrappedValue.ring
-            let next = (anchor + Float(delta / .pi) * Float(sensitivity)).clamped(to: -1 ... 1)
+            let next = (anchor + Float(delta / .pi) * Float(sensitivity) * movementScale).clamped(to: -1 ... 1)
 
             state.wrappedValue.ring = next
             emitZeroDetentIfNeeded(previous: previous, next: next)
@@ -816,18 +827,19 @@ private struct DynamicGradeControlsCard: View {
             beginTouchInteraction()
             saturationAnchor = draftGrade.saturation
 
-        case let .changed(_, _, translation):
+        case let .changed(_, _, translation, inputKind):
             guard let saturationAnchor else {
                 return
             }
 
+            let movementScale = controlMovementScale(for: inputKind)
             let previous = draftGrade.saturation
-            let delta = Float((translation.width / max(size.width, 1)) * 2) * Float(saturationSensitivity)
+            let delta = Float((translation.width / max(size.width, 1)) * 2) * Float(saturationSensitivity) * movementScale
             draftGrade.saturation = (saturationAnchor + delta).clamped(to: 0 ... 2)
             emitSaturationDetentIfNeeded(previous: previous, next: draftGrade.saturation)
             scheduleGradeControlUpdate()
 
-        case let .ended(_, location, translation):
+        case let .ended(_, location, translation, _):
             if abs(translation.width) < 6, abs(translation.height) < 6 {
                 let progress = (location.x / max(size.width, 1)).clamped(to: 0 ... 1)
                 let previous = draftGrade.saturation
