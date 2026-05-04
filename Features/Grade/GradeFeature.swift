@@ -173,15 +173,6 @@ struct GradeFeatureView: View {
         return "False color is not exposed by this ColorBox firmware."
     }
 
-    private func controlMovementScale(for inputKind: SimultaneousTouchInputKind) -> Float {
-        switch inputKind {
-        case .direct:
-            return 1
-        case .pencil:
-            return 0.3
-        }
-    }
-
     private func emitButtonHaptic() {
         Task { @MainActor in
             HapticsCoordinator.shared.emitButtonPress(isEnabled: hapticsEnabled)
@@ -665,6 +656,15 @@ private struct DynamicGradeControlsCard: View {
 
     private var previewAutoRefreshTaskID: String {
         "\(device.id.uuidString)-\(autoRefreshInterval)"
+    }
+
+    private func controlMovementScale(for inputKind: SimultaneousTouchInputKind) -> Float {
+        switch inputKind {
+        case .direct:
+            return 1
+        case .pencil:
+            return 0.3
+        }
     }
 
     private func handleLiftBall(
