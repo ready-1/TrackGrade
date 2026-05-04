@@ -1,10 +1,25 @@
 import UIKit
 
+enum SimultaneousTouchInputKind: Equatable {
+    case direct
+    case pencil
+}
+
 enum SimultaneousTouchEvent: Equatable {
-    case began(start: CGPoint)
-    case changed(start: CGPoint, location: CGPoint, translation: CGSize)
-    case ended(start: CGPoint, location: CGPoint, translation: CGSize)
-    case cancelled
+    case began(start: CGPoint, inputKind: SimultaneousTouchInputKind)
+    case changed(
+        start: CGPoint,
+        location: CGPoint,
+        translation: CGSize,
+        inputKind: SimultaneousTouchInputKind
+    )
+    case ended(
+        start: CGPoint,
+        location: CGPoint,
+        translation: CGSize,
+        inputKind: SimultaneousTouchInputKind
+    )
+    case cancelled(inputKind: SimultaneousTouchInputKind)
 }
 
 final class SimultaneousTouchGestureRecognizer: UIGestureRecognizer, UIGestureRecognizerDelegate {
@@ -33,7 +48,7 @@ final class SimultaneousTouchGestureRecognizer: UIGestureRecognizer, UIGestureRe
         startLocation = touch.location(in: view)
         currentLocation = startLocation
         state = .began
-        eventHandler?(.began(start: startLocation))
+        eventHandler?(.began(start: startLocation, inputKind: inputKind(for: touch)))
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
@@ -48,7 +63,8 @@ final class SimultaneousTouchGestureRecognizer: UIGestureRecognizer, UIGestureRe
             .changed(
                 start: startLocation,
                 location: currentLocation,
-                translation: translation
+                translation: translation,
+                inputKind: inputKind(for: trackedTouch)
             )
         )
     }
@@ -65,7 +81,8 @@ final class SimultaneousTouchGestureRecognizer: UIGestureRecognizer, UIGestureRe
             .ended(
                 start: startLocation,
                 location: currentLocation,
-                translation: translation
+                translation: translation,
+                inputKind: inputKind(for: trackedTouch)
             )
         )
         self.trackedTouch = nil
@@ -78,7 +95,7 @@ final class SimultaneousTouchGestureRecognizer: UIGestureRecognizer, UIGestureRe
         }
 
         state = .cancelled
-        eventHandler?(.cancelled)
+        eventHandler?(.cancelled(inputKind: inputKind(for: trackedTouch)))
         self.trackedTouch = nil
     }
 
@@ -111,6 +128,15 @@ final class SimultaneousTouchGestureRecognizer: UIGestureRecognizer, UIGestureRe
     }
 
     private func isSupportedTouch(_ touch: UITouch) -> Bool {
-        touch.type != .pencil
+        switch touch.type {
+        case .direct, .pencil:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func inputKind(for touch: UITouch) -> SimultaneousTouchInputKind {
+        touch.type == .pencil ? .pencil : .direct
     }
 }
